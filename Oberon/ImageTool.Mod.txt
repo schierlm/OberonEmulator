@@ -1,0 +1,61 @@
+MODULE ImageTool;
+  IMPORT Files, ImageKernel, ImageFileDir, ImageFiles, Texts, Oberon;
+
+  PROCEDURE Init*;
+  VAR
+    tmp: INTEGER;
+    dp: ImageFileDir.DirPage;
+  BEGIN
+    Files.Delete("DiskImage.Bin", tmp);
+    ImageKernel.Init;
+    dp.mark := ImageFileDir.DirMark;
+    dp.p0 := 0;
+    dp.m := 0;
+    ImageKernel.PutSector(ImageFileDir.DirRootAdr, dp);
+    ImageFiles.Init;
+  END Init;
+
+  PROCEDURE AddFile(file: ARRAY OF CHAR);
+    VAR f: Files.File;
+      g: ImageFiles.File;
+      Rf: Files.Rider;
+      Rg: ImageFiles.Rider;
+      ch: CHAR;
+      i: INTEGER;
+      newfile: ARRAY 32 OF CHAR;
+  BEGIN
+    f := Files.Old(file);
+    newfile := file;
+    i := 0;
+    WHILE newfile[i] # 0X DO INC(i) END;
+    IF (newfile[i-1] = "X") & (newfile[i-2] = ".") THEN newfile[i-2] := 0X END;
+    g := ImageFiles.New(newfile);
+    Files.Set(Rf, f, 0);
+    ImageFiles.Set(Rg, g, 0);
+    Files.Read(Rf, ch);
+    WHILE ~Rf.eof DO ImageFiles.Write(Rg, ch); Files.Read(Rf, ch) END;
+    ImageFiles.Register(g)
+  END AddFile;
+
+  PROCEDURE AddFiles*;
+    VAR res: INTEGER; S: Texts.Scanner;
+      T: Texts.Text; beg, end, time: INTEGER;
+  BEGIN
+    Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos);
+    Texts.Scan(S);
+    IF (S.class = Texts.Char) & (S.c = "^") THEN
+      Oberon.GetSelection(T, beg, end, time);
+      IF time >= 0 THEN Texts.OpenScanner(S, T, beg); Texts.Scan(S) END
+    END;
+    WHILE S.class = Texts.Name DO
+      AddFile(S.s);
+      Texts.Scan(S)
+    END
+  END AddFiles;
+
+  PROCEDURE Close*;
+  BEGIN
+    ImageKernel.Close;
+  END Close;
+
+END ImageTool.

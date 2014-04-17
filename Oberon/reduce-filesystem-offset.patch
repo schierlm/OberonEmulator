@@ -1,0 +1,22 @@
+--- 1/BootLoad.Mod.txt
++++ 2/BootLoad.Mod.txt
+@@ -2,7 +2,7 @@
+   IMPORT SYSTEM;
+   CONST MT = 12; SP = 14; LNK = 15;
+     MTOrg = 20H; MemLim = 0E7EF0H; stackOrg = 80000H;
+-    FSoffset = 80000H;   (*block offset*)
++    FSoffset = 0H;   (*block offset*)
+ 
+   PROCEDURE LoadFromDisk;
+     VAR
+--- 1/Kernel.Mod.txt
++++ 2/Kernel.Mod.txt
+@@ -2,7 +2,7 @@
+   IMPORT SYSTEM;
+   CONST SectorLength* = 1024;
+     timer = -64;
+-    FSoffset = 80000H; (*256MB in 512-byte blocks*)
++    FSoffset = 0H; (*256MB in 512-byte blocks*)
+     mapsize = 10000H; (*1K sectors, 64MB*)
+ 
+   TYPE Sector* = ARRAY SectorLength OF BYTE;

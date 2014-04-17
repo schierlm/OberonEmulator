@@ -1,0 +1,33 @@
+<style>
+body { font-family: Verdana, Arial, Helvetica, sans-serif; }
+.buttonbar {padding: 5px; }
+.mousebtn, .led {padding: 2px 5px; border: 1px solid gray; cursor: default; }
+.mousebtn.active {background-color: blue;}
+.mousebtn.interclick {background-color: yellow;}
+.led {border:1px solid gray; background-color: black; color: white; border-radius: 50% }
+.led.lit {background-color: #0f0; color: black; }
+</style>
+<script src="memory.js"></script>
+<script src="cpu.js"></script>
+<script src="emu.js"></script>
+
+<div class="buttonbar">
+<span id="mouseL" class="mousebtn active">L</span>
+<span id="mouseM" class="mousebtn">M</span>
+<span id="mouseR" class="mousebtn">R</span> &mdash;
+<span id="led7" class="led">7</span>
+<span id="led6" class="led">6</span>
+<span id="led5" class="led">5</span>
+<span id="led4" class="led">4</span>
+<span id="led3" class="led">3</span>
+<span id="led2" class="led">2</span>
+<span id="led1" class="led">1</span>
+<span id="led0" class="led">0</span>
+<input id="clipboardBtn" type="button" value="Clipboard">
+<input id="breakbutton" type="button" value="Break">
+<input id="resetbutton" type="button" value="Reset">
+</div>
+<div id="clipboard" style="display:none">
+<textarea id="clipboardText" style="width:1024; height: 200"></textarea>
+</div>
+<canvas id="screen"></canvas>

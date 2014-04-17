@@ -1,0 +1,12 @@
+_*_
+Java/bin
+Java/target
+Java/.classpath
+Java/.project
+Java/.settings
+Java/*.bin
+Java/OberonEmulator.jar
+JavaScript/*.png
+JavaScript/*.zip
+Oberon/download
+Oberon/work

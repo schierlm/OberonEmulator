@@ -1,0 +1,480 @@
+--- 1/Files.Mod.txt
++++ 2/Files.Mod.txt
+@@ -371,11 +371,6 @@
+   BEGIN ReadInt(R, SYSTEM.VAL(INTEGER, s))
+   END ReadSet;
+ 
+-  PROCEDURE ReadReal*(VAR R: Rider; VAR x: REAL);
+-    VAR n: INTEGER;
+-  BEGIN ReadInt(R, SYSTEM.VAL(INTEGER, x))
+-  END ReadReal;
+-
+   PROCEDURE ReadString*(VAR R: Rider; VAR x: ARRAY OF CHAR);
+     VAR i: INTEGER; ch: CHAR;
+   BEGIN i := 0; Read(R, ch);
+@@ -461,10 +456,6 @@
+   BEGIN WriteInt(R, ORD(s))
+   END WriteSet;
+ 
+-  PROCEDURE WriteReal*(VAR R: Rider; x: REAL);
+-  BEGIN  WriteInt(R, ORD(x))
+-  END WriteReal;
+-
+   PROCEDURE WriteString*(VAR R: Rider; x: ARRAY OF CHAR);
+     VAR i: INTEGER; ch: CHAR;
+   BEGIN i := 0;
+--- 1/Texts.Mod.txt
++++ 2/Texts.Mod.txt
+@@ -6,7 +6,6 @@
+     Name* = 1;          (*name s (length len)*)
+     String* = 2;        (*literal string s (length len)*)
+     Int* = 3;           (*integer i (decimal or hexadecimal)*)
+-    Real* = 4;          (*real number x*)
+     Char* = 6;          (*special character c*)
+ 
+     (* TextBlock = TextTag "1" offset run {run} "0" len {AsciiCode}.
+@@ -50,8 +49,6 @@
+       nextCh*: CHAR;
+       line*, class*: INTEGER;
+       i*: LONGINT;
+-      x*: REAL;
+-      y*: LONGREAL;
+       c*: CHAR;
+       len*: INTEGER;
+       s*: ARRAY 32 OF CHAR
+@@ -316,27 +313,12 @@
+   BEGIN OpenReader(S, T, pos); S.line := 0; S.nextCh := " "
+   END OpenScanner;
+ 
+-  (*floating point formats:
+-    x = 1.m * 2^(e-127)   bit 0: sign, bits 1- 8: e, bits  9-31: m
+-    x = 1.m * 2^(e-1023)  bit 0: sign, bits 1-11: e, bits 12-63: m *)
+-
+-  PROCEDURE Ten(n: INTEGER): REAL;
+-    VAR t, p: REAL;
+-  BEGIN t := 1.0; p := 10.0;   (*compute 10^n *)
+-    WHILE n > 0 DO
+-      IF ODD(n) THEN t := p * t END ;
+-      p := p*p; n := n DIV 2
+-    END ;
+-    RETURN t
+-  END Ten;
+-
+   PROCEDURE Scan* (VAR S: Scanner);
+     CONST maxExp = 38; maxM = 16777216; (*2^24*)
+     VAR ch, term: CHAR;
+       neg, negE, hex: BOOLEAN;
+       i, j, h, d, e, n, s: INTEGER;
+       k: LONGINT;
+-      x: REAL;
+   BEGIN ch := S.nextCh; i := 0;
+     WHILE (ch = " ") OR (ch = TAB) OR (ch = CR) DO
+       IF ch = CR THEN INC(S.line) END ;
+@@ -359,32 +341,6 @@
+           n := 10*n + d; h := 10H*h + d; Read(S, ch)
+         END ;
+         IF ch = "H" THEN (*hex integer*) Read(S, ch); S.i := h; S.class := Int  (*neg?*)
+-        ELSIF ch = "." THEN (*real number*)
+-          Read(S, ch); x := 0.0; e := 0; j := 0;
+-          WHILE ("0" <= ch) & (ch <= "9") DO  (*fraction*)
+-            h := 10*n + (ORD(ch) - 30H);
+-            IF h < maxM THEN n := h; INC(j) END ;
+-            Read(S, ch)
+-          END ;
+-          IF ch = "E" THEN (*scale factor*)
+-            s := 0; Read(S, ch);
+-            IF ch = "-" THEN negE := TRUE; Read(S, ch)
+-            ELSE negE := FALSE;
+-              IF ch = "+" THEN Read(S, ch) END
+-            END ;
+-            WHILE ("0" <= ch) & (ch <= "9") DO
+-              s := s*10 + ORD(ch) - 30H; Read(S, ch)
+-            END ;
+-            IF negE THEN DEC(e, s) ELSE INC(e, s) END ;
+-          END ;
+-          x := FLT(n); DEC(e, j);
+-          IF e < 0 THEN
+-            IF e >= -maxExp THEN x := x / Ten(-e) ELSE x := 0.0 END
+-          ELSIF e > 0 THEN
+-            IF e <= maxExp THEN x := Ten(e) * x ELSE x := 0.0 END
+-          END ;
+-          IF neg THEN S.x := -x ELSE S.x := x END ;
+-          IF hex THEN S.class := 0 ELSE S.class := Real END
+         ELSE (*decimal integer*)
+           IF neg THEN S.i := -n ELSE S.i := n END;
+           IF hex THEN S.class := Inval ELSE S.class := Int END
+@@ -466,56 +422,6 @@
+     REPEAT DEC(i); Write(W, a[i]) UNTIL i = 0
+   END WriteHex;
+ 
+-  PROCEDURE WriteReal* (VAR W: Writer; x: REAL; n: INTEGER);
+-    VAR e, i, m: INTEGER; x0: REAL; neg: BOOLEAN;
+-      d: ARRAY 16 OF CHAR;
+-  BEGIN
+-    IF x = 0.0 THEN
+-      WriteString(W, "  0.0"); i := 5;
+-      WHILE i < n DO Write(W, " "); INC(i) END
+-    ELSE
+-      IF x < 0.0 THEN x := -x; neg := TRUE ELSE neg := FALSE END ;
+-      x0 := x; UNPK(x0, e);
+-      IF e = 255 THEN WriteString(W, " NaN")
+-      ELSE
+-        REPEAT Write(W, " "); DEC(n) UNTIL n <= 14;
+-        IF neg THEN Write(W, "-") ELSE Write(W, " ") END ;
+-        e := e * 77 DIV 256 - 6;
+-        IF e >= 0 THEN x := x / Ten(e) ELSE x := x * Ten(-e) END ;
+-        IF x >= 10.0E6 THEN x := 0.1*x; INC(e) END ;
+-        m := FLOOR(x + 0.5); i := 0;
+-        IF x >= 10.0E6 THEN x := 0.1*x; INC(e) END ;
+-        REPEAT d[i] := CHR(m MOD 10 + 30H); m := m DIV 10; INC(i) UNTIL m = 0;
+-        DEC(i); Write(W, d[i]); Write(W, ".");
+-        IF i < n-6 THEN n := 0 ELSE n := 13-n END ;
+-        WHILE i > n DO DEC(i); Write(W, d[i]) END ;
+-        Write(W, "E"); INC(e, 6);
+-        IF e < 0 THEN Write(W, "-"); e := -e ELSE Write(W, "+") END ;
+-        Write(W, CHR(e DIV 10 + 30H)); Write(W, CHR(e MOD 10 + 30H))
+-      END
+-    END
+-  END WriteReal;
+-
+-  PROCEDURE WriteRealFix* (VAR W: Writer; x: REAL; n, k: INTEGER);
+-    VAR i, m: INTEGER; neg: BOOLEAN;
+-      d: ARRAY 12 OF CHAR;
+-  BEGIN
+-    IF x = 0.0 THEN WriteString(W, "  0")
+-    ELSE
+-      IF x < 0.0 THEN x := -x; neg := TRUE ELSE neg := FALSE END ;
+-      IF k > 7 THEN k := 7 END ;
+-      x := Ten(k) * x; m := FLOOR(x + 0.5);
+-      i := 0;
+-      REPEAT d[i] := CHR(m MOD 10 + 30H); m := m DIV 10; INC(i) UNTIL m = 0;
+-      REPEAT Write(W, " "); DEC(n) UNTIL n <= i+3;
+-      IF neg THEN Write(W, "-"); DEC(n) ELSE Write(W, " ") END ;
+-      WHILE i > k DO DEC(i); Write(W, d[i]) END ;
+-      Write(W, ".");
+-      WHILE k > i DO DEC(k); Write(W, "0") END ;
+-      WHILE i > 0 DO DEC(i); Write(W, d[i]) END
+-    END
+-  END WriteRealFix;
+-
+   PROCEDURE WritePair(VAR W: Writer; ch: CHAR; x: LONGINT);
+   BEGIN Write(W, ch);
+     Write(W, CHR(x DIV 10 + 30H)); Write(W, CHR(x MOD 10 + 30H))
+--- 1/ORB.Mod.txt
++++ 2/ORB.Mod.txt
+@@ -13,7 +13,7 @@
+       SProc* = 6; SFunc* = 7; Mod* = 8;
+ 
+     (* form values*)
+-      Byte* = 1; Bool* = 2; Char* = 3; Int* = 4; Real* = 5; Set* = 6;
++      Byte* = 1; Bool* = 2; Char* = 3; Int* = 4; Set* = 6;
+       Pointer* = 7; NilTyp* = 8; NoTyp* = 9; Proc* = 10;
+       String* = 11; Array* = 12; Record* = 13;
+       
+@@ -63,7 +63,7 @@
+ 
+   VAR topScope*, universe, system*: Object;
+     byteType*, boolType*, charType*: Type;
+-    intType*, realType*, setType*, nilType*, noType*, strType*: Type;
++    intType*, setType*, nilType*, noType*, strType*: Type;
+     nofmod, Ref: INTEGER;
+     typtab: ARRAY maxTypTab OF Type;
+ 
+@@ -225,7 +225,7 @@
+             WHILE k # 0 DO typtab[k].base := t; Read(R, k) END
+           ELSE
+             IF class = Const THEN
+-              IF obj.type.form = Real THEN Files.ReadInt(R, obj.val) ELSE Files.ReadNum(R, obj.val) END
++              Files.ReadNum(R, obj.val)
+             ELSIF class = Var THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE
+             END
+           END ;
+@@ -330,7 +330,6 @@
+           Write(R, 0)
+         ELSIF obj.class = Const THEN
+           IF obj.type.form = Proc THEN Files.WriteNum(R, obj.exno)
+-          ELSIF obj.type.form = Real THEN Files.WriteInt(R, obj.val)
+           ELSE Files.WriteNum(R, obj.val)
+           END
+         ELSIF obj.class = Var THEN
+@@ -379,14 +378,13 @@
+   boolType := type(Bool, Bool, 1);
+   charType := type(Char, Char,1);
+   intType := type(Int, Int, 4);
+-  realType := type(Real, Real, 4);
+   setType := type(Set, Set,4);
+   nilType := type(NilTyp, NilTyp, 4);
+   noType := type(NoTyp, NoTyp, 4);
+   strType := type(String, String, 8);
+     
+   (*initialize universe with data types and in-line procedures;
+-    LONGINT is synonym to INTEGER, LONGREAL to REAL.
++    LONGINT is synonym to INTEGER.
+     LED, ADC, SBC; LDPSR, LDREG, REG, COND, MSK are not in language definition*)
+   system := NIL;  (*n = procno*10 + nofpar*)
+   enter("UML", SFunc, intType, 132);  (*functions*)
+@@ -398,7 +396,6 @@
+   enter("LEN", SFunc, intType, 61);
+   enter("CHR", SFunc, charType, 51);
+   enter("ORD", SFunc, intType, 41);
+-  enter("FLT", SFunc, realType, 31);
+   enter("FLOOR", SFunc, intType, 21);
+   enter("ODD", SFunc, boolType, 11);
+   enter("ABS", SFunc, intType, 1);
+@@ -415,8 +412,6 @@
+   enter("BOOLEAN", Typ, boolType, 0);
+   enter("BYTE", Typ, byteType, 0);
+   enter("CHAR", Typ, charType, 0);
+-  enter("LONGREAL", Typ, realType, 0);
+-  enter("REAL", Typ, realType, 0);
+   enter("LONGINT", Typ, intType, 0);
+   enter("INTEGER", Typ, intType, 0);
+   topScope := NIL; OpenScope; topScope.next := system; universe := topScope;
+--- 1/ORG.Mod.txt
++++ 2/ORG.Mod.txt
+@@ -246,10 +246,6 @@
+   BEGIN x.mode := ORB.Const; x.type := typ; x.a := val
+   END MakeConstItem;
+ 
+-  PROCEDURE MakeRealItem*(VAR x: Item; val: REAL);
+-  BEGIN x.mode := ORB.Const; x.type := ORB.realType; x.a := SYSTEM.VAL(LONGINT, val)
+-  END MakeRealItem;
+-
+   PROCEDURE MakeStringItem*(VAR x: Item; len: LONGINT); (*copies string from ORS-buffer to ORG-string array*)
+     VAR i: LONGINT;
+   BEGIN x.mode := ORB.Const; x.type := ORB.strType; x.a := strx; x.b := len; i := 0;
+@@ -424,10 +420,6 @@
+       IF x.mode = ORB.Const THEN x.a := -x.a
+       ELSE load(x); Put1(Mov, RH, 0, 0); Put0(Sub, x.r, RH, x.r)
+       END
+-    ELSIF x.type.form = ORB.Real THEN
+-      IF x.mode = ORB.Const THEN x.a := x.a + 7FFFFFFFH + 1
+-      ELSE load(x); Put1(Mov, RH, 0, 0); Put0(Fsb, x.r, RH, x.r)
+-      END
+     ELSE (*form = Set*)
+       IF x.mode = ORB.Const THEN x.a := -x.a-1 
+       ELSE load(x); Put1(Xor, x.r, x.r, -1)
+@@ -497,18 +489,6 @@
+     END
+   END DivOp;
+ 
+-  (* Code generation for REAL operators *)
+-
+-  PROCEDURE RealOp*(op: INTEGER; VAR x, y: Item);   (* x := x op y *)
+-  BEGIN load(x); load(y);
+-    IF op = ORS.plus THEN Put0(Fad, RH-2, x.r, y.r)
+-    ELSIF op = ORS.minus THEN Put0(Fsb, RH-2, x.r, y.r)
+-    ELSIF op = ORS.times THEN Put0(Fml, RH-2, x.r, y.r)
+-    ELSIF op = ORS.rdiv THEN Put0(Fdv, RH-2, x.r, y.r)
+-    END ;
+-    DEC(RH); x.r := RH-1
+-  END RealOp;
+-
+   (* Code generation for set operators *)
+ 
+   PROCEDURE Singleton*(VAR x: Item);  (* x := {x} *)
+@@ -597,14 +577,6 @@
+     END
+   END SetRelation;
+ 
+-  PROCEDURE RealRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
+-  BEGIN load(x);
+-    IF (y.mode = ORB.Const) & (y.a = 0) THEN DEC(RH)
+-    ELSE load(y); Put0(Fsb, x.r, x.r, y.r); DEC(RH, 2)
+-    END ;
+-    SetCC(x, relmap[op - ORS.eql])
+-  END RealRelation;
+-
+   PROCEDURE StringRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
+     (*x, y are char arrays or strings*)
+   BEGIN
+@@ -922,9 +894,7 @@
+   BEGIN
+     IF x.mode = ORB.Const THEN x.a := ABS(x.a)
+     ELSE load(x);
+-      IF x.type.form = ORB.Real THEN Put1(Lsl, x.r, x.r, 1); Put1(Ror, x.r, x.r, 1)
+-      ELSE Put1(Cmp, x.r, x.r, 0); Put3(BC, GE, 2); Put1(Mov, RH, 0, 0); Put0(Sub, x.r, RH, x.r)
+-      END
++      Put1(Cmp, x.r, x.r, 0); Put3(BC, GE, 2); Put1(Mov, RH, 0, 0); Put0(Sub, x.r, RH, x.r)
+     END
+   END Abs;
+ 
+--- 1/ORP.Mod.txt
++++ 2/ORP.Mod.txt
+@@ -50,11 +50,6 @@
+     IF x.type.form # ORB.Int THEN ORS.Mark("not Integer"); x.type := ORB.intType END
+   END CheckInt;
+ 
+-  PROCEDURE CheckReal(VAR x: ORG.Item);
+-  BEGIN
+-    IF x.type.form # ORB.Real THEN ORS.Mark("not Real"); x.type := ORB.realType END
+-  END CheckReal;
+-
+   PROCEDURE CheckSet(VAR x: ORG.Item);
+   BEGIN
+     IF x.type.form # ORB.Set THEN ORS.Mark("not Set"); x.type := ORB.setType END 
+@@ -241,9 +236,8 @@
+     Check(ORS.rparen, "no )");
+     IF n = npar THEN
+       IF fct = 0 THEN (*ABS*)
+-        IF x.type.form IN {ORB.Int, ORB.Real} THEN ORG.Abs(x); restyp := x.type ELSE ORS.Mark("bad type") END
++        IF x.type.form IN {ORB.Int} THEN ORG.Abs(x); restyp := x.type ELSE ORS.Mark("bad type") END
+       ELSIF fct = 1 THEN (*ODD*) CheckInt(x); ORG.Odd(x)
+-      ELSIF fct = 2 THEN (*FLOOR*) CheckReal(x); ORG.Floor(x)
+       ELSIF fct = 3 THEN (*FLT*) CheckInt(x); ORG.Float(x)
+       ELSIF fct = 4 THEN (*ORD*)
+         IF x.type.form <= ORB.Proc THEN ORG.Ord(x)
+@@ -321,7 +315,6 @@
+         END
+       END
+     ELSIF sym = ORS.int THEN ORG.MakeConstItem(x, ORB.intType, ORS.ival); ORS.Get(sym)
+-    ELSIF sym = ORS.real THEN ORG.MakeRealItem(x, ORS.rval); ORS.Get(sym)
+     ELSIF sym = ORS.char THEN ORG.MakeConstItem(x, ORB.charType, ORS.ival); ORS.Get(sym)
+     ELSIF sym = ORS.nil THEN ORS.Get(sym); ORG.MakeConstItem(x, ORB.nilType, 0)
+     ELSIF sym = ORS.string THEN ORG.MakeStringItem(x, ORS.slen); ORS.Get(sym)
+@@ -341,15 +334,13 @@
+       op := sym; ORS.Get(sym);
+       IF op = ORS.times THEN
+         IF f = ORB.Int THEN factor(y); CheckInt(y); ORG.MulOp(x, y)
+-        ELSIF f = ORB.Real THEN factor(y); CheckReal(y); ORG.RealOp(op, x, y)
+         ELSIF f = ORB.Set THEN factor(y); CheckSet(y); ORG.SetOp(op, x, y)
+         ELSE ORS.Mark("bad type")
+         END
+       ELSIF (op = ORS.div) OR (op = ORS.mod) THEN
+         CheckInt(x); factor(y); CheckInt(y); ORG.DivOp(op, x, y)
+       ELSIF op = ORS.rdiv THEN
+-        IF f = ORB.Real THEN factor(y); CheckReal(y); ORG.RealOp(op, x, y)
+-        ELSIF f = ORB.Set THEN factor(y); CheckSet(y); ORG.SetOp(op, x, y)
++        IF f = ORB.Set THEN factor(y); CheckSet(y); ORG.SetOp(op, x, y)
+         ELSE ORS.Mark("bad type")
+         END
+       ELSE (*op = and*) CheckBool(x); ORG.And1(x); factor(y); CheckBool(y); ORG.And2(x, y)
+@@ -361,7 +352,7 @@
+     VAR y: ORG.Item; op: INTEGER;
+   BEGIN
+     IF sym = ORS.minus THEN ORS.Get(sym); term(x);
+-      IF x.type.form IN {ORB.Int, ORB.Real, ORB.Set} THEN ORG.Neg(x) ELSE CheckInt(x) END
++      IF x.type.form IN {ORB.Int, ORB.Set} THEN ORG.Neg(x) ELSE CheckInt(x) END
+     ELSIF sym = ORS.plus THEN ORS.Get(sym); term(x);
+     ELSE term(x)
+     END ;
+@@ -369,7 +360,6 @@
+       op := sym; ORS.Get(sym);
+       IF op = ORS.or THEN ORG.Or1(x); CheckBool(x); term(y); CheckBool(y); ORG.Or2(x, y)
+       ELSIF x.type.form = ORB.Int THEN term(y); CheckInt(y); ORG.AddOp(op, x, y)
+-      ELSIF x.type.form = ORB.Real THEN term(y); CheckReal(y); ORG.RealOp(op, x, y)
+       ELSE CheckSet(x); term(y); CheckSet(y); ORG.SetOp(op, x, y)
+       END
+     END
+@@ -383,7 +373,6 @@
+       IF CompTypes(x.type, y.type, FALSE) OR
+           (xf = ORB.Pointer) & (yf = ORB.Pointer) & IsExtension(y.type.base, x.type.base) THEN
+         IF (xf IN {ORB.Char, ORB.Int}) THEN ORG.IntRelation(rel, x, y)
+-        ELSIF xf = ORB.Real THEN ORG.RealRelation(rel, x, y)
+         ELSIF xf = ORB.Set THEN ORG.SetRelation(rel, x, y)
+         ELSIF (xf IN {ORB.Pointer, ORB.Proc, ORB.NilTyp}) THEN
+           IF rel <= ORS.neq THEN ORG.IntRelation(rel, x, y) ELSE ORS.Mark("only = or #") END
+@@ -439,8 +428,6 @@
+          IF (x.type.form = ORB.Pointer) & (x.type.base.form = ORB.Record) THEN ORG.New(x)
+          ELSE ORS.Mark("not a pointer to record")
+          END
+-      ELSIF pno = 6 THEN CheckReal(x); CheckInt(y); CheckReadOnly(x); ORG.Pack(x, y)
+-      ELSIF pno = 7 THEN CheckReal(x); CheckInt(y); CheckReadOnly(x); ORG.Unpk(x, y)
+       ELSIF pno = 8 THEN
+         IF x.type.form <= ORB.Set THEN ORG.Led(x) ELSE ORS.Mark("bad type") END
+       ELSIF pno = 10 THEN CheckInt(x); ORG.Get(x, y)
+--- 1/ORS.Mod.txt
++++ 2/ORS.Mod.txt
+@@ -19,7 +19,7 @@
+     and* = 5; plus* = 6; minus* = 7; or* = 8; eql* = 9;
+     neq* = 10; lss* = 11; leq* = 12; gtr* = 13; geq* = 14;
+     in* = 15; is* = 16; arrow* = 17; period* = 18;
+-    char* = 20; int* = 21; real* = 22; false* = 23; true* = 24;
++    char* = 20; int* = 21; false* = 23; true* = 24;
+     nil* = 25; string* = 26; not* = 27; lparen* = 28; lbrak* = 29;
+     lbrace* = 30; ident* = 31;
+     if* = 32; while* = 34; repeat* = 35; case* = 36; for* = 37;
+@@ -33,7 +33,6 @@
+   TYPE Ident* = ARRAY IdLen OF CHAR;
+ 
+   VAR ival*, slen*: LONGINT;  (*results of Get*)
+-    rval*: REAL;
+     id*: Ident;  (*for identifiers*)
+     str*: ARRAY stringBufSize OF CHAR;
+     errcnt*: INTEGER;
+@@ -112,19 +111,9 @@
+     Texts.Read(R, ch); slen := i  (*no 0X appended!*)
+   END HexString;
+ 
+-  PROCEDURE Ten(e: LONGINT): REAL;
+-    VAR x, t: REAL;
+-  BEGIN x := 1.0; t := 10.0;
+-    WHILE e > 0 DO
+-      IF ODD(e) THEN x := t * x END ;
+-      t := t * t; e := e DIV 2
+-    END ;
+-    RETURN x
+-  END Ten;
+-
+   PROCEDURE Number(VAR sym: INTEGER);
+     CONST max = 2147483647 (*2^31*); maxM = 16777216; (*2^24*)
+-    VAR i, k, e, n, s, h: LONGINT; x: REAL;
++    VAR i, k, e, n, s, h: LONGINT;
+       d: ARRAY 16 OF INTEGER;
+       negE: BOOLEAN;
+   BEGIN ival := 0; i := 0; n := 0; k := 0;
+@@ -132,14 +121,13 @@
+       IF n < 16 THEN d[n] := ORD(ch)-30H; INC(n) ELSE Mark("too many digits"); n := 0 END ;
+       Texts.Read(R, ch)
+     UNTIL (ch < "0") OR (ch > "9") & (ch < "A") OR (ch > "F");
+-    IF (ch = "H") OR (ch = "R") OR (ch = "X") THEN  (*hex*)
++    IF (ch = "H") OR (ch = "X") THEN  (*hex*)
+       REPEAT h := d[i];
+         IF h >= 10 THEN h := h-7 END ;
+         k := k*10H + h; INC(i) (*no overflow check*)
+       UNTIL i = n;
+       IF ch = "X" THEN sym := char;
+         IF k < 100H THEN ival := k ELSE Mark("illegal value"); ival := 0 END
+-      ELSIF ch = "R" THEN sym := real; rval := SYSTEM.VAL(REAL, k)
+       ELSE sym := int; ival := k
+       END ;
+       Texts.Read(R, ch)
+@@ -155,36 +143,8 @@
+           INC(i)
+         UNTIL i = n;
+         sym := int; ival := k
+-      ELSE (*real number*) x := 0.0; e := 0;
+-        REPEAT (*integer part*) h := k*10 + d[i];
+-          IF h < maxM THEN k := h ELSE Mark("too many digits") END ;
+-          INC(i)
+-        UNTIL i = n;
+-        WHILE (ch >= "0") & (ch <= "9") DO (*fraction*)
+-          h := k*10 + ORD(ch) - 30H;
+-          IF h < maxM THEN k := h ELSE Mark("too many digits*") END ;
+-          DEC(e); Texts.Read(R, ch)
+-        END ;
+-        x := FLT(k);
+-        IF (ch = "E") OR (ch = "D") THEN  (*scale factor*)
+-          Texts.Read(R, ch); s := 0; 
+-          IF ch = "-" THEN negE := TRUE; Texts.Read(R, ch)
+-          ELSE negE := FALSE;
+-            IF ch = "+" THEN Texts.Read(R, ch) END
+-          END ;
+-          IF (ch >= "0") & (ch <= "9") THEN
+-            REPEAT s := s*10 + ORD(ch)-30H; Texts.Read(R, ch)
+-            UNTIL (ch < "0") OR (ch >"9");
+-            IF negE THEN e := e-s ELSE e := e+s END
+-          ELSE Mark("digit?")
+-          END
+-        END ;
+-        IF e < 0 THEN
+-          IF e >= -maxExp THEN x := x / Ten(-e) ELSE x := 0.0 END
+-        ELSIF e > 0 THEN
+-          IF e <= maxExp THEN x := Ten(e) * x ELSE x := 0.0; Mark("too large") END
+-        END ;
+-        sym := real; rval := x
++      ELSE (*real number*)
++        Mark("real not supported")
+       END
+     ELSE  (*decimal integer*)
+       REPEAT

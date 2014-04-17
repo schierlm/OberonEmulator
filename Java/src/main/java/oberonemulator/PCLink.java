@@ -1,0 +1,232 @@
+package oberonemulator;
+
+import java.awt.BorderLayout;
+import java.awt.GridLayout;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetDragEvent;
+import java.awt.dnd.DropTargetDropEvent;
+import java.awt.dnd.DropTargetEvent;
+import java.awt.dnd.DropTargetListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+
+public class PCLink extends JFrame {
+
+	public static final byte ACK = 0x10, NAK = 0x11, REC = 0x21, SND = 0x22;
+
+	private JTextField nameField;
+	private final List<String[]> receiveJobs = new ArrayList<String[]>();
+	private final List<String[]> sendJobs = new ArrayList<String[]>();
+
+	public static void start(String host, int port) throws Exception {
+		Socket s = new Socket(host, port);
+		PCLink link = new PCLink();
+		InputStream in = s.getInputStream();
+		OutputStream out = new BufferedOutputStream(s.getOutputStream());
+		while (true) {
+			synchronized (link) {
+				while (link.receiveJobs.size() == 0 && link.sendJobs.size() == 0) {
+					link.wait();
+				}
+				if (link.receiveJobs.size() > 0) {
+					String[] job = link.receiveJobs.remove(0);
+					FileInputStream fIn = new FileInputStream(job[0]);
+					String filename = job[1] + "\0";
+					int flen = (int) new File(job[0]).length();
+					System.out.printf("PCLink REC Filename: %s size %d\n", job[1], flen);
+					out.write(REC);
+					out.write(filename.getBytes("ISO-8859-1"));
+					out.flush();
+					waitAck(in);
+					do {
+						int partLen = Math.min(flen, 255);
+						out.write(partLen);
+						for (int i = 0; i < partLen; i++) {
+							out.write(fIn.read());
+						}
+						out.flush();
+						waitAck(in);
+						flen -= partLen;
+					} while (flen > 0);
+					waitAck(in);
+					fIn.close();
+				}
+				if (link.sendJobs.size() > 0) {
+					String[] sjob = link.sendJobs.remove(0);
+					if (sjob == null) {
+						s.close();
+						return;
+					}
+					String filename = sjob[1] + "\0";
+					System.out.printf("PCLink SND Filename: %s\n", sjob[1]);
+					out.write(SND);
+					out.write(filename.getBytes("ISO-8859-1"));
+					out.flush();
+					int b = in.read();
+					if (b == ACK) {
+						FileOutputStream fOut = new FileOutputStream(sjob[0]);
+						int len = 255;
+						while (len == 255) {
+							len = in.read();
+							for (int i = 0; i < len; i++) {
+								fOut.write(in.read());
+							}
+							out.write(ACK);
+							out.flush();
+						}
+						fOut.close();
+					} else if (b == NAK) {
+						System.out.println("File not found.");
+					} else {
+						throw new IOException("Unexpected byte received: " + b);
+					}
+				}
+			}
+		}
+	}
+
+	private static void waitAck(InputStream in) throws IOException {
+		int b = in.read();
+		if (b != ACK)
+			throw new IOException("Unexpected byte received: " + b);
+	}
+
+	public PCLink() {
+		super("PCLink");
+		// ugly layout, I know.
+		setLayout(new BorderLayout());
+		JPanel jp = new JPanel(new GridLayout(1, 2));
+		add(jp, BorderLayout.NORTH);
+		jp.add(new JLabel("File name to copy out:"));
+		jp.add(nameField = new JTextField("DiskImage.Bin"));
+		add(new JLabel("<html>Drop files here to copy in.<br>Drop a folder here to copy out.",
+				JLabel.CENTER), BorderLayout.CENTER);
+		addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				synchronized(PCLink.this) {
+					sendJobs.add(null);
+					PCLink.this.notifyAll();
+				}
+				dispose();
+			}
+		});
+		DropTargetListener dtl = new DropTargetListener() {
+
+			protected final DataFlavor df = DataFlavor.javaFileListFlavor;
+			protected final int action = DnDConstants.ACTION_COPY;
+
+			public void dragEnter(DropTargetDragEvent evt) {
+				myDrag(evt);
+			}
+
+			public void dragOver(DropTargetDragEvent evt) {
+				myDrag(evt);
+			}
+
+			public void dropActionChanged(DropTargetDragEvent evt) {
+				myDrag(evt);
+			}
+
+			protected void myDrag(DropTargetDragEvent evt) {
+				if (!evt.isDataFlavorSupported(df)) {
+					evt.rejectDrag();
+				} else if (evt.getDropAction() != action) {
+					evt.acceptDrag(action);
+				}
+			}
+
+			public void drop(DropTargetDropEvent evt) {
+				if (!evt.isDataFlavorSupported(df)) {
+					evt.rejectDrop();
+				} else {
+					evt.acceptDrop(action);
+					try {
+						@SuppressWarnings("unchecked")
+						java.util.List<File> l = (java.util.List<File>) evt.getTransferable()
+								.getTransferData(DataFlavor.javaFileListFlavor);
+						File[] fls = (File[]) l.toArray(new File[l.size()]);
+						evt.dropComplete(drop(fls));
+					} catch (UnsupportedFlavorException e) {
+						e.printStackTrace();
+						evt.dropComplete(false);
+					} catch (IOException e) {
+						e.printStackTrace();
+						evt.dropComplete(false);
+					}
+				}
+			}
+
+			public void dragExit(DropTargetEvent dte) {
+			}
+
+			public boolean drop(File[] fs) {
+				PCLink link = PCLink.this;
+				synchronized (link) {
+					for (File f : fs) {
+						if (f.isDirectory()) {
+							link.sendJobs.add(new String[] { new File(f, nameField.getText()).getAbsolutePath(), nameField.getText() });
+						} else {
+							String fileName = f.getName();
+
+							if (fileName.endsWith(".txt")) {
+								link.receiveJobs.add(new String[] { createReformattedFile(f).getAbsolutePath(), fileName.substring(0, fileName.length() - 4) });
+							} else {
+								link.receiveJobs.add(new String[] { f.getAbsolutePath(), fileName });
+							}
+						}
+					}
+					link.notifyAll();
+				}
+				return true;
+			}
+
+		};
+		setDropTarget(new DropTarget(this, DnDConstants.ACTION_COPY,
+				dtl, true, null));
+		pack();
+		setLocationRelativeTo(null);
+		setVisible(true);
+	}
+
+	// normalize line endings and encoding
+	private File createReformattedFile(File f) {
+		try {
+			File tempFile = File.createTempFile("~pclink", null);
+			tempFile.deleteOnExit();
+			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(f), "ISO-8859-1"));
+			Writer w = new OutputStreamWriter(new FileOutputStream(tempFile), "ISO-8859-1");
+			String line;
+			while ((line = br.readLine()) != null) {
+				w.write(line + "\r");
+			}
+			w.close();
+			br.close();
+			return tempFile;
+		} catch (IOException ex) {
+			throw new RuntimeException(ex);
+		}
+	}
+}
