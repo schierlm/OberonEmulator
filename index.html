@@ -1,0 +1,80 @@
+<html>
+<head>
+<title>Project Oberon emulator in JavaScript and Java</title>
+<style>
+body { font-family: Verdana, Arial, Helvetica, sans-serif; }
+</style>
+<link rel="stylesheet" href="http://simonwhitaker.github.io/github-fork-ribbon-css/gh-fork-ribbon.css">
+</head>
+<body>
+</head>
+<body>
+<div class="github-fork-ribbon-wrapper right">
+	<div class="github-fork-ribbon">
+		<a href="https://github.com/schierlm/OberonEmulator">Fork me on GitHub</a>
+	</div>
+</div>
+<h1>Project Oberon emulator in JavaScript and Java</h1>
+<p>Here you can find <a href="mailto:schierlm@gmx.de">my</a> emulators for
+<a href="http://projectoberon.com/">Project Oberon</a> in JavaScript and Java.</p>
+
+<p>Note that neither of the emulators support floating point, and the JavaScript
+emulator does not support RS232 or the original SPI and keyboard interfaces, but
+a simplified "paravirtualized" interface for keyboard, clipboard, sd-card, and
+power management instead. The paravirtualized interface is also supported by the
+Java emulator to make development easier.</p>
+
+<p>You can also find <a href="oberonsource.zip">all the Oberon sources and tools
+I used for building the disk images used for the emulators</a> (150 KB).
+
+<h2>JavaScript emulator</h2>
+
+<p>Needs a recent browser with JavaScript <i>Canvas</i> and <i>Typed Arrays</i> support.
+You also need a fairly fast PC or some patience during the boot process.</p>
+
+<p>
+<form id="emuform" style="display:none;">
+	<select name="size">
+		<option>800x400</option>
+		<option>800x450</option>
+		<option>800x600</option>
+		<option>1024x512</option>
+		<option selected>1024x576</option>
+		<option>1024x768</option>
+	</select>
+	<select name="image">
+		<option selected>MinimalDiskImage</option>
+		<option>FullDiskImage</option>
+	</select>
+	<input type="Button" value="Start" onclick="startEmu()">
+</form>
+<script type="text/javascript">
+try {
+	(function() {
+		var c = document.createElement("canvas");
+		c.width=10; c.height=10;
+		c.getContext("2d").getImageData(0,0,2,2).data;
+		new Int32Array(10);
+	})();
+	document.getElementById("emuform").style.display="";
+} catch (e) {
+	document.write("Your browser does not support the required JavaScript features.");
+}
+
+function startEmu() {
+	var size = document.forms.emuform.size.value;
+	var image = document.forms.emuform.image.value;
+	document.location.href="emu.html#"+image+","+size.split("x").join(",");
+}
+</script>
+<noscript>
+Your browser does not support JavaScript or it is disabled.
+</noscript>
+</p>
+
+<h2>Java emulator</h2>
+
+<p><a href="java.zip">Download here</a> (180KB)</p>
+
+</body>
+</html>
