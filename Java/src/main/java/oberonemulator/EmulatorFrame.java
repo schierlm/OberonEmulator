@@ -76,7 +76,7 @@ public class EmulatorFrame extends JFrame {
 						}
 					} else if (e.getKeyCode() == KeyEvent.VK_F1 || e.getKeyCode() == KeyEvent.VK_INSERT) {
 						mmio.keyboardInput((char) 26);
-					} else if (e.getKeyCode() == KeyEvent.VK_ALT) {
+					} else if (e.getKeyCode() == KeyEvent.VK_ALT && !e.isControlDown()) {
 						mmio.mouseButton(2, true);
 					}
 				}
