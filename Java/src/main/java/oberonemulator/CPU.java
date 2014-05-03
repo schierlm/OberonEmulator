@@ -151,25 +151,20 @@ public class CPU extends Thread {
 						break;
 					}
 					case FAD: {
-						throw new IllegalStateException("FP not implemented!");
-						// a_val = fp_add(b_val, c_val, ir & ubit, ir & vbit);
-						// break;
+						a_val = fp_add(b_val, c_val, (ir & ubit) != 0, (ir & vbit) != 0);
+						break;
 					}
 					case FSB: {
-						throw new IllegalStateException("FP not implemented!");
-						// a_val = fp_add(b_val, c_val ^ 0x80000000, ir & ubit,
-						// ir & vbit);
-						// break;
+						a_val = fp_add(b_val, c_val ^ 0x80000000, (ir & ubit) != 0, (ir & vbit) != 0);
+						break;
 					}
 					case FML: {
-						throw new IllegalStateException("FP not implemented!");
-						// a_val = fp_mul(b_val, c_val);
-						// break;
+						a_val = fp_mul(b_val, c_val);
+						break;
 					}
 					case FDV: {
-						throw new IllegalStateException("FP not implemented!");
-						// a_val = fp_div(b_val, c_val);
-						// break;
+						a_val = fp_div(b_val, c_val);
+						break;
 					}
 					default:
 						throw new IllegalStateException();
@@ -288,6 +283,131 @@ public class CPU extends Thread {
 			if (address % 4 != 0)
 				throw new IllegalStateException("Unaligned IO write");
 			mem.writeWord(address / 4, value & 0xFF);
+		}
+	}
+
+	private static int fp_add(int x, int y, boolean u, boolean v) {
+		boolean xs = (x & 0x80000000) != 0;
+		int xe;
+		int x0;
+		if (!u) {
+			xe = (x >>> 23) & 0xFF;
+			int xm = ((x & 0x7FFFFF) << 1) | 0x1000000;
+			x0 = (xs ? -xm : xm);
+		} else {
+			xe = 150;
+			x0 = ((x & 0x00FFFFFF) << 8) >> 7;
+		}
+
+		boolean ys = (y & 0x80000000) != 0;
+		int ye = (y >>> 23) & 0xFF;
+		int ym = ((y & 0x7FFFFF) << 1);
+		if (!u && !v)
+			ym |= 0x1000000;
+		int y0 = (ys ? -ym : ym);
+
+		int e0;
+		int x3, y3;
+		if (ye > xe) {
+			int shift = ye - xe;
+			e0 = ye;
+			x3 = shift > 31 ? x0 >> 31 : x0 >> shift;
+			y3 = y0;
+		} else {
+			int shift = xe - ye;
+			e0 = xe;
+			x3 = x0;
+			y3 = shift > 31 ? y0 >> 31 : y0 >> shift;
+		}
+
+		int sum = (((xs ? 1 : 0) << 26) | ((xs ? 1 : 0) << 25) | (x3 & 0x01FFFFFF))
+				+ (((ys ? 1 : 0) << 26) | ((ys ? 1 : 0) << 25) | (y3 & 0x01FFFFFF));
+
+		int s = (((sum & (1 << 26)) != 0 ? -sum : sum) + 1) & 0x07FFFFFF;
+
+		int e1 = e0 + 1;
+		int t3 = s >>> 1;
+
+		if ((s & 0x3FFFFFC) != 0) {
+			while ((t3 & (1 << 24)) == 0) {
+				t3 <<= 1;
+				e1--;
+			}
+		} else {
+			t3 <<= 24;
+			e1 -= 24;
+		}
+
+		if (v) {
+			return (sum << 5) >> 6;
+		} else if ((x & 0x7FFFFFFF) == 0) {
+			return !u ? y : 0;
+		} else if ((y & 0x7FFFFFFF) == 0) {
+			return x;
+		} else if ((t3 & 0x01FFFFFF) == 0 || (e1 & 0x100) != 0) {
+			return 0;
+		} else {
+			return ((sum & 0x04000000) << 5) | (e1 << 23) | ((t3 >> 1) & 0x7FFFFF);
+		}
+	}
+
+	private static int fp_mul(int x, int y) {
+		int sign = (x ^ y) & 0x80000000;
+		int xe = (x >> 23) & 0xFF;
+		int ye = (y >> 23) & 0xFF;
+
+		int xm = (x & 0x7FFFFF) | 0x800000;
+		int ym = (y & 0x7FFFFF) | 0x800000;
+		long m = (long) xm * ym;
+
+		int e1 = (xe + ye) - 127;
+		int z0;
+		if ((m & (1L << 47)) != 0) {
+			e1++;
+			z0 = ((int) (m >> 24)) & 0x7FFFFF;
+		} else {
+			z0 = ((int) (m >> 23)) & 0x7FFFFF;
+		}
+
+		if (xe == 0 || ye == 0) {
+			return 0;
+		} else if ((e1 & 0x100) == 0) {
+			return sign | ((e1 & 0xFF) << 23) | z0;
+		} else if ((e1 & 0x80) == 0) {
+			return sign | (0xFF << 23) | z0;
+		} else {
+			return 0;
+		}
+	}
+
+	private static int fp_div(int x, int y) {
+		int sign = (x ^ y) & 0x80000000;
+		int xe = (x >> 23) & 0xFF;
+		int ye = (y >> 23) & 0xFF;
+
+		int xm = (x & 0x7FFFFF) | 0x800000;
+		int ym = (y & 0x7FFFFF) | 0x800000;
+		int q1 = (int) (xm * (1L << 23) / ym);
+
+		int e1 = (xe - ye) + 126;
+		int q2;
+		if ((q1 & 0x800000) != 0) {
+			e1++;
+			q2 = q1 & 0x7FFFFF;
+		} else {
+			q2 = (q1 << 1) & 0x7FFFFF;
+		}
+
+		if (xe == 0) {
+			return 0;
+		} else if (ye == 0) {
+			return sign | (0xFF << 23);
+		} else if ((e1 & 0x100) == 0) {
+			return sign | ((e1 & 0xFF) << 23) | q2;
+		} else if ((e1 & 0x80) == 0) {
+			return sign | (0xFF << 23) | q2;
+		} else {
+			return 0;
 		}
 	}
 }
