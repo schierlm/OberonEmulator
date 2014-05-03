@@ -18,7 +18,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 <p>Here you can find <a href="mailto:schierlm@gmx.de">my</a> emulators for
 <a href="http://projectoberon.com/">Project Oberon</a> in JavaScript and Java.</p>
 
-<p>Note that neither of the emulators support floating point, and the JavaScript
+<p style="margin-right: 5em">Note that neither of the emulators support floating point, and the JavaScript
 emulator does not support RS232 or the original SPI and keyboard interfaces, but
 a simplified "paravirtualized" interface for keyboard, clipboard, sd-card, and
 power management instead. The paravirtualized interface is also supported by the
@@ -75,6 +75,16 @@ Your browser does not support JavaScript or it is disabled.
 <h2>Java emulator</h2>
 
 <p><a href="java.zip">Download here</a> (180KB)</p>
+
+<h2>Java emulator with floating point support</h2>
+
+<p><a href="java_fp.zip">Download here</a> (145KB)</p>
+
+<p>This emulator does not include the disk images included in the previous two versions.
+Instead it contains the original BootLoad.Bin and a disk image that does not
+use any of the parvirtualized features and can therefore be used with
+<a href="https://github.com/pdewacht/oberon-risc-emu">Peter De Wachter's Oberon
+Emulator</a> as well.</p>
 
 </body>
 </html>
