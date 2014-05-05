@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.CharBuffer;
 
 public class MemoryMappedIO {
 
@@ -27,6 +28,8 @@ public class MemoryMappedIO {
 	private int mouse;
 
 	private Memory mem;
+
+	private CharBuffer clipboardData;
 
 	public MemoryMappedIO(String disk_file, final ServerSocket ss) throws IOException {
 		sdCard = disk_file == null ? null : new Disk(disk_file);
@@ -130,6 +133,29 @@ public class MemoryMappedIO {
 				System.out.println(ex.toString());
 				return 0;
 			}
+		}
+		case 40: {
+			// Clipboard control
+			try {
+				String text = (String) Toolkit.getDefaultToolkit().getSystemClipboard().getData(DataFlavor.stringFlavor);
+				if (text != null && text.length() > 0) {
+					clipboardData = CharBuffer.wrap(text.replace('\n', '\r'));
+					return clipboardData.remaining();
+				} else {
+					clipboardData = null;
+					return 0;
+				}
+			} catch (Exception ex) {
+				System.out.println(ex.toString());
+			}
+			return 0;
+		}
+		case 44: {
+			// Clipboard data
+			char ch = clipboardData.get();
+			if (!clipboardData.hasRemaining())
+				clipboardData = null;
+			return ch;
 		}
 		default: {
 			return 0;
@@ -243,6 +269,21 @@ public class MemoryMappedIO {
 			if ((value & 0xC0000000) == 0xC0000000) { // write
 				int sector = value - 0xC0000000;
 				sdCard.setDoubleSector(sector, mem.getRAM(), paravirtPtr / 4);
+			}
+			break;
+		}
+		case 40: {
+			// Clipboard control
+			clipboardData = CharBuffer.allocate(value);
+			break;
+		}
+		case 44: {
+			// Clipboard data
+			clipboardData.put((char) value);
+			if (!clipboardData.hasRemaining()) {
+				clipboardData.flip();
+				Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(clipboardData.toString().replace('\r', '\n')), null);
+				clipboardData = null;
 			}
 			break;
 		}
