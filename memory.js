@@ -4,15 +4,13 @@ var MemSize = 0x100000;
 var MemWords = (MemSize / 4);
 var DisplayStart = 0x0E7F00;
 
-var ram = new Int32Array(DisplayStart/4);
+var ram = new Int32Array(MemSize/4);
 
 function memReadWord(wordAddress, mapROM) {
 	if (mapROM && wordAddress >= ROMStart / 4) {
 		return disk[0][wordAddress - ROMStart / 4];
 	} else if (wordAddress >= IOStart / 4) {
 		return memReadIOWord(wordAddress);
-	} else if (wordAddress >= DisplayStart / 4) {
-		return memReadIMGWord(wordAddress);
 	} else {
 		return ram[wordAddress];
 	}
@@ -22,6 +20,7 @@ function memWriteWord(wordAddress, value) {
 		if (wordAddress >= IOStart / 4) {
 			memWriteIOWord(wordAddress, value);
 		} else if (wordAddress >= DisplayStart / 4) {
+			ram[wordAddress] = value;
 			memWriteIMGWord(wordAddress, value);
 		} else {
 			ram[wordAddress] = value;
@@ -161,24 +160,10 @@ function hwKeyboardInput(keyChar) {
 	cpuResume();
 }
 
-function memReadIMGWord(wordAddress) {
-	var offs = wordAddress - DisplayStart/4;
-	var x = (offs % 32) * 32;
-	var y = screen.height - 1 - offs / 32;
-	if (y < 0 || x >= screen.width) return 0;
-	var val = 0;
-	pixelData = screenCtx.getImageData(x,y,32,1);
-	for (var i = 0; i < 32; i++) {
-		if (pixelData.data[i*4] == 0xfd)
-			val |= (1 << i);
-	}
-	return val;
-}
-
 function memWriteIMGWord(wordAddress, value) {
 	var offs = wordAddress - DisplayStart/4;
 	var x = (offs % 32) * 32;
-	var y = screen.height - 1 - offs / 32;
+	var y = screen.height - 1 - (offs / 32 | 0);
 	if (y < 0 || x >= screen.width) return;
 	for (var i = 0; i < 32; i++) {
 		var white = ((value & (1 << i)) != 0);

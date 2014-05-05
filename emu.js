@@ -1,6 +1,6 @@
 var disk = [];
 var activeButton=1, interClickButton=0;
-var screen;
+var screen = null;
 var screenCtx;
 var pixelData;
 var clipboard;
@@ -98,7 +98,8 @@ var clipboard;
 			}
 		};
 		screen.onmousemove = function(e) {
-			hwMouseMoved(e.clientX - screen.offsetLeft, screen.height - e.clientY - 1 + screen.offsetTop)
+			hwMouseMoved(e.clientX - screen.offsetLeft + document.body.scrollLeft,
+				screen.height - e.clientY - 1 + screen.offsetTop - document.body.scrollTop)
 		};
 		screen.onmousedown = function(e) {
 			var button = e.button + 1;
