@@ -1,7 +1,7 @@
 RealCalc.Real + 2 3
 
 RealCalc.Real ^               real output
-RealCalc.Float ^              decimal int output
+RealCalc.Floor ^              decimal int output
 
    + 2 3                             simple addition
    - * 7 7 / 21 3               multiple operators
