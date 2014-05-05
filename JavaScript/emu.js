@@ -1,6 +1,6 @@
 var disk = [];
 var activeButton=1, interClickButton=0;
-var screen;
+var screen = null;
 var screenCtx;
 var pixelData;
 var clipboard;
