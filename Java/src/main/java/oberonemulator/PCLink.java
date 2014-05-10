@@ -34,7 +34,7 @@ import javax.swing.JTextField;
 
 public class PCLink extends JFrame {
 
-	public static final byte ACK = 0x10, NAK = 0x11, REC = 0x21, SND = 0x22;
+	public static final byte ACK = 0x10, NAK = 0x11, REC = 0x21, SND = 0x22, LST = 0x23;
 
 	private JTextField nameField;
 	private final List<String[]> receiveJobs = new ArrayList<String[]>();
@@ -80,6 +80,24 @@ public class PCLink extends JFrame {
 						return;
 					}
 					String filename = sjob[1] + "\0";
+					if (filename.contains("*")) {
+						File f = new File(sjob[0]).getParentFile();
+						System.out.printf("PCLink LST Pattern: %s\n", sjob[1]);
+						out.write(LST);
+						out.write(filename.getBytes("ISO-8859-1"));
+						out.flush();
+						waitAck(in);
+						int b;
+						while ((b = in.read()) > 0) {
+							StringBuilder sb = new StringBuilder();
+							do {
+							sb.append((char)b);
+							}while((b = in.read()) > 0);
+							link.sendJobs.add(new String[] { new File(f, sb.toString()).getAbsolutePath(), sb.toString() });
+						}
+						waitAck(in);
+						continue;
+					}
 					System.out.printf("PCLink SND Filename: %s\n", sjob[1]);
 					out.write(SND);
 					out.write(filename.getBytes("ISO-8859-1"));

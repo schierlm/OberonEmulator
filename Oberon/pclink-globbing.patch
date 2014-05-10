@@ -1,0 +1,69 @@
+--- 1/PCLink1.Mod.txt
++++ 2/PCLink1.Mod.txt
+@@ -1,12 +1,14 @@
+ MODULE PCLink1;  (*NW 25.7.2013  for Oberon on RISC*)
+-  IMPORT SYSTEM, Files, Texts, Oberon;
++  IMPORT SYSTEM, FileDir, Files, Texts, Oberon;
+   
+   CONST data = -56; stat = -52;
+     BlkLen = 255;
+     REQ = 20H; REC = 21H; SND = 22H; ACK = 10H; NAK = 11H;
++    LST = 23H;
+ 
+   VAR T: Oberon.Task;
+     W: Texts.Writer;
++    pat: ARRAY 32 OF CHAR;
+ 
+   PROCEDURE Rec(VAR x: BYTE);
+   BEGIN
+@@ -27,6 +29,31 @@
+     SYSTEM.PUT(data, x)
+   END Send;
+ 
++  (* based on System.List *)
++  PROCEDURE Glob(name: FileDir.FileName; adr: INTEGER; VAR cont: BOOLEAN);
++    VAR i0, i, j0, j: INTEGER;
++  BEGIN
++    i := 0;
++    WHILE (pat[i] > "*") & (pat[i] = name[i]) DO INC(i) END ;
++    IF (pat[i] = 0X) & (name[i] = 0X) THEN i0 := i; j0 := i
++    ELSIF pat[i] = "*" THEN
++      i0 := i; j0 := i+1;
++      WHILE name[i0] # 0X DO
++        i := i0; j := j0;
++        WHILE (name[i] # 0X) & (name[i] = pat[j]) DO INC(i); INC(j) END ;
++        IF pat[j] = 0X THEN
++          IF name[i] = 0X THEN (*match*) j0 := j ELSE INC(i0) END
++        ELSIF pat[j] = "*" THEN i0 := i; j0 := j+1
++        ELSE INC(i0)
++        END
++      END
++    END ;
++    IF (name[i0] = 0X) & (pat[j0] = 0X) THEN (*found*)
++      Texts.WriteString(W, "."); Texts.Append(Oberon.Log, W.buf);
++      FOR i := 0 TO i0 DO Send(ORD(name[i])) END;
++    END
++  END Glob;
++
+   PROCEDURE Task;
+     VAR len, n, i: INTEGER;
+       x, ack, len1, code: BYTE;
+@@ -69,6 +96,18 @@
+           ELSE Send(NAK)
+           END
+         ELSIF code = REQ THEN Send(ACK)
++        ELSIF code = LST THEN
++          LED(31H); RecName(pat);
++          Texts.WriteString(W, "globbing "); Texts.WriteString(W, pat);
++          Texts.Append(Oberon.Log, W.buf);
++          Send(ACK);
++          i := 0;
++          WHILE pat[i] > "*" DO name[i] := pat[i]; INC(i) END;
++          name[i] := 0X;
++          FileDir.Enumerate(name, Glob);
++          Send(0); (* list terminator *)
++          Send(ACK);
++          Texts.WriteString(W, " done"); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+         END ;
+       LED(0)
+     END
