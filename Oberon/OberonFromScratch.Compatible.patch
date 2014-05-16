@@ -22,30 +22,32 @@
  XORP.Compile ORS.Mod/s ORB.Mod/s ORG.Mod/s ~
  System.Collect
  XORP.Compile ORP.Mod/s ORTool.Mod/s ~
-@@ -48,6 +33,8 @@
+@@ -48,6 +33,10 @@
  System.Collect
  XORP.Compile Rectangles.Mod/s Curves.Mod/s ~
  System.Collect
 +XORP.Compile PCLink1.Mod/s RealCalc.Mod/s ~
 +System.Collect
++XORP.Compile SCC.Mod/s Net.Mod/s ~
++System.Collect
  
  System.CopyFiles System.Tool.Full => System.Tool.X ~
  
-@@ -61,7 +48,8 @@
+@@ -61,7 +50,8 @@
    ORTool.rsc.X Calc.rsc.X ResourceMonitor.rsc.X
    Graphics.rsc.X GraphicFrames.rsc.X Draw.rsc.X
    GraphTool.rsc.X Rectangles.rsc.X Curves.rsc.X
 -  Draw.Tool Calc.Tool
-+  RealCalc.rsc.X PCLink1.rsc.X
++  RealCalc.rsc.X PCLink1.rsc.X SCC.rsc.X Net.rsc.X
 +  Draw.Tool Calc.Tool RealCalc.Tool
    Kernel.smb.X FileDir.smb.X Files.smb.X Modules.smb.X
    Input.smb.X Display.smb.X Viewers.smb.X Fonts.smb.X
    Texts.smb.X Oberon.smb.X MenuViewers.smb.X TextFrames.smb.X
-@@ -70,6 +58,7 @@
+@@ -70,6 +60,7 @@
    ORTool.smb.X Calc.smb.X ResourceMonitor.smb.X
    Graphics.smb.X GraphicFrames.smb.X Draw.smb.X
    GraphTool.smb.X Rectangles.smb.X Curves.smb.X
-+  RealCalc.smb.X PCLink1.smb.X
++  RealCalc.smb.X PCLink1.smb.X SCC.smb.X Net.smb.X
    Oberon8.Scn.Fnt Oberon8i.Scn.Fnt
    Oberon10b.Scn.Fnt Oberon10i.Scn.Fnt
    Oberon12.Scn.Fnt Oberon12b.Scn.Fnt Oberon12i.Scn.Fnt

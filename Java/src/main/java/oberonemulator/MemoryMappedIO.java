@@ -6,9 +6,15 @@ import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.CharBuffer;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 public class MemoryMappedIO {
 
@@ -25,14 +31,17 @@ public class MemoryMappedIO {
 	private InputStream socketIn = null;
 	private OutputStream socketOut = null;
 
+	private Network net;
+
 	private int mouse;
 
 	private Memory mem;
 
 	private CharBuffer clipboardData;
 
-	public MemoryMappedIO(String disk_file, final ServerSocket ss) throws IOException {
+	public MemoryMappedIO(String disk_file, final ServerSocket ss, InetSocketAddress netAddr) throws IOException {
 		sdCard = disk_file == null ? null : new Disk(disk_file);
+		net = netAddr == null ? null : new Network(netAddr);
 		if (ss == null)
 			return;
 		Thread t = new Thread(new Runnable() {
@@ -94,6 +103,8 @@ public class MemoryMappedIO {
 			// SPI data
 			if (spiSelected == 1 && sdCard != null) {
 				return sdCard.disk_read();
+			} else if (spiSelected == 2 && net != null){
+				return net.read();
 			}
 			return 255;
 		}
@@ -208,6 +219,8 @@ public class MemoryMappedIO {
 			// SPI write
 			if (spiSelected == 1 && sdCard != null) {
 				sdCard.write(value);
+			} else if (spiSelected == 2 && net != null) {
+				net.write(value);
 			}
 			break;
 		}
