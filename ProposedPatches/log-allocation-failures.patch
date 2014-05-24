@@ -1,0 +1,70 @@
+--- 1/Kernel.Mod.txt
++++ 2/Kernel.Mod.txt
+@@ -8,7 +8,7 @@
+ 
+   TYPE Sector* = ARRAY SectorLength OF BYTE;
+ 
+-  VAR allocated*, NofSectors*: INTEGER;
++  VAR allocated*, allocFailed, NofSectors*: INTEGER;
+     heapOrg*, heapLim*: INTEGER;
+     stackOrg* ,  stackSize*, MemLim*: INTEGER;
+     clock: INTEGER;
+@@ -34,7 +34,7 @@
+         IF q0 # 0 THEN SYSTEM.PUT(q0+8, q1) ELSE list0 := q1 END
+       END
+     END ;
+-    IF ~done THEN p := 0 END
++    IF ~done THEN p := 0; INC(allocFailed) END
+   END GetBlock;
+ 
+   PROCEDURE GetBlock128(VAR p: LONGINT);
+@@ -78,6 +78,12 @@
+       WHILE p < lim DO SYSTEM.PUT(p, 0); INC(p, 4) END
+     END
+   END New;
++
++  PROCEDURE AllocFailed*(VAR count : INTEGER);
++  BEGIN
++    count := allocFailed;
++    allocFailed := 0;
++  END AllocFailed;
+ 
+ (* ---------- Garbage collector ----------*)
+ 
+@@ -265,7 +271,7 @@
+     stackOrg := heapOrg; stackSize := 8000H; heapLim := MemLim;
+     list1 := 0; list2 := 0; list3 := 0; list0 := heapOrg;
+     SYSTEM.PUT(list0, heapLim - heapOrg); SYSTEM.PUT(list0+4, -1); SYSTEM.PUT(list0+8, 0);
+-    allocated := 0; clock := 0; InitSecMap
++    allocated := 0; allocFailed := 0; clock := 0; InitSecMap
+   END Init;
+ 
+ END Kernel.
+--- 1/Oberon.Mod.txt
++++ 2/Oberon.Mod.txt
+@@ -357,6 +357,7 @@
+ 
+   PROCEDURE Loop*;
+     VAR V: Viewers.Viewer; M: InputMsg; N: ControlMsg;
++       W: Texts.Writer;
+        prevX, prevY, X, Y, t: INTEGER; keys: SET; ch: CHAR;
+   BEGIN
+     REPEAT
+@@ -375,6 +376,17 @@
+         UNTIL M.keys = {};
+         DEC(ActCnt)
+       ELSE
++        Kernel.AllocFailed(t);
++        IF t > 0 THEN
++          GC();
++          Texts.OpenWriter(W);
++          Texts.WriteLn(W);
++          Texts.WriteString(W, "  ALLOC FAILED");
++          Texts.WriteInt(W, t, 3);
++          Texts.WriteString(W, "x");
++          Texts.WriteLn(W);
++          Texts.Append(Log, W.buf);
++        END;
+         IF (X # prevX) OR (Y # prevY) OR ~Mouse.on THEN
+           M.id := track; M.X := X;
+           IF Y >= Display.Height THEN Y := Display.Height END ;

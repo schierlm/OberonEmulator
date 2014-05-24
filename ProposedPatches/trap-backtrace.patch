@@ -1,0 +1,138 @@
+--- 1/Edit.Mod.txt
++++ 2/Edit.Mod.txt
+@@ -176,22 +176,41 @@
+     VAR Text: TextFrames.Frame;
+       T: Texts.Text; S: Texts.Scanner;
+       V: Viewers.Viewer;
+-      beg, end, time: LONGINT;
++      name: ARRAY 32 OF CHAR;
++      beg, end, time, pos, i, X, Y: LONGINT;
+   BEGIN
+     V := Oberon.MarkedViewer();
+     IF (V.dsc # NIL) & (V.dsc.next IS TextFrames.Frame) THEN
+-      Text := V.dsc.next(TextFrames.Frame);
+       Oberon.GetSelection(T, beg, end, time);
+       IF time >= 0 THEN
+         Texts.OpenScanner(S, T, beg);
+         REPEAT Texts.Scan(S) UNTIL (S.class >= Texts.Int); (*skip names*)
+         IF S.class = Texts.Int THEN
++          pos := S.i;
++          IF (S.nextCh = "@") THEN
++            Texts.Scan(S); Texts.Scan(S);
++            IF (S.class = Texts.Name) THEN
++              i := 0;
++              WHILE S.s[i] # 0X DO name[i] := S.s[i]; INC(i) END;
++              name[i] := "."; name[i+1] := "M"; name[i+2] := "o"; name[i+3] := "d"; name[i+4] := 0X;
++              Texts.OpenScanner(S, V.dsc(TextFrames.Frame).text, 0);
++              Texts.Scan(S);
++              IF (S.class = Texts.Name) & (S.s # name) THEN
++                Oberon.AllocateUserViewer(V.X, X, Y);
++                V := MenuViewers.New(
++                  TextFrames.NewMenu(name, StandardMenu),
++                  TextFrames.NewText(TextFrames.Text(name), 0),
++                  TextFrames.menuH, X, Y)
++              END
++            END
++          END;
++          Text := V.dsc.next(TextFrames.Frame);
+           TextFrames.RemoveSelection(Text);
+           TextFrames.RemoveCaret(Text);
+           Oberon.RemoveMarks(Text.X, Text.Y, Text.W, Text.H);
+-          TextFrames.Show(Text, Max(0, S.i - 200));
++          TextFrames.Show(Text, Max(0, pos - 200));
+           Oberon.PassFocus(V);
+-          TextFrames.SetCaret(Text, S.i)
++          TextFrames.SetCaret(Text, pos)
+         END
+       END
+     END
+--- 1/ORG.Mod.txt
++++ 2/ORG.Mod.txt
+@@ -777,6 +777,7 @@
+     IF r > 0 THEN SaveRegs(r) END ;
+     IF x.type.form = ORB.Proc THEN
+       IF x.mode = ORB.Const THEN
++        Trap(15, 0);
+         IF x.r >= 0 THEN Put3(BL, 7, (x.a DIV 4)-pc-1)
+         ELSE (*imported*)
+           IF pc - fixorgP < 1000H THEN
+@@ -784,7 +785,7 @@
+           ELSE ORS.Mark("fixup impossible")
+           END
+         END
+-      ELSE Put3(BLR, 7, x.r)
++      ELSE Put3(BLR, 7, ORS.Pos()*100H + x.r)
+       END
+     ELSE ORS.Mark("not a procedure")
+     END ;
+@@ -876,7 +877,7 @@
+   END Assert;
+ 
+   PROCEDURE New*(VAR x: Item);
+-  BEGIN loadAdr(x); loadTypTagAdr(x.type.base); Put3(BLR, 7, MT); RH := 0; invalSB
++  BEGIN loadAdr(x); loadTypTagAdr(x.type.base); Put3(BLR, 7, ORS.Pos()*100H + MT); RH := 0; invalSB
+   END New;
+ 
+   PROCEDURE Pack*(VAR x, y: Item);
+--- 1/System.Mod.txt
++++ 2/System.Mod.txt
+@@ -394,6 +394,42 @@
+     END
+   END ExtendDisplay;
+ 
++  PROCEDURE Backtrace();
++  VAR sp, adr, v: INTEGER;
++    mod: Modules.Module;
++  BEGIN
++    sp := SYSTEM.REG(14);
++    INC(sp, 4);
++    WHILE sp < Kernel.stackOrg DO
++      SYSTEM.GET(sp, adr);
++      DEC(adr, 4);
++      IF (adr MOD 4 = 0) & (adr >= 100H) & (adr < Modules.AllocPtr) THEN
++        SYSTEM.GET(adr, v);
++        IF (v DIV 10000000H MOD 10H = 0DH) OR (v DIV 10000000H MOD 10H = 0FH) THEN (* BL or BLR instruction *)
++          IF (v DIV 10000000H MOD 10H = 0FH) THEN (* BL instruction *)
++            SYSTEM.GET(adr-4,v); (* Check for dummy Trap/BLR *)
++            IF v DIV 1000000H MOD 100H # 0DFH THEN v := 0 END
++          END;
++          mod := Modules.root;
++          WHILE (mod # NIL) & ((adr < mod.code) OR (adr >= mod.imp)) DO mod := mod.next END ;
++          IF mod # NIL THEN
++            Texts.WriteString(W, "    at ");
++            Texts.WriteInt(W, v DIV 100H MOD 10000H, 5);
++            Texts.Write(W,"@");
++            Texts.WriteString(W, mod.name);
++            Texts.Write(W, "+");
++            Texts.WriteHex(W, adr - mod.code);
++            Texts.WriteString(W, " (");
++            Texts.WriteHex(W, adr);
++            Texts.Write(W, ")");
++            Texts.WriteLn(W);
++          END
++        END
++      END;
++      INC(sp, 4);
++    END;
++  END Backtrace;
++
+   PROCEDURE Trap(VAR a: INTEGER; b: INTEGER);
+     VAR u, v, w: INTEGER; mod: Modules.Module;
+   BEGIN u := SYSTEM.REG(15); SYSTEM.GET(u - 4, v); w := v DIV 10H MOD 10H; (*trap number*)
+@@ -403,14 +439,14 @@
+       WHILE (mod # NIL) & ((u < mod.code) OR (u >= mod.imp)) DO mod := mod.next END ;
+       IF mod # NIL THEN Texts.WriteString(W, " in "); Texts.WriteString(W, mod.name) END ;
+       Texts.WriteString(W, " at"); Texts.WriteHex(W, u);
+-      Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); Oberon.Reset
++      Texts.WriteLn(W); Backtrace(); Texts.Append(Oberon.Log, W.buf); Oberon.Reset
+     END
+   END Trap;
+ 
+   PROCEDURE Abort;
+     VAR n: INTEGER;
+   BEGIN n := SYSTEM.REG(15); Texts.WriteString(W, "  ABORT  "); Texts.WriteHex(W, n);
+-    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); Oberon.Reset
++    Texts.WriteLn(W); Backtrace(); Texts.Append(Oberon.Log, W.buf); Oberon.Reset
+   END Abort;
+   
+ BEGIN Texts.OpenWriter(W);
