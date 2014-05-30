@@ -1,0 +1,22 @@
+--- 1/Input.Mod.txt
++++ 2/Input.Mod.txt
+@@ -46,7 +46,7 @@
+     VAR w: INTEGER;
+   BEGIN SYSTEM.GET(msAdr, w);
+     keys := SYSTEM.VAL(SET, w DIV 1000000H MOD 8);
+-    x := w MOD 400H; y := (w DIV 1000H) MOD 400H;
++    x := w MOD 1000H; y := (w DIV 1000H) MOD 1000H;
+     IF y >= MH THEN y := MH-1 END
+   END Mouse;
+ 
+--- 1/Texts.Mod.txt
++++ 2/Texts.Mod.txt
+@@ -400,7 +400,7 @@
+ 
+   PROCEDURE OpenWriter* (VAR W: Writer);
+   BEGIN NEW(W.buf);
+-    OpenBuf(W.buf); W.fnt := Fonts.Default; W.col := 15; W.voff := 0;
++    OpenBuf(W.buf); W.fnt := Fonts.Default; W.col := 1; W.voff := 0;
+     Files.Set(W.rider, Files.New(""), 0)
+   END OpenWriter;
+ 

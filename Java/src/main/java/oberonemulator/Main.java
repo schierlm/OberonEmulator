@@ -52,7 +52,7 @@ public class Main {
 			} else {
 				bootloader = Disk.loadBootloader(args[3]);
 			}
-			BufferedImage img = new BufferedImage(Integer.parseInt(args[0]), Integer.parseInt(args[1]), BufferedImage.TYPE_INT_RGB);
+			BufferedImage img = new BufferedImage(Integer.parseInt(args[0]) & ~31, Integer.parseInt(args[1]), BufferedImage.TYPE_INT_RGB);
 			ServerSocket rs232 = null;
 			InetSocketAddress net = null;
 			int pcLinkPort = -1;

@@ -6,7 +6,7 @@
  
 -  VAR allocated*, NofSectors*: INTEGER;
 +  VAR allocated*, allocFailed, NofSectors*: INTEGER;
-     heapOrg*, heapLim*: INTEGER;
+     heapOrg*, heapLim*: INTEGER; 
      stackOrg* ,  stackSize*, MemLim*: INTEGER;
      clock: INTEGER;
 @@ -34,7 +34,7 @@

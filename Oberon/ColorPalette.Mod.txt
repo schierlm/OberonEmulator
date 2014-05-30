@@ -1,0 +1,43 @@
+MODULE ColorPalette;
+  IMPORT Display, Viewers, Oberon, MenuViewers, TextFrames;
+
+  CONST Menu = "System.Close  System.Copy  System.Grow";
+
+  PROCEDURE DrawPalette(F: Display.Frame);
+    VAR s, w, x, y: INTEGER;
+  BEGIN
+    IF F.W < F.H THEN w := F.W ELSE w := F.H END ;
+    s := w DIV 16;
+    Display.ReplConst(Display.black, F.X, F.Y, F.W, F.H, Display.replace);
+    FOR x := 0 TO 15 DO
+      FOR y := 0 TO 15 DO
+        Display.ReplConst((15-y) * 16 + x, F.X + x * s, F.Y + y * s, s, s, Display.replace);
+      END
+    END
+  END DrawPalette;
+
+  PROCEDURE Handler(F: Display.Frame; VAR M: Display.FrameMsg);
+    VAR F0: Display.Frame;
+  BEGIN
+    IF M IS Oberon.InputMsg THEN
+      IF M(Oberon.InputMsg).id = Oberon.track THEN
+        Oberon.DrawMouseArrow(M(Oberon.InputMsg).X, M(Oberon.InputMsg).Y)
+      END
+    ELSIF M IS MenuViewers.ModifyMsg THEN
+      F.Y := M(MenuViewers.ModifyMsg).Y; F.H := M(MenuViewers.ModifyMsg).H; DrawPalette(F)
+    ELSIF M IS Oberon.ControlMsg THEN
+      IF M(Oberon.ControlMsg).id = Oberon.neutralize THEN Oberon.RemoveMarks(F.X, F.Y, F.W, F.H) END
+    ELSIF M IS Oberon.CopyMsg THEN
+      NEW(F0); F0^ := F^; M(Oberon.CopyMsg).F := F0
+    END
+  END Handler;
+
+  PROCEDURE Draw*;
+    VAR V: Viewers.Viewer; X, Y: INTEGER; F: Display.Frame;
+  BEGIN
+    NEW(F); F.handle := Handler;
+    Oberon.AllocateUserViewer(Oberon.Par.vwr.X, X, Y);
+    V := MenuViewers.New(TextFrames.NewMenu("Hilbert", Menu), F, TextFrames.menuH, X, Y)
+  END Draw;
+
+END ColorPalette.

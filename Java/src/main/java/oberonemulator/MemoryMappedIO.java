@@ -6,15 +6,10 @@ import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.CharBuffer;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 
 public class MemoryMappedIO {
 
@@ -168,6 +163,9 @@ public class MemoryMappedIO {
 				clipboardData = null;
 			return ch;
 		}
+		case 48: {
+			return (mem.getImageMemory().getWidth() << 16) | mem.getImageMemory().getHeight();
+		}
 		default: {
 			return 0;
 		}
@@ -299,6 +297,9 @@ public class MemoryMappedIO {
 				clipboardData = null;
 			}
 			break;
+		}
+		case 48: {
+			mem.getImageMemory().setSlidingWindowBase(value);
 		}
 		}
 	}

@@ -55,6 +55,10 @@ public class Memory {
 		return ram;
 	}
 
+	public ImageMemory getImageMemory() {
+		return imgio;
+	}
+
 	public void triggerRepaint() {
 		imgio.triggerRepaint();
 	}
