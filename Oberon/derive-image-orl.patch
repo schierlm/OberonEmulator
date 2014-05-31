@@ -131,10 +131,10 @@
 +    NILMOD := SYSTEM.VAL(Module, ImageOffset); (* NIL *)
 +    root := NILMOD;
 +    limit := 40000H;
-+    Load("Modules", newmod);
++    Load("Modules", newmod); NILMOD := NIL;
 +    SYSTEM.PUT(ImageOffset + 10H, AllocPtr);
 +    SYSTEM.PUT(ImageOffset + 14H, SYSTEM.VAL(INTEGER, root) - ImageOffset);
-+    SYSTEM.PUT(ImageOffset + 18H, limit);
++    SYSTEM.PUT(ImageOffset + 18H, limit); root := NIL;
 +  END DoLink;
 +
 +  PROCEDURE Link*();
