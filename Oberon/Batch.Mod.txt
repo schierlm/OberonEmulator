@@ -1,0 +1,420 @@
+MODULE Batch;
+  IMPORT Kernel, FileDir, Files, Display, Texts, TextFrames, Viewers, Oberon;
+
+  CONST
+    BatchStopped = 0;
+    BatchRunning = 1;
+    BatchWaitGC = 2;
+    BatchFailed = 3;
+  VAR
+    pat: ARRAY 32 OF CHAR;
+    state: INTEGER;
+    emptyReader: Texts.Reader;
+    script: Texts.Reader;
+    scriptFrame: TextFrames.Frame;
+    gcWaitTask: Oberon.Task;
+    gcWaitAllocated: INTEGER;
+
+  PROCEDURE ClearLog*;
+    VAR
+      buf: Texts.Buffer;
+  BEGIN
+    NEW(buf); Texts.OpenBuf(buf);
+    Texts.Delete(Oberon.Log, 0, Oberon.Log.len, buf)
+  END ClearLog;
+
+  PROCEDURE WriteLog*;
+    VAR
+      S: Texts.Scanner;
+      W: Texts.Writer;
+      V: Viewers.Viewer;
+      nl, go: BOOLEAN;
+      i: INTEGER;
+  BEGIN
+    nl := TRUE; go := TRUE;
+    Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos);
+    Texts.OpenWriter(W);
+    WHILE go DO
+      Texts.Scan(S);
+      IF (S.class = Texts.Char) & (S.c = "\") THEN
+        nl := FALSE
+      ELSIF (S.class = Texts.Char) & (S.c = "*") THEN
+        V := Viewers.This(Display.Width - 10, Display.Height - 10);
+        TextFrames.Show(V.dsc.next(TextFrames.Frame), Oberon.Log.len);
+      ELSIF S.class = Texts.Int THEN
+        FOR i := 1 TO S.i DO Texts.WriteLn(W); END
+      ELSIF (S.class = Texts.Name) OR (S.class = Texts.String) THEN
+        Texts.WriteString(W, S.s);
+        go := FALSE
+      ELSE
+        go := FALSE
+      END
+    END;
+    IF nl THEN
+      Texts.WriteLn(W)
+    END;
+    Texts.Append(Oberon.Log, W.buf)
+  END WriteLog;
+
+  PROCEDURE VerifyLog*;
+    VAR
+      S: Texts.Scanner;
+      R: Texts.Reader;
+      W: Texts.Writer;
+        ch: CHAR;
+        csum, vcsum : INTEGER;
+  BEGIN
+    Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos);
+    Texts.Scan(S);
+    IF S.class = Texts.Int THEN vcsum := S.i ELSE vcsum := 0 END;
+    Texts.OpenReader(R, Oberon.Log, 0);
+    ch := 0X;
+    csum := 0;
+    WHILE ~ R.eot DO
+      IF ch = "0" THEN
+        WHILE (ch >= "0") & (ch <= "9") DO Texts.Read(R, ch) END
+      ELSE
+        Texts.Read(R, ch);
+        IF (ch >= "1") & (ch <= "9") THEN ch := "0" END
+      END;
+      csum := ROR(csum + ORD(ch), 13);
+    END;
+    IF csum # vcsum THEN
+      Texts.OpenWriter(W);
+      Texts.WriteString(W, "Log checksum");
+      Texts.WriteHex(W, csum);
+      Texts.WriteString(W, "H does not match");
+      Texts.WriteHex(W, vcsum);
+      Texts.WriteString(W, "H!");
+      Texts.WriteLn(W);
+      Texts.Append(Oberon.Log, W.buf);
+      IF state = BatchRunning THEN state := BatchFailed END
+    END
+  END VerifyLog;
+
+  PROCEDURE DelFile(name: FileDir.FileName; adr: LONGINT; VAR cont: BOOLEAN);
+    VAR
+      i0, i, j0, j: INTEGER; hp: FileDir.FileHeader;
+  BEGIN
+    i := 0;
+    WHILE (pat[i] > "*") & (pat[i] = name[i]) DO INC(i) END;
+    IF (pat[i] = 0X) & (name[i] = 0X) THEN i0 := i; j0 := i
+    ELSIF pat[i] = "*" THEN
+      i0 := i; j0 := i+1;
+      WHILE name[i0] # 0X DO
+        i := i0; j := j0;
+        WHILE (name[i] # 0X) & (name[i] = pat[j]) DO INC(i); INC(j) END;
+        IF pat[j] = 0X THEN
+          IF name[i] = 0X THEN (*match*) j0 := j ELSE INC(i0) END
+        ELSIF pat[j] = "*" THEN i0 := i; j0 := j+1
+        ELSE INC(i0)
+        END
+      END
+    END;
+    IF (name[i0] = 0X) & (pat[j0] = 0X) THEN (*found*)
+      Files.Delete(name, i);
+    END
+  END DelFile;
+
+  PROCEDURE DeleteFiles*;
+  VAR
+    R: Texts.Reader;
+    i: INTEGER;
+    ch: CHAR;
+    pre: ARRAY 32 OF CHAR;
+  BEGIN
+    Texts.OpenReader(R, Oberon.Par.text, Oberon.Par.pos);
+    Texts.Read(R, ch);
+    WHILE ch = " " DO Texts.Read(R, ch) END;
+    i := 0;
+    WHILE ch > " " DO pat[i] := ch; INC(i); Texts.Read(R, ch) END;
+    pat[i] := 0X;
+    i := 0;
+    WHILE pat[i] > "*" DO pre[i] := pat[i]; INC(i) END;
+    pre[i] := 0X;
+    FileDir.Enumerate(pre, DelFile);
+  END DeleteFiles;
+
+  PROCEDURE Collect*;
+  BEGIN
+    Oberon.Collect(1);
+    IF state = BatchRunning THEN state := BatchWaitGC END
+  END Collect;
+
+  PROCEDURE Continue;
+    VAR
+      W: Texts.Writer;
+      ch: CHAR;
+  BEGIN
+      state := BatchRunning;
+      WHILE state = BatchRunning DO
+        Texts.Read(script, ch);
+        IF script.eot THEN
+          state := BatchStopped
+        ELSIF ch = "|" THEN
+          Texts.Read(script, ch);
+          IF script.eot OR (ch = "|") THEN
+            state := BatchStopped;
+          ELSIF ch = ">" THEN
+            Texts.Read(script, ch);
+            WHILE ch <= " " DO Texts.Read(script, ch) END;
+            TextFrames.Call(scriptFrame, Texts.Pos(script) - 1, FALSE);
+          END
+        END
+      END;
+      IF state = BatchWaitGC THEN
+        Texts.OpenWriter(W); (* calls NEW *)
+        Texts.WriteString(W, "Waiting for gc ...");
+        Texts.Append(Oberon.Log, W.buf);
+        gcWaitAllocated := Kernel.allocated;
+        Oberon.Install(gcWaitTask);
+      ELSE
+        state := BatchStopped;
+        script := emptyReader;
+        scriptFrame := NIL;
+      END
+  END Continue;
+
+  PROCEDURE GCWait;
+    VAR
+      W: Texts.Writer;
+  BEGIN
+    IF (state = BatchWaitGC) & (Kernel.allocated < gcWaitAllocated) THEN
+      Texts.OpenWriter(W);
+      Texts.WriteString(W, " done");
+      Texts.WriteLn(W);
+      Texts.Append(Oberon.Log, W.buf);
+      Oberon.Remove(gcWaitTask);
+      Continue();
+    ELSE
+      Oberon.Collect(0);
+    END
+  END GCWait;
+
+  PROCEDURE Run*;
+    VAR
+      W: Texts.Writer;
+  BEGIN
+    IF state # BatchStopped THEN
+      Texts.OpenWriter(W);
+      Texts.WriteString(W, "Cannot run Batch while another Batch is running");
+      Texts.WriteLn(W);
+      Texts.Append(Oberon.Log, W.buf);
+    ELSE
+      Texts.OpenReader(script, Oberon.Par.text, Oberon.Par.pos);
+      scriptFrame := Oberon.Par.frame(TextFrames.Frame);
+      Continue();
+    END
+  END Run;
+
+BEGIN
+  gcWaitTask := Oberon.NewTask(GCWait, 100);
+END Batch.
+MODULE Batch;
+  IMPORT Kernel, FileDir, Files, Texts, TextFrames, Oberon;
+
+  CONST
+    BatchStopped = 0;
+    BatchRunning = 1;
+    BatchWaitGC = 2;
+    BatchFailed = 3;
+  VAR
+    pat: ARRAY 32 OF CHAR;
+    state: INTEGER;
+    emptyReader: Texts.Reader;
+    script: Texts.Reader;
+    scriptFrame: TextFrames.Frame;
+    gcWaitTask: Oberon.Task;
+    gcWaitAllocated: INTEGER;
+
+  PROCEDURE ClearLog*;
+    VAR
+      buf: Texts.Buffer;
+  BEGIN
+    NEW(buf); Texts.OpenBuf(buf);
+    Texts.Delete(Oberon.Log, 0, Oberon.Log.len, buf)
+  END ClearLog;
+
+  PROCEDURE WriteLog*;
+    VAR
+      S: Texts.Scanner;
+      W: Texts.Writer;
+      nl, go: BOOLEAN;
+      i: INTEGER;
+  BEGIN
+    nl := TRUE; go := TRUE;
+    Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos);
+    Texts.OpenWriter(W);
+    WHILE go DO
+      Texts.Scan(S);
+      IF (S.class = Texts.Char) & (S.c = "\") THEN
+        nl := FALSE
+      ELSIF S.class = Texts.Int THEN
+        FOR i := 1 TO S.i DO Texts.WriteLn(W); END
+      ELSIF (S.class = Texts.Name) OR (S.class = Texts.String) THEN
+        Texts.WriteString(W, S.s);
+        go := FALSE
+      ELSE
+        go := FALSE
+      END
+    END;
+    IF nl THEN
+      Texts.WriteLn(W)
+    END;
+    Texts.Append(Oberon.Log, W.buf)
+  END WriteLog;
+
+  PROCEDURE VerifyLog*;
+    VAR
+      S: Texts.Scanner;
+      R: Texts.Reader;
+      W: Texts.Writer;
+        ch: CHAR;
+        csum, vcsum : INTEGER;
+  BEGIN
+    Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos);
+    Texts.Scan(S);
+    IF S.class = Texts.Int THEN vcsum := S.i ELSE vcsum := 0 END;
+    Texts.OpenReader(R, Oberon.Log, 0);
+    ch := 0X;
+    csum := 0;
+    WHILE ~ R.eot DO
+      IF ch = "0" THEN
+        WHILE (ch >= "0") & (ch <= "9") DO Texts.Read(R, ch) END
+      ELSE
+        Texts.Read(R, ch);
+        IF (ch >= "1") & (ch <= "9") THEN ch := "0" END
+      END;
+      csum := ROR(csum + ORD(ch), 13);
+    END;
+    IF csum # vcsum THEN
+      Texts.OpenWriter(W);
+      Texts.WriteString(W, "Log checksum");
+      Texts.WriteHex(W, csum);
+      Texts.WriteString(W, "H does not match");
+      Texts.WriteHex(W, vcsum);
+      Texts.WriteString(W, "H!");
+      Texts.WriteLn(W);
+      Texts.Append(Oberon.Log, W.buf);
+      IF state = BatchRunning THEN state := BatchFailed END
+    END
+  END VerifyLog;
+
+  PROCEDURE DelFile(name: FileDir.FileName; adr: LONGINT; VAR cont: BOOLEAN);
+    VAR
+      i0, i, j0, j: INTEGER; hp: FileDir.FileHeader;
+  BEGIN
+    i := 0;
+    WHILE (pat[i] > "*") & (pat[i] = name[i]) DO INC(i) END;
+    IF (pat[i] = 0X) & (name[i] = 0X) THEN i0 := i; j0 := i
+    ELSIF pat[i] = "*" THEN
+      i0 := i; j0 := i+1;
+      WHILE name[i0] # 0X DO
+        i := i0; j := j0;
+        WHILE (name[i] # 0X) & (name[i] = pat[j]) DO INC(i); INC(j) END;
+        IF pat[j] = 0X THEN
+          IF name[i] = 0X THEN (*match*) j0 := j ELSE INC(i0) END
+        ELSIF pat[j] = "*" THEN i0 := i; j0 := j+1
+        ELSE INC(i0)
+        END
+      END
+    END;
+    IF (name[i0] = 0X) & (pat[j0] = 0X) THEN (*found*)
+      Files.Delete(name, i);
+    END
+  END DelFile;
+
+  PROCEDURE DeleteFiles*;
+  VAR
+    R: Texts.Reader;
+    i: INTEGER;
+    ch: CHAR;
+    pre: ARRAY 32 OF CHAR;
+  BEGIN
+    Texts.OpenReader(R, Oberon.Par.text, Oberon.Par.pos);
+    Texts.Read(R, ch);
+    WHILE ch = " " DO Texts.Read(R, ch) END;
+    i := 0;
+    WHILE ch > " " DO pat[i] := ch; INC(i); Texts.Read(R, ch) END;
+    pat[i] := 0X;
+    i := 0;
+    WHILE pat[i] > "*" DO pre[i] := pat[i]; INC(i) END;
+    pre[i] := 0X;
+    FileDir.Enumerate(pre, DelFile);
+  END DeleteFiles;
+
+  PROCEDURE Collect*;
+  BEGIN
+    Oberon.Collect(1);
+    IF state = BatchRunning THEN state := BatchWaitGC END
+  END Collect;
+
+  PROCEDURE Continue;
+    VAR
+      W: Texts.Writer;
+      ch: CHAR;
+  BEGIN
+      state := BatchRunning;
+      WHILE state = BatchRunning DO
+        Texts.Read(script, ch);
+        IF script.eot THEN
+          state := BatchStopped
+        ELSIF ch = "|" THEN
+          Texts.Read(script, ch);
+          IF script.eot OR (ch = "|") THEN
+            state := BatchStopped;
+          ELSIF ch = ">" THEN
+            Texts.Read(script, ch);
+            WHILE ch <= " " DO Texts.Read(script, ch) END;
+            TextFrames.Call(scriptFrame, Texts.Pos(script) - 1, FALSE);
+          END
+        END
+      END;
+      IF state = BatchWaitGC THEN
+        Texts.OpenWriter(W); (* calls NEW *)
+        Texts.WriteString(W, "Waiting for gc ...");
+        Texts.Append(Oberon.Log, W.buf);
+        gcWaitAllocated := Kernel.allocated;
+        Oberon.Install(gcWaitTask);
+      ELSE
+        state := BatchStopped;
+        script := emptyReader;
+        scriptFrame := NIL;
+      END
+  END Continue;
+
+  PROCEDURE GCWait;
+    VAR
+      W: Texts.Writer;
+  BEGIN
+    IF (state = BatchWaitGC) & (Kernel.allocated < gcWaitAllocated) THEN
+      Texts.OpenWriter(W);
+      Texts.WriteString(W, " done");
+      Texts.WriteLn(W);
+      Texts.Append(Oberon.Log, W.buf);
+      Oberon.Remove(gcWaitTask);
+      Continue();
+    ELSE
+      Oberon.Collect(0);
+    END
+  END GCWait;
+
+  PROCEDURE Run*;
+    VAR
+      W: Texts.Writer;
+  BEGIN
+    IF state # BatchStopped THEN
+      Texts.OpenWriter(W);
+      Texts.WriteString(W, "Cannot run Batch while another Batch is running");
+      Texts.WriteLn(W);
+      Texts.Append(Oberon.Log, W.buf);
+    ELSE
+      Texts.OpenReader(script, Oberon.Par.text, Oberon.Par.pos);
+      scriptFrame := Oberon.Par.frame(TextFrames.Frame);
+      Continue();
+    END
+  END Run;
+
+BEGIN
+  gcWaitTask := Oberon.NewTask(GCWait, 100);
+END Batch.
