@@ -31,6 +31,7 @@ var startMillis = Date.now(), waitMillis = 0;
 var paravirtPtr = 0;
 var keyBuf = [];
 var mouse = 0;
+var clipboardBuffer = '', clipboardRemaining = 0;
 
 function memReadIOWord(wordAddress) {
 	switch (wordAddress * 4 - IOStart) {
@@ -50,8 +51,15 @@ function memReadIOWord(wordAddress) {
 		}
 		return 0;
 	}
-	case 32: {
-		return clipboard.value.length;
+	case 40: {
+		clipboardBuffer = clipboard.value.split("\n").join("\r");
+		clipboardRemaining = 0;
+		return clipboardBuffer.length;
+	}
+	case 44: {
+		var ch = clipboardBuffer.charCodeAt(0);
+		clipboardBuffer = clipboardBuffer.substring(1);
+		return ch;
 	}
 	default: {
 			return 0;
@@ -78,33 +86,6 @@ function memWriteIOWord(wordAddress, value) {
 		}
 		break;
 	}
-	case 32: {
-		var ptr = value & 0x7FFFFFFF;
-		if ((value & 0x80000000) != 0) {
-			var sb = "";
-			var wrd = memReadWord(ptr / 4, false);
-			outer: while (true) {
-				for (var i = 0; i < 4; i++) {
-					var b = ((wrd >> (8 * i)) & 0xFF);
-					if (b == 0)
-						break outer;
-					sb += String.fromCharCode(b);
-				}
-				ptr += 4;
-				wrd = memReadWord(ptr / 4, false);
-			}
-			clipboard.value = sb.split("\r").join("\n");
-		} else {
-			var text = clipboard.value.split("\n").join("\r");
-			for (var i = 0; i < text.length; i += 4) {
-				var vl = 0;
-				for (var j = 0; j < Math.min(text.length - i, 4); j++) {
-					vl |= ((text.charCodeAt(i + j)) & 0xFF) << (j * 8);
-				}
-				memWriteWord((ptr + i) / 4, vl);
-			}
-		}
-	}
 	case 36: {
 		// paravirtualized storage
 		if ((value & 0xC0000000) == 0) { // setPtr
@@ -121,6 +102,19 @@ function memWriteIOWord(wordAddress, value) {
 			var s = new Int32Array(256);
 			s.set(ram.subarray(paravirtPtr/4, paravirtPtr/4 + 256))
 			disk[sector|0] = s;
+		}
+		break;
+	}
+	case 40: {
+		clipboardBuffer = '';
+		clipboardRemaining = value;
+		break;
+	}
+	case 44: {
+		clipboardBuffer += String.fromCharCode(value);
+		clipboardRemaining--;
+		if (clipboardRemaining == 0) {
+			clipboard.value = clipboardBuffer.split("\r").join("\n");
 		}
 		break;
 	}

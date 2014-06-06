@@ -129,17 +129,6 @@ public class MemoryMappedIO {
 			}
 			return 0;
 		}
-
-		case 32: {
-			// clipboard
-			try {
-				String text = (String) Toolkit.getDefaultToolkit().getSystemClipboard().getData(DataFlavor.stringFlavor);
-				return text == null ? 0 : text.length();
-			} catch (Exception ex) {
-				System.out.println(ex.toString());
-				return 0;
-			}
-		}
 		case 40: {
 			// Clipboard control
 			try {
@@ -229,43 +218,6 @@ public class MemoryMappedIO {
 			// Bit 3: netwerk enable
 			// Other bits unused
 			spiSelected = value & 3;
-			break;
-		}
-		case 32: {
-			// clipboard
-			// Bit 31: Store (=1) or load (=0)
-			// Rest: Pointer
-			int ptr = value & 0x7FFFFFFF;
-			if ((value & 0x80000000) != 0) {
-				// store
-				StringBuilder sb = new StringBuilder();
-				int wrd = mem.readWord(ptr / 4, false);
-				outer: while (true) {
-					for (int i = 0; i < 4; i++) {
-						char b = (char) ((wrd >> (8 * i)) & 0xFF);
-						if (b == 0)
-							break outer;
-						sb.append(b);
-					}
-					ptr += 4;
-					wrd = mem.readWord(ptr / 4, false);
-				}
-				Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(sb.toString().replace('\r', '\n')), null);
-			} else {
-				try {
-					String text = (String) Toolkit.getDefaultToolkit().getSystemClipboard().getData(DataFlavor.stringFlavor);
-					text = text.replace('\n', '\r');
-					for (int i = 0; i < text.length(); i += 4) {
-						int vl = 0;
-						for (int j = 0; j < Math.min(text.length() - i, 4); j++) {
-							vl |= (((byte) text.charAt(i + j)) & 0xFF) << (j * 8);
-						}
-						mem.writeWord((ptr + i) / 4, vl);
-					}
-				} catch (Exception ex) {
-					System.out.println(ex.toString());
-				}
-			}
 			break;
 		}
 		case 36: {

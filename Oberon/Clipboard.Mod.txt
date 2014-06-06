@@ -1,103 +1,61 @@
 MODULE Clipboard;
   IMPORT SYSTEM, Texts, Viewers, TextFrames, Oberon;
 
-  TYPE
-    PRec = POINTER TO Rec; Rec = RECORD END;
-    Rec64 = RECORD (Rec) a: ARRAY 64 OF BYTE END;
-    Rec256 = RECORD (Rec) a: ARRAY 256 OF BYTE END;
-    Rec1024 = RECORD (Rec) a: ARRAY 1024 OF BYTE END;
-    Rec4096 = RECORD (Rec) a: ARRAY 4096 OF BYTE END;
-    Rec16384 = RECORD (Rec) a: ARRAY 16384 OF BYTE END;
-    Rec65536 = RECORD (Rec) a: ARRAY 65536 OF BYTE END;
-    Rec262144 = RECORD (Rec) a: ARRAY 262144 OF BYTE END;
+  CONST control = -24; data = -20;
 
-  (* TODO: Any cleaner way to do this? *)
-  PROCEDURE AllocPtr(len : INTEGER; VAR pr: PRec) : INTEGER;
-    VAR
-      pr64: POINTER TO Rec64;
-      pr256:  POINTER TO Rec256;
-      pr1024: POINTER TO Rec1024;
-      pr4096: POINTER TO Rec4096;
-      pr16384: POINTER TO Rec16384;
-      pr65536: POINTER TO Rec65536;
-      pr262144: POINTER TO Rec262144;
-      res: INTEGER;
-  BEGIN
-    IF len <= 64 THEN NEW(pr64); pr := pr64
-    ELSIF len <= 256 THEN NEW(pr256); pr := pr256
-    ELSIF len <= 1024 THEN NEW(pr1024); pr := pr1024
-    ELSIF len <= 4096 THEN NEW(pr4096); pr := pr4096
-    ELSIF len <= 16384 THEN NEW(pr16384); pr := pr16384
-    ELSIF len <= 65536 THEN NEW(pr65536); pr := pr65536
-    ELSIF len <= 262144 THEN NEW(pr262144); pr := pr262144
-    ELSE pr := NIL
-    END;
-    ASSERT(pr # NIL);
-    res := SYSTEM.VAL(INTEGER, pr);
-    RETURN res
-  END AllocPtr;
-
-  PROCEDURE Copy(text: Texts.Text; beg, end: INTEGER);
-    VAR len, ptr, i: INTEGER;
+  PROCEDURE Copy(T: Texts.Text; beg, end: INTEGER);
+    VAR R: Texts.Reader;
       ch: CHAR;
-      reader: Texts.Reader;
-      pr: POINTER TO Rec;
   BEGIN
-    Texts.OpenReader(reader, text, beg);
-    len := end - beg + 1;
-    ptr := AllocPtr(len, pr);
-    FOR i := 0 TO len - 2 DO
-      Texts.Read(reader, ch);
-      SYSTEM.PUT(ptr + i, ch);
-    END;
-    ch := 0X;
-    SYSTEM.PUT(ptr + len - 1, ch);
-    SYSTEM.PUT(-32, ptr + 80000000H);
+    Texts.OpenReader(R, T, beg);
+    SYSTEM.PUT(control, end - beg);
+    WHILE beg < end DO
+      Texts.Read(R, ch);
+      SYSTEM.PUT(data, ch);
+      beg := beg + 1
+    END
   END Copy;
 
-  PROCEDURE CopySelection*();
-    VAR text: Texts.Text;
-      reader: Texts.Reader;
+  PROCEDURE CopySelection*;
+    VAR T: Texts.Text;
       beg, end, time: INTEGER;
-      ch: CHAR;
   BEGIN
-    Oberon.GetSelection(text, beg, end, time);
-    Copy(text, beg, end);
+    Oberon.GetSelection(T, beg, end, time);
+    IF time >= 0 THEN Copy(T, beg, end) END
   END CopySelection;
 
-  PROCEDURE CopyViewer*();
-    VAR v: Viewers.Viewer;
-      tf: TextFrames.Frame;
-      text: Texts.Text;
+  PROCEDURE CopyViewer*;
+    VAR V: Viewers.Viewer;
+      F: TextFrames.Frame;
   BEGIN
-    v := Oberon.MarkedViewer();
-    IF (v.dsc # NIL) & (v.dsc.next IS TextFrames.Frame) THEN
-      tf := v.dsc.next(TextFrames.Frame);
-      Copy(tf.text,0,tf.text.len);
-    END;
+    V := Oberon.MarkedViewer();
+    IF (V # NIL) & (V.dsc # NIL) & (V.dsc.next IS TextFrames.Frame) THEN
+      F := V.dsc.next(TextFrames.Frame);
+      Copy(F.text, 0, F.text.len)
+    END
   END CopyViewer;
 
-  PROCEDURE Paste*();
-    VAR w: Texts.Writer;
-      v:Viewers.Viewer;
-      f: TextFrames.Frame;
-      len, ptr, i: INTEGER;
+  PROCEDURE Paste*;
+    VAR W: Texts.Writer;
+      V: Viewers.Viewer;
+      F: TextFrames.Frame;
+      len, i: INTEGER;
       ch: CHAR;
-      pr: POINTER TO Rec;
   BEGIN
-    SYSTEM.GET(-32, len);
-    Texts.OpenWriter(w);
-    v := Oberon.FocusViewer;
-    IF (len # 0) & (v # NIL) & (v.dsc # NIL) & (v.dsc.next IS TextFrames.Frame) THEN
-      ptr := AllocPtr(len, pr);
-      SYSTEM.PUT(-32, ptr);
-      FOR i := 0 TO len - 1 DO
-        SYSTEM.GET(ptr+i, ch);
-        Texts.Write(w, ch);
-      END;
-      f := v.dsc.next(TextFrames.Frame);
-      Texts.Insert(f.text, f.carloc.pos, w.buf);
-      TextFrames.SetCaret(f, f.carloc.pos+len);
-    END;
+    V := Oberon.FocusViewer;
+    IF (V # NIL) & (V.dsc # NIL) & (V.dsc.next IS TextFrames.Frame) THEN
+      SYSTEM.GET(control, len);
+      IF len > 0 THEN
+        Texts.OpenWriter(W);
+        FOR i := 1 TO len DO
+          SYSTEM.GET(data, ch);
+          Texts.Write(W, ch)
+        END;
+        F := V.dsc.next(TextFrames.Frame);
+        Texts.Insert(F.text, F.carloc.pos, W.buf);
+        TextFrames.SetCaret(F, F.carloc.pos + len)
+      END
+    END
   END Paste;
+
 END Clipboard.

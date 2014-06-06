@@ -5,7 +5,6 @@ set -e
 
 patch -d work <detect-screen-size.patch
 patch -d work <pclink-globbing.patch
-cp Clipboard.Mod.Compatible.txt work/Clipboard.Mod.txt
 cp OberonFromScratch.Tool.Compatible.txt work/OberonFromScratch.Tool.txt
 
 patch -d work <../ProposedPatches/initialize-local-variables.patch
