@@ -147,7 +147,7 @@
 +    NEW(buf);
 +    DoLink(TRUE, buf);
 +    f := Files.Old("DiskImage.Bin");
-+    Files.Set(r, f, 800H);
++    Files.Set(r, f, 400H);
 +    FOR i := 0 TO AllocPtr - 1 DO
 +        Files.WriteByte(r, buf.a[i])
 +    END;

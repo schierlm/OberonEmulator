@@ -4,8 +4,8 @@
  MODULE ImageKernel;
    IMPORT SYSTEM, Kernel, Files, Display;
    CONST SectorLength* = 1024;
--    FSoffset = 0H; (*256MB in 512-byte blocks*)
-+    FSoffset = -400H; (*256MB in 512-byte blocks*)
+-    FSoffset = -400H; (*256MB in 512-byte blocks*)
++    FSoffset = 0H; (*256MB in 512-byte blocks*)
      mapsize = 10000H; (*1K sectors, 64MB*)
  
    TYPE Sector* = ARRAY SectorLength OF BYTE;
@@ -15,8 +15,8 @@
      NEW(buf);
      DoLink(TRUE, buf);
      f := Files.Old("DiskImage.Bin");
--    Files.Set(r, f, 800H);
-+    Files.Set(r, f, 400H);
+-    Files.Set(r, f, 400H);
++    Files.Set(r, f, 800H);
      FOR i := 0 TO AllocPtr - 1 DO
          Files.WriteByte(r, buf.a[i])
      END;

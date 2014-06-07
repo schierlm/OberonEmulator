@@ -66,7 +66,7 @@
      ELSE ORS.Mark("not a procedure")
      END ;
 @@ -876,7 +877,7 @@
-   END Assert;
+   END Assert; 
  
    PROCEDURE New*(VAR x: Item);
 -  BEGIN loadAdr(x); loadTypTagAdr(x.type.base); Put3(BLR, 7, MT); RH := 0; invalSB

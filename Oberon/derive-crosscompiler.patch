@@ -24,7 +24,7 @@
      F := Files.New(filename); Files.Set(R, F, 0);
      Files.WriteInt(R, 0); (*placeholder*)
      Files.WriteInt(R, 0); (*placeholder for key to be inserted at the end*)
-@@ -429,4 +429,4 @@
+@@ -434,4 +434,4 @@
    enter("COPY", SProc, noType, 123);
    enter("PUT", SProc, noType, 112);
    enter("GET", SProc, noType, 102);
@@ -40,7 +40,7 @@
    (*Code generator for Oberon compiler for RISC processor.
       Procedural interface to Parser OSAP; result in array "code".
       Procedure Close writes code-files*)
-@@ -1039,7 +1039,7 @@
+@@ -1082,7 +1082,7 @@
      END ;
      size := varsize + strx + comsize + (pc + nofimps + nofent + nofptrs + 1)*4;  (*varsize includes type descriptors*)
  
@@ -49,7 +49,7 @@
      F := Files.New(name); Files.Set(R, F, 0); Files.WriteString(R, modid); Files.WriteInt(R, key); Files.WriteByte(R, version);
      Files.WriteInt(R, size);
      obj := ORB.topScope.next;
-@@ -1092,4 +1092,4 @@
+@@ -1135,4 +1135,4 @@
  
  BEGIN
    relmap[0] := 1; relmap[1] := 9; relmap[2] := 5; relmap[3] := 6; relmap[4] := 14; relmap[5] := 13
@@ -65,7 +65,7 @@
    (*Author: Niklaus Wirth, 2011.
      Parser of Oberon-RISC compiler. Uses Scanner ORS to obtain symbols (tokens),
      ORB for definition of data structures and for handling import and export, and
-@@ -965,4 +965,4 @@
+@@ -978,4 +978,4 @@
    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
    NEW(dummy); dummy.class := ORB.Var; dummy.type := ORB.intType;
    expression := expression0; Type := Type0; FormalType := FormalType0

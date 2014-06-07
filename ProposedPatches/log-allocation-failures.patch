@@ -66,5 +66,5 @@
 +          Texts.Append(Log, W.buf);
 +        END;
          IF (X # prevX) OR (Y # prevY) OR ~Mouse.on THEN
-           M.id := track; M.X := X;
+           M.id := track; M.X := X; 
            IF Y >= Display.Height THEN Y := Display.Height END ;

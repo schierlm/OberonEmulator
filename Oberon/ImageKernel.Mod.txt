@@ -1,7 +1,7 @@
 MODULE ImageKernel;
   IMPORT SYSTEM, Kernel, Files, Display;
   CONST SectorLength* = 1024;
-    FSoffset = 0H; (*256MB in 512-byte blocks*)
+    FSoffset = -400H; (*256MB in 512-byte blocks*)
     mapsize = 10000H; (*1K sectors, 64MB*)
 
   TYPE Sector* = ARRAY SectorLength OF BYTE;

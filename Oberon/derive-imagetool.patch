@@ -24,7 +24,7 @@
  
    (*A file consists of a sequence of pages. The first page
      contains the header. Part of the header is the page table, an array
-@@ -494,4 +494,4 @@
+@@ -503,4 +503,4 @@
      END
    END RestoreList;
  

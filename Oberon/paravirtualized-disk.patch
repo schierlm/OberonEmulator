@@ -18,7 +18,7 @@
      sectorMap: ARRAY mapsize DIV 32 OF SET;
      
  (* ---------- New: heap allocation ----------*)
-@@ -132,68 +130,6 @@
+@@ -138,68 +136,6 @@
  
  (* ---------- Disk storage management ----------*)
  
@@ -87,7 +87,7 @@
    PROCEDURE InitSecMap*;
      VAR i: INTEGER;
    BEGIN NofSectors := 0; sectorMap[0] := {0 .. 31}; sectorMap[1] := {0 .. 31};
-@@ -222,14 +158,16 @@
+@@ -228,14 +164,16 @@
  
    PROCEDURE GetSector*(src: INTEGER; VAR dst: Sector);
    BEGIN src := src DIV 29; ASSERT(SYSTEM.H(0) = 0);

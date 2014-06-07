@@ -288,7 +288,7 @@
    PROCEDURE StringRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
      (*x, y are char arrays or strings*)
    BEGIN
-@@ -922,9 +894,7 @@
+@@ -935,9 +907,7 @@
    BEGIN
      IF x.mode = ORB.Const THEN x.a := ABS(x.a)
      ELSE load(x);
