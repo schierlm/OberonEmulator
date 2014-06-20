@@ -96,6 +96,7 @@ public class ImageMemory {
 	public int readWord(int wordAddress) {
 		int offs = wordAddress - baseAddress;
 		if (slidingWindowBase != -1) {
+			Feature.COLOR_GRAPHICS.use();
 			int x = (offs + slidingWindowBase) % (4096 / 4) * 4;
 			int y = img.getHeight() - 1 - (offs + slidingWindowBase) / (4096 / 4);
 			if (y < 0 || x >= img.getWidth()) return 0;
@@ -109,6 +110,7 @@ public class ImageMemory {
 			}
 			return val;
 		}
+		Feature.BW_GRAPHICS.use();
 		int x = (offs % (RISC_ORIG_SCREEN_WIDTH / 32)) * 32;
 		int y = img.getHeight() - 1 - offs / (RISC_ORIG_SCREEN_WIDTH / 32);
 		if (y < 0 || x >= img.getWidth()) return 0;
@@ -124,6 +126,7 @@ public class ImageMemory {
 	public void writeWord(int wordAddress, int value) {
 		int offs = wordAddress - baseAddress;
 		if (slidingWindowBase != -1) {
+			Feature.COLOR_GRAPHICS.use();
 			int x = (offs + slidingWindowBase) % (4096 / 4) * 4;
 			int y = img.getHeight() - 1 - (offs + slidingWindowBase) / (4096 / 4);
 			if (y < 0 || x >= img.getWidth()) return;
@@ -133,6 +136,7 @@ public class ImageMemory {
 			triggerRepaint();
 			return;
 		}
+		Feature.BW_GRAPHICS.use();
 		int x = (offs % (RISC_ORIG_SCREEN_WIDTH / 32)) * 32;
 		int y = img.getHeight() - 1 - offs / (RISC_ORIG_SCREEN_WIDTH / 32);
 		if (y < 0 || x >= img.getWidth()) return;

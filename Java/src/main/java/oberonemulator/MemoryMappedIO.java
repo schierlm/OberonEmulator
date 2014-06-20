@@ -35,10 +35,12 @@ public class MemoryMappedIO {
 	private CharBuffer clipboardData;
 
 	public MemoryMappedIO(String disk_file, final ServerSocket ss, InetSocketAddress netAddr) throws IOException {
+		if (netAddr != null) Feature.SPI_NETWORK.use();
 		sdCard = disk_file == null ? null : new Disk(disk_file);
 		net = netAddr == null ? null : new Network(netAddr);
 		if (ss == null)
 			return;
+		Feature.SERIAL.use();
 		Thread t = new Thread(new Runnable() {
 
 			@Override
@@ -77,6 +79,7 @@ public class MemoryMappedIO {
 		case 8: {
 			// RS232 data
 			int val;
+			Feature.SERIAL.use();
 			try {
 				val = socketIn == null ? 0 : socketIn.read();
 			} catch (IOException ex) {
@@ -87,6 +90,7 @@ public class MemoryMappedIO {
 		case 12: {
 			// RS232 status
 			int val;
+			Feature.SERIAL.use();
 			try {
 				val = socketIn != null && socketIn.available() > 0 ? 3 : 2;
 			} catch (IOException ex) {
@@ -96,9 +100,12 @@ public class MemoryMappedIO {
 		}
 		case 16: {
 			// SPI data
+			Feature.SPI.use();
 			if (spiSelected == 1 && sdCard != null) {
+				Feature.NATIVE_DISK.use();
 				return sdCard.disk_read();
 			} else if (spiSelected == 2 && net != null){
+				Feature.SPI_NETWORK.use();
 				return net.read();
 			}
 			return 255;
@@ -107,6 +114,7 @@ public class MemoryMappedIO {
 			// SPI status
 			// Bit 0: rx ready
 			// Other bits unused
+			Feature.SPI.use();
 			return 1;
 		}
 		case 24: {
@@ -131,6 +139,7 @@ public class MemoryMappedIO {
 		}
 		case 40: {
 			// Clipboard control
+			Feature.PARAVIRTUAL_CLIPBOARD.use();
 			try {
 				String text = (String) Toolkit.getDefaultToolkit().getSystemClipboard().getData(DataFlavor.stringFlavor);
 				if (text != null && text.length() > 0) {
@@ -147,12 +156,14 @@ public class MemoryMappedIO {
 		}
 		case 44: {
 			// Clipboard data
+			Feature.PARAVIRTUAL_CLIPBOARD.use();
 			char ch = clipboardData.get();
 			if (!clipboardData.hasRemaining())
 				clipboardData = null;
 			return ch;
 		}
 		case 48: {
+			Feature.COLOR_GRAPHICS.use();
 			return (mem.getImageMemory().getWidth() << 16) | mem.getImageMemory().getHeight();
 		}
 		default: {
@@ -172,6 +183,7 @@ public class MemoryMappedIO {
 		switch ((wordAddress % Memory.MemWords) * 4 - Memory.IOStart) {
 		case 0: {
 			// Power management
+			Feature.POWER_MANAGEMENT.use();
 			long waitMillis = startMillis + value;
 			long now = System.currentTimeMillis();
 			while (!inputOccurred && waitMillis > now) {
@@ -192,6 +204,7 @@ public class MemoryMappedIO {
 		}
 		case 8: {
 			// RS232 data
+			Feature.SERIAL.use();
 			try {
 				if (socketOut != null) {
 					socketOut.write(value & 0xff);
@@ -204,9 +217,12 @@ public class MemoryMappedIO {
 		}
 		case 16: {
 			// SPI write
+			Feature.SPI.use();
 			if (spiSelected == 1 && sdCard != null) {
+				Feature.NATIVE_DISK.use();
 				sdCard.write(value);
 			} else if (spiSelected == 2 && net != null) {
+				Feature.SPI_NETWORK.use();
 				net.write(value);
 			}
 			break;
@@ -217,11 +233,13 @@ public class MemoryMappedIO {
 			// Bit 2: fast mode
 			// Bit 3: netwerk enable
 			// Other bits unused
+			Feature.SPI.use();
 			spiSelected = value & 3;
 			break;
 		}
 		case 36: {
 			// paravirtualized storage
+			Feature.PARAVIRTUAL_DISK.use();
 			if ((value & 0xC0000000) == 0) { // setPtr
 				paravirtPtr = value;
 			}
@@ -237,11 +255,13 @@ public class MemoryMappedIO {
 		}
 		case 40: {
 			// Clipboard control
+			Feature.PARAVIRTUAL_CLIPBOARD.use();
 			clipboardData = CharBuffer.allocate(value);
 			break;
 		}
 		case 44: {
 			// Clipboard data
+			Feature.PARAVIRTUAL_CLIPBOARD.use();
 			clipboardData.put((char) value);
 			if (!clipboardData.hasRemaining()) {
 				clipboardData.flip();
@@ -251,6 +271,7 @@ public class MemoryMappedIO {
 			break;
 		}
 		case 48: {
+			Feature.COLOR_GRAPHICS.use();
 			mem.getImageMemory().setSlidingWindowBase(value);
 		}
 		}
@@ -290,9 +311,24 @@ public class MemoryMappedIO {
 	}
 
 	public synchronized void keyboardInput(int[] scancodes) {
-		if (keyBuf.length - keyCnt >= scancodes.length) {
-			System.arraycopy(scancodes, 0, keyBuf, keyCnt, scancodes.length);
-			keyCnt += scancodes.length;
+		int scancodeCount = scancodes.length;
+		if (!Feature.NATIVE_KEYBOARD.isAllowed()) {
+			scancodeCount = 0;
+			for (int i = 0; i < scancodes.length; i++) {
+				scancodes[i] &= ~0xff;
+				if (scancodes[i] != 0) {
+					scancodes[scancodeCount] = scancodes[i];
+					scancodeCount++;
+				}
+			}
+		}
+		if (!Feature.PARAVIRTUAL_KEYBOARD.isAllowed()) {
+			for(int i=0; i < scancodeCount; i++)
+				scancodes[i] &= 0xff;
+		}
+		if (keyBuf.length - keyCnt >= scancodeCount) {
+			System.arraycopy(scancodes, 0, keyBuf, keyCnt, scancodeCount);
+			keyCnt += scancodeCount;
 		}
 		inputOccurred = true;
 		notifyAll();

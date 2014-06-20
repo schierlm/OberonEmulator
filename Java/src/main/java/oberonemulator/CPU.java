@@ -153,18 +153,22 @@ public class CPU extends Thread {
 						break;
 					}
 					case FAD: {
+						Feature.FLOATING_POINT.use();
 						a_val = fp_add(b_val, c_val, (ir & ubit) != 0, (ir & vbit) != 0);
 						break;
 					}
 					case FSB: {
+						Feature.FLOATING_POINT.use();
 						a_val = fp_add(b_val, c_val ^ 0x80000000, (ir & ubit) != 0, (ir & vbit) != 0);
 						break;
 					}
 					case FML: {
+						Feature.FLOATING_POINT.use();
 						a_val = fp_mul(b_val, c_val);
 						break;
 					}
 					case FDV: {
+						Feature.FLOATING_POINT.use();
 						a_val = fp_div(b_val, c_val);
 						break;
 					}
