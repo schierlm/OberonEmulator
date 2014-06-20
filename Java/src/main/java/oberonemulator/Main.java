@@ -52,6 +52,16 @@ public class Main {
 			} else {
 				bootloader = Disk.loadBootloader(args[3]);
 			}
+			boolean largeAddressSpace = false;
+			int memSize = Memory.MemSize;
+			int displayStart = Memory.DisplayStart;
+			int romStart = Memory.ROMStart;
+			if (bootloader[511] != 0) {
+				largeAddressSpace = true;
+				memSize *= bootloader[511];
+				displayStart = bootloader[510];
+				romStart = bootloader[509];
+			}
 			BufferedImage img = new BufferedImage(Integer.parseInt(args[0]) & ~31, Integer.parseInt(args[1]), BufferedImage.TYPE_INT_RGB);
 			ServerSocket rs232 = null;
 			InetSocketAddress net = null;
@@ -75,9 +85,9 @@ public class Main {
 				}
 			}
 			MemoryMappedIO mmio = new MemoryMappedIO(args[2], rs232, net);
-			ImageMemory imgmem = new ImageMemory(img, Memory.DisplayStart / 4);
-			Memory mem = new Memory(imgmem, bootloader, mmio);
-			new EmulatorFrame(mem, mmio, img, imgmem);
+			ImageMemory imgmem = new ImageMemory(img, (int)((displayStart & 0xFFFFFFFFL) / 4));
+			Memory mem = new Memory(imgmem, bootloader, mmio, largeAddressSpace, memSize, displayStart, romStart);
+			new EmulatorFrame(mem, mmio, img, imgmem, largeAddressSpace);
 			if (pcLinkPort != -1) {
 				PCLink.start("localhost", pcLinkPort);
 			}

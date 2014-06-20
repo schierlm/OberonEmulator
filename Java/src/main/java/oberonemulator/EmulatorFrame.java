@@ -24,13 +24,15 @@ public class EmulatorFrame extends JFrame {
 	private CPU cpu;
 	private final Memory mem;
 	private MemoryMappedIO mmio;
+	private boolean largeAddressSpace;
 
-	public EmulatorFrame(final Memory mem, MemoryMappedIO mmio, BufferedImage img, ImageMemory imgmem) {
+	public EmulatorFrame(final Memory mem, MemoryMappedIO mmio, BufferedImage img, ImageMemory imgmem, boolean largeAddressSpace) {
 		super("Oberon Emulator");
 		this.mmio = mmio;
 		setLayout(new BorderLayout());
 		this.mem = mem;
-		cpu = new CPU(mem);
+		this.largeAddressSpace = largeAddressSpace;
+		cpu = new CPU(mem, largeAddressSpace);
 		EmulatorPanel ep = new EmulatorPanel(img, mmio);
 		imgmem.setObserver(ep);
 		ep.setFocusable(true);
@@ -71,7 +73,7 @@ public class EmulatorFrame extends JFrame {
 					if (e.getKeyCode() == KeyEvent.VK_F12) {
 						cpu.reset(e.isShiftDown());
 						if (e.isShiftDown() && !cpu.isAlive()) {
-							cpu = new CPU(mem);
+							cpu = new CPU(mem, largeAddressSpace);
 							cpu.start();
 						}
 					} else if (e.getKeyCode() == KeyEvent.VK_F1 || e.getKeyCode() == KeyEvent.VK_INSERT) {

@@ -64,7 +64,7 @@ public class MemoryMappedIO {
 	}
 
 	public synchronized int readWord(int wordAddress) {
-		switch (wordAddress * 4 - Memory.IOStart) {
+		switch ((wordAddress % Memory.MemWords) * 4 - Memory.IOStart) {
 		case 0: {
 			// Millisecond counter
 			checkProgress();
@@ -169,7 +169,7 @@ public class MemoryMappedIO {
 	}
 
 	public synchronized void writeWord(int wordAddress, int value) {
-		switch (wordAddress * 4 - Memory.IOStart) {
+		switch ((wordAddress % Memory.MemWords) * 4 - Memory.IOStart) {
 		case 0: {
 			// Power management
 			long waitMillis = startMillis + value;

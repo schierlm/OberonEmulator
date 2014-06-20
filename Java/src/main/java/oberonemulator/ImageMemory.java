@@ -144,9 +144,9 @@ public class ImageMemory {
 
 	public void reset() {
 		if (slidingWindowBase == -1) {
-			writeWord(Memory.DisplayStart / 4, 0x53697A65); // magic value SIZE
-			writeWord(Memory.DisplayStart / 4 + 1, Math.min(img.getWidth(), 1024));
-			writeWord(Memory.DisplayStart / 4 + 2, Math.min(img.getHeight(), 768));
+			writeWord(baseAddress, 0x53697A65); // magic value SIZE
+			writeWord(baseAddress + 1, Math.min(img.getWidth(), 1024));
+			writeWord(baseAddress + 2, Math.min(img.getHeight(), 768));
 		}
 	}
 

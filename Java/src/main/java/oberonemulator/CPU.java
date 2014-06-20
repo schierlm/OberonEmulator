@@ -9,6 +9,7 @@ public class CPU extends Thread {
 	private int regH;
 	private int[] regR = new int[16];
 	private boolean flagZ, flagN, flagC, flagV;
+	private boolean largeAddressSpace;
 
 	private static enum INS {
 		MOV, LSL, ASR, ROR,
@@ -17,8 +18,9 @@ public class CPU extends Thread {
 		FAD, FSB, FML, FDV,
 	};
 
-	public CPU(Memory memory) {
+	public CPU(Memory memory, boolean largeAddressSpace) {
 		mem = memory;
+		this.largeAddressSpace = largeAddressSpace;
 		reset(true);
 	}
 
@@ -36,7 +38,7 @@ public class CPU extends Thread {
 			regR[15] = 0;
 			mem.reset();
 		}
-		regPC = Memory.ROMStart / 4;
+		regPC = mem.getROMStart() >>> 2;
 	}
 
 	public void run() {
@@ -176,23 +178,25 @@ public class CPU extends Thread {
 					int a = (ir & 0x0F000000) >> 24;
 					int b = (ir & 0x00F00000) >> 20;
 					int off = ir & 0x000FFFFF;
+					if (largeAddressSpace)
+						off = (off << 12) >> 12;
 
-					final int address = (int) (((regR[b] & 0xFFFFFFFFL) + (off & 0xFFFFFFFFL)) % Memory.MemSize);
+					final int address = (int) (((regR[b] & 0xFFFFFFFFL) + (off & 0xFFFFFFFFL)) % (largeAddressSpace ? Memory.LargeMemSize : Memory.MemSize));
 					if ((ir & ubit) == 0) {
 						int a_val;
 						if ((ir & vbit) == 0) {
 							if (address % 4 != 0)
 								throw new IllegalArgumentException("ERROR: Unaligned IO read: " + address);
-							a_val = mem.readWord(address / 4, false);
+							a_val = mem.readWord(address >>> 2, false);
 						} else {
-							a_val = (mem.readWord(address / 4, false) >>> ((address % 4) * 8)) & 0xff;
+							a_val = (mem.readWord(address >>> 2, false) >>> ((address % 4) * 8)) & 0xff;
 						}
 						setRegister(a, a_val);
 					} else {
 						if ((ir & vbit) == 0) {
 							if (address % 4 != 0)
 								throw new IllegalArgumentException("ERROR: Unaligned IO write");
-							mem.writeWord(address / 4, regR[a]);
+							mem.writeWord(address >>> 2, regR[a]);
 						} else {
 							storeByte(address, (byte) regR[a]);
 						}
@@ -235,10 +239,12 @@ public class CPU extends Thread {
 						}
 						if ((ir & ubit) == 0) {
 							int c = ir & 0x0000000F;
-							regPC = (int) (((regR[c] & 0xFFFFFFFFL) / 4) % Memory.MemWords);
+							regPC = (int) (((regR[c] & 0xFFFFFFFFL) / 4) % (largeAddressSpace ? Memory.LargeMemWords : Memory.MemWords));
 						} else {
 							int off = ir & 0x00FFFFFF;
-							regPC = (regPC + off) % Memory.MemWords;
+							if (largeAddressSpace)
+								off = (off << 8) >> 8;
+							regPC = (regPC + off) % (largeAddressSpace ? Memory.LargeMemWords : Memory.MemWords);
 						}
 					}
 				}
@@ -273,16 +279,16 @@ public class CPU extends Thread {
 	}
 
 	private void storeByte(int address, byte value) {
-		if (address < Memory.IOStart) {
-			int w = mem.readWord(address / 4, false);
+		if ((address & 0xFFFFFFFFL) < (largeAddressSpace ? Memory.LargeIOStart : Memory.IOStart)) {
+			int w = mem.readWord(address >>> 2, false);
 			int shift = (address & 3) * 8;
 			w &= ~(0xFF << shift);
 			w |= (value & 0xFF) << shift;
-			mem.writeWord(address / 4, w);
+			mem.writeWord(address >>> 2, w);
 		} else {
 			if (address % 4 != 0)
 				throw new IllegalStateException("Unaligned IO write");
-			mem.writeWord(address / 4, value & 0xFF);
+			mem.writeWord(address >>> 2, value & 0xFF);
 		}
 	}
 
