@@ -1,0 +1,50 @@
+--- 1/Clipboard.Mod.txt
++++ 2/Clipboard.Mod.txt
+@@ -57,5 +57,35 @@
+       END
+     END
+   END Paste;
++
++  PROCEDURE CopyAll*;
++    VAR F: TextFrames.Frame;
++  BEGIN
++    IF Oberon.Par.frame = Oberon.Par.vwr.dsc THEN
++      F := Oberon.Par.frame.next(TextFrames.Frame);
++      Copy(F.text, 0, F.text.len)
++    END
++  END CopyAll;
++
++  PROCEDURE PasteAll*;
++    VAR T: Texts.Text; buf: Texts.Buffer;
++      W: Texts.Writer;
++      len, i: INTEGER;
++      ch: CHAR;
++  BEGIN
++    IF Oberon.Par.frame = Oberon.Par.vwr.dsc THEN
++      NEW(buf); Texts.OpenBuf(buf);
++      T := Oberon.Par.frame.next(TextFrames.Frame).text; Texts.Delete(T, 0, T.len, buf);
++      SYSTEM.GET(control, len);
++      IF len > 0 THEN
++        Texts.OpenWriter(W);
++        FOR i := 1 TO len DO
++          SYSTEM.GET(data, ch);
++          Texts.Write(W, ch)
++        END;
++        Texts.Insert(T, 0, W.buf);
++      END
++    END
++  END PasteAll;
+ 
+ END Clipboard.
+\ No newline at end of file
+--- 1/Edit.Mod.txt
++++ 2/Edit.Mod.txt
+@@ -2,7 +2,7 @@
+   IMPORT Files, Fonts, Texts, Display, Viewers, Oberon, MenuViewers, TextFrames;
+ 
+   CONST CR = 0DX; maxlen = 32;
+-    StandardMenu = "System.Close System.Copy System.Grow Edit.Search Edit.Store";
++    StandardMenu = "System.Close System.Copy System.Grow Edit.Search Edit.Store Clipboard.CopyAll Clipboard.PasteAll";
+ 
+   VAR W: Texts.Writer;
+     time: LONGINT;
