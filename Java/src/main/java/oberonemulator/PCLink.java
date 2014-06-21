@@ -81,6 +81,7 @@ public class PCLink extends JFrame {
 					}
 					String filename = sjob[1] + "\0";
 					if (filename.contains("*")) {
+						Feature.WILDCARD_PCLINK.use();
 						File f = new File(sjob[0]).getParentFile();
 						System.out.printf("PCLink LST Pattern: %s\n", sjob[1]);
 						out.write(LST);
