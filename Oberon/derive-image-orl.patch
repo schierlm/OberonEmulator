@@ -20,7 +20,7 @@
  
 +    Buff = POINTER TO BuffDesc;
 +    BuffDesc = RECORD
-+        a: ARRAY 10000H OF BYTE (* 64K ought to be enough for anybody *)
++        a: ARRAY 0C000H OF BYTE (* 48K ought to be enough for anybody *)
 +    END;
 +
    VAR root*, M: Module;
@@ -118,14 +118,14 @@
      newmod :=  mod
    END Load;
  
-+  PROCEDURE DoLink(ui: BOOLEAN; buf: Buff);
++  PROCEDURE DoLink(ui: BOOLEAN; bufptr: INTEGER);
 +    VAR
 +      newmod: Module;
-+      i: INTEGER;
++      i: INTEGER; bb: BYTE;
 +  BEGIN
-+    UseImage := ui;
-+    FOR i := 0 TO 10000H - 1 DO buf.a[i] := 0 END;
-+    ImageOffset := SYSTEM.VAL(INTEGER, buf);
++    UseImage := ui; bb := 0;
++    FOR i := 0 TO 0C000H - 1 DO SYSTEM.PUT(bufptr+i, bb) END;
++    ImageOffset := bufptr;
 +    MTOrg := 20H;    
 +    AllocPtr := 100H;
 +    NILMOD := SYSTEM.VAL(Module, ImageOffset); (* NIL *)
@@ -139,13 +139,13 @@
 +
 +  PROCEDURE Link*();
 +    VAR
-+      buf: Buff;
++      buf: BuffDesc;
 +      f: Files.File;
 +      r: Files.Rider;
-+      i: INTEGER;
++      i, adr: INTEGER;
 +  BEGIN
-+    NEW(buf);
-+    DoLink(TRUE, buf);
++    adr := SYSTEM.ADR(buf);
++    DoLink(TRUE, adr);
 +    f := Files.Old("DiskImage.Bin");
 +    Files.Set(r, f, 400H);
 +    FOR i := 0 TO AllocPtr - 1 DO
@@ -156,12 +156,12 @@
 +
 +  PROCEDURE Install*();
 +    VAR
-+      idx, i, sector: INTEGER;
++      idx, i, sector, adr: INTEGER;
 +      secbuf: Kernel.Sector;
-+      buf: Buff;
++      buf: BuffDesc;
 +  BEGIN
-+    NEW(buf);
-+    DoLink(FALSE, buf);
++    adr := SYSTEM.ADR(buf);
++    DoLink(FALSE, adr);
 +    idx := 0;
 +    sector := 2 * 29;
 +    WHILE (idx < AllocPtr) DO

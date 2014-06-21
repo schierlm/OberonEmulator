@@ -33,13 +33,20 @@ Batch.Run
 |> Batch.Collect |> XORP.Compile Edit.Mod/s ~
 |> Batch.Collect |> XORP.Compile Clipboard.Mod/s ~
 |> Batch.Collect |> Batch.VerifyLog 068896E5EH
-|> Batch.WriteLog 3 "*** Small compile finished ***"
-||
-
-Batch.Run
-|> Batch.ClearLog
-|> Batch.Collect
-|> Batch.WriteLog * 1 "*** Building DiskImage.Bin ***"
+|> Batch.Collect |> Batch.WriteLog * 1 "*** Compiling more tools ***"
+|> Batch.Collect |> XORP.Compile ORS.Mod/s ORB.Mod/s ~
+|> Batch.Collect |> XORP.Compile ORG.Mod/s ~
+|> Batch.Collect |> XORP.Compile ORP.Mod/s ~
+|> Batch.Collect |> XORP.Compile ORTool.Mod/s ~
+|> Batch.Collect |> XORP.Compile Calc.Mod/s ResourceMonitor.Mod/s ~
+|> Batch.Collect |> XORP.Compile Graphics.Mod/s
+|> Batch.Collect |> XORP.Compile GraphicFrames.Mod/s ~
+|> Batch.Collect |> XORP.Compile Draw.Mod/s ~
+|> Batch.Collect |> XORP.Compile GraphTool.Mod/s ~
+|> Batch.Collect |> XORP.Compile Rectangles.Mod/s ~
+|> Batch.Collect |> XORP.Compile Curves.Mod/s ~
+|> Batch.Collect |> Batch.VerifyLog 0DC00D991H
+|> Batch.WriteLog * 1 "*** Building MinimalDiskImage.Bin ***"
 |> System.CopyFiles System.Tool.Min => System.Tool.X ~
 |> ImageORL.ExtractBootROM
 |> Batch.Collect
@@ -52,29 +59,10 @@ Batch.Run
 |> Batch.Collect
 |> ImageORL.Link
 |> ImageTool.Close
-|> Batch.VerifyLog 59C9FBC9H
-|> Batch.WriteLog 3 "*** Small Image finished ***"
-||
-
-_______________ full image _________________
-
-Batch.Run 
-|> Batch.ClearLog
 |> Batch.Collect
-|> Batch.WriteLog 1 "*** Compiling more tools ***"
-|> Batch.Collect |> XORP.Compile ORS.Mod/s ORB.Mod/s ORG.Mod/s ~
-|> Batch.Collect |> XORP.Compile ORP.Mod/s ORTool.Mod/s ~
-|> Batch.Collect |> XORP.Compile Calc.Mod/s ResourceMonitor.Mod/s ~
-|> Batch.Collect |> XORP.Compile Graphics.Mod/s 
-|> Batch.Collect |> XORP.Compile GraphicFrames.Mod/s ~
-|> Batch.Collect |> XORP.Compile Draw.Mod/s GraphTool.Mod/s ~
-|> Batch.Collect |> XORP.Compile Rectangles.Mod/s Curves.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 9130D362H
-|> Batch.WriteLog * 3 "*** Second compile finished ***"
-||
-
-Batch.Run
-|> Batch.ClearLog
+|> System.RenameFiles DiskImage.Bin => MinimalDiskImage.Bin ~
+|> Batch.VerifyLog 872C1824H
+|> Batch.Collect
 |> Batch.Collect
 |> Batch.WriteLog * 1 "*** Building DiskImage.Bin ***"
 |> System.CopyFiles System.Tool.Full => System.Tool.X ~
@@ -88,6 +76,7 @@ Batch.Run
         ORTool.rsc.X Calc.rsc.X ResourceMonitor.rsc.X
         Graphics.rsc.X GraphicFrames.rsc.X Draw.rsc.X
         GraphTool.rsc.X Rectangles.rsc.X Curves.rsc.X
+~ |> Batch.Collect |> ImageTool.AddFiles
         Draw.Tool Calc.Tool
         Kernel.smb.X FileDir.smb.X Files.smb.X Modules.smb.X
         Input.smb.X Display.smb.X Viewers.smb.X Fonts.smb.X
@@ -95,6 +84,7 @@ Batch.Run
         System.smb.X Edit.smb.X Clipboard.smb.X
         ORS.smb.X ORB.smb.X ORG.smb.X ORP.smb.X
         ORTool.smb.X Calc.smb.X ResourceMonitor.smb.X
+~ |> Batch.Collect |> ImageTool.AddFiles
         Graphics.smb.X GraphicFrames.smb.X Draw.smb.X
         GraphTool.smb.X Rectangles.smb.X Curves.smb.X
         Oberon8.Scn.Fnt Oberon8i.Scn.Fnt
@@ -105,6 +95,7 @@ Batch.Run
 |> Batch.Collect
 |> ImageORL.Link
 |> ImageTool.Close
-|> Batch.VerifyLog 59C9FBC9H
-|> Batch.WriteLog 3 "*** FINISHED ***"
+|> Batch.VerifyLog 0D8D0E758H
+|> Batch.Collect
+|> Batch.WriteLog * 3 "*** FINISHED ***"
 ||

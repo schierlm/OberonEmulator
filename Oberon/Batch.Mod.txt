@@ -6,8 +6,18 @@ MODULE Batch;
     BatchRunning = 1;
     BatchWaitGC = 2;
     BatchFailed = 3;
+
+  TYPE
+    FileList = POINTER TO FileListDesc;
+
+    FileListDesc = RECORD
+        name: FileDir.FileName;
+        next: FileList;
+      END;
+
   VAR
     pat: ARRAY 32 OF CHAR;
+    fl: FileList;
     state: INTEGER;
     emptyReader: Texts.Reader;
     script: Texts.Reader;
@@ -92,9 +102,9 @@ MODULE Batch;
     END
   END VerifyLog;
 
-  PROCEDURE DelFile(name: FileDir.FileName; adr: LONGINT; VAR cont: BOOLEAN);
+  PROCEDURE AddFileToList(name: FileDir.FileName; adr: LONGINT; VAR cont: BOOLEAN);
     VAR
-      i0, i, j0, j: INTEGER; hp: FileDir.FileHeader;
+      i0, i, j0, j: INTEGER; hp: FileDir.FileHeader; f: FileList;
   BEGIN
     i := 0;
     WHILE (pat[i] > "*") & (pat[i] = name[i]) DO INC(i) END;
@@ -112,9 +122,12 @@ MODULE Batch;
       END
     END;
     IF (name[i0] = 0X) & (pat[j0] = 0X) THEN (*found*)
-      Files.Delete(name, i);
+      NEW(f);
+      f.next := fl;
+      f.name := name;
+      fl := f
     END
-  END DelFile;
+  END AddFileToList;
 
   PROCEDURE DeleteFiles*;
   VAR
@@ -132,7 +145,12 @@ MODULE Batch;
     i := 0;
     WHILE pat[i] > "*" DO pre[i] := pat[i]; INC(i) END;
     pre[i] := 0X;
-    FileDir.Enumerate(pre, DelFile);
+    fl := NIL;
+    FileDir.Enumerate(pre, AddFileToList);
+    WHILE fl # NIL DO
+      Files.Delete(fl.name, i);
+      fl := fl.next;
+    END
   END DeleteFiles;
 
   PROCEDURE Collect*;
