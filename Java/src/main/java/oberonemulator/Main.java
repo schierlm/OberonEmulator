@@ -65,8 +65,12 @@ public class Main {
 				displayStart = bootloader[510];
 				romStart = bootloader[509];
 			}
-			BufferedImage img = new BufferedImage(Integer.parseInt(args[0]) & ~31, Integer.parseInt(args[1]), BufferedImage.TYPE_INT_RGB);
-			if (img.getWidth() != 1024 || img.getHeight() != 768)
+			BufferedImage img = new BufferedImage(Math.abs(Integer.parseInt(args[0])) & ~31, Integer.parseInt(args[1]), BufferedImage.TYPE_INT_RGB);
+			int span = -128;
+			if (Integer.parseInt(args[0]) < 0) {
+				Feature.NEW_DYNSIZE_GRAPHICS.use();
+				span = img.getWidth() / 8;
+			} else if (img.getWidth() != 1024 || img.getHeight() != 768)
 				Feature.DYNSIZE_GRAPHICS.use();
 			ServerSocket rs232 = null;
 			InetSocketAddress net = null;
@@ -90,7 +94,7 @@ public class Main {
 				}
 			}
 			MemoryMappedIO mmio = new MemoryMappedIO(args[2], rs232, net);
-			ImageMemory imgmem = new ImageMemory(img, (int)((displayStart & 0xFFFFFFFFL) / 4));
+			ImageMemory imgmem = new ImageMemory(span, img, (int)((displayStart & 0xFFFFFFFFL) / 4));
 			Memory mem = new Memory(imgmem, bootloader, mmio, largeAddressSpace, memSize, displayStart, romStart);
 			new EmulatorFrame(mem, mmio, img, imgmem, largeAddressSpace);
 			if (pcLinkPort != -1) {

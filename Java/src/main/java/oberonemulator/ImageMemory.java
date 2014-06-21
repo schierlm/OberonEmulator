@@ -6,18 +6,19 @@ import java.util.Arrays;
 
 public class ImageMemory {
 
-	private static final int RISC_ORIG_SCREEN_WIDTH = 1024;
-
 	private static int BLACK = 0x657b83, WHITE = 0xfdf6e3;
 
 	private final BufferedImage img;
+	private final int span;
 	private ImageObserver observer = null;
 	private int baseAddress;
 	private int slidingWindowBase = -1;
 	private int[] palette = null;
 	private byte[][][] reversePalette = null;
 
-	public ImageMemory(BufferedImage img, int baseAddress) {
+
+	public ImageMemory(int span, BufferedImage img, int baseAddress) {
+		this.span = span;
 		this.img = img;
 		this.baseAddress = baseAddress;
 	}
@@ -111,8 +112,8 @@ public class ImageMemory {
 			return val;
 		}
 		Feature.BW_GRAPHICS.use();
-		int x = (offs % (RISC_ORIG_SCREEN_WIDTH / 32)) * 32;
-		int y = img.getHeight() - 1 - offs / (RISC_ORIG_SCREEN_WIDTH / 32);
+		int x = (offs % (Math.abs(span) / 4)) * 32;
+		int y = img.getHeight() - 1 - offs / (Math.abs(span) / 4);
 		if (y < 0 || x >= img.getWidth()) return 0;
 		int val = 0;
 		for (int i = 0; i < 32; i++) {
@@ -137,8 +138,8 @@ public class ImageMemory {
 			return;
 		}
 		Feature.BW_GRAPHICS.use();
-		int x = (offs % (RISC_ORIG_SCREEN_WIDTH / 32)) * 32;
-		int y = img.getHeight() - 1 - offs / (RISC_ORIG_SCREEN_WIDTH / 32);
+		int x = (offs % (Math.abs(span) / 4)) * 32;
+		int y = img.getHeight() - 1 - offs / (Math.abs(span) / 4);
 		if (y < 0 || x >= img.getWidth()) return;
 		for (int i = 0; i < 32; i++) {
 			img.setRGB(x + i, y, (value & (1 << i)) != 0 ? WHITE : BLACK);
@@ -148,6 +149,12 @@ public class ImageMemory {
 
 	public void reset() {
 		if (slidingWindowBase == -1) {
+			if (span != -128) {
+				writeWord(baseAddress, 0x53697A66); // magic value SIZF
+				writeWord(baseAddress + 1, img.getWidth());
+				writeWord(baseAddress + 2, img.getHeight());				
+				return;
+			}
 			writeWord(baseAddress, 0x53697A65); // magic value SIZE
 			writeWord(baseAddress + 1, Math.min(img.getWidth(), 1024));
 			writeWord(baseAddress + 2, Math.min(img.getHeight(), 768));
