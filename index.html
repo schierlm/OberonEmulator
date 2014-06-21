@@ -18,14 +18,14 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 <p>Here you can find <a href="mailto:schierlm@gmx.de">my</a> emulators for
 <a href="http://projectoberon.com/">Project Oberon</a> in JavaScript and Java.</p>
 
-<p style="margin-right: 5em">Note that neither of the emulators support floating point, and the JavaScript
-emulator does not support RS232 or the original SPI and keyboard interfaces, but
+<p style="margin-right: 5em">Note that the JavaScript emulator does not support
+floating point, RS232 or the original SPI and keyboard interfaces, but
 a simplified "paravirtualized" interface for keyboard, clipboard, sd-card, and
-power management instead. The paravirtualized interface is also supported by the
-Java emulator to make development easier.</p>
+power management instead. All these interfaces are also supported by the Java
+emulator (and others can be disabled) to make development easier.</p>
 
-<p>You can also find <a href="oberonsource.zip">all the Oberon sources and tools
-I used for building the disk images used for the emulators</a> (150 KB).
+<p>You can also find <a href="oberonsource-js.zip">all the Oberon sources and tools
+I used for building the disk images used for the JavaScript emulator</a> (150 KB).
 
 <h2>JavaScript emulator</h2>
 
@@ -74,17 +74,20 @@ Your browser does not support JavaScript or it is disabled.
 
 <h2>Java emulator</h2>
 
-<p><a href="java.zip">Download here</a> (180KB)</p>
+<p><a href="java.zip">Download here</a> (463 KB)</p>
 
-<h2>Java emulator with floating point support</h2>
-
-<p><a href="java_fp.zip">Download here</a> (145KB)</p>
-
-<p>This emulator does not include the disk images included in the previous two versions.
-Instead it contains the original BootLoad.Bin and a disk image that does not
-use any of the parvirtualized features and can therefore be used with
+<p>This emulator includes three different sets of disk images. First, the
+images also used in the JavaScript emulator. Second it contains a set
+of "compatible" images: The original BootLoad.Bin (and one that uses a 4GB
+address space) and a disk image that does not
+use any of the paravirtualized features and can therefore be used with
 <a href="https://github.com/pdewacht/oberon-risc-emu">Peter De Wachter's Oberon
-Emulator</a> as well.</p>
+Emulator</a> or native as well. And last but not least a set of "big" disk and
+boot loader images that include all advanced features like color or different
+memory layouts.</p>
 
+<p>The Oberon sources for <a href="oberonsource-compatible.zip">the compatible
+images</a> (156 KB) and the differences in <a href="oberonsource-big.zip">the 
+"big" images</a> (14 KB) are also available.</p>
 </body>
 </html>
