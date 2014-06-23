@@ -10,7 +10,7 @@ Batch.Run
 |> ORP.Compile ORS.Mod/s ORB.Mod/s ORG.Mod/s ~
 |> Batch.Collect |> ORP.Compile ORP.Mod/s ~
 |> Batch.Collect |> System.Free ORP ORG ORB ORS ~
-|> Batch.VerifyLog 0ACC049B4H
+|> Batch.VerifyLog 0CEFA60ABH
 |> Batch.WriteLog * 1 "*** Compiling crosscompiler ***"
 |> Batch.DeleteFiles X*.smb
 |> Batch.DeleteFiles BootLoad.smb
@@ -19,7 +19,7 @@ Batch.Run
 |> Batch.Collect |> Batch.DeleteFiles Image*.smb
 |> ORP.Compile ImageKernel.Mod/s ImageFileDir.Mod/s ImageFiles.Mod/s
         ImageTool.Mod/s ImageORL.Mod/s BootLoad.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 027E2DBB5H
+|> Batch.Collect |> Batch.VerifyLog 7FBE646DH
 |> Batch.WriteLog * 1 "*** Starting crosscompile ***"
 |> Batch.DeleteFiles *.X
 |> XORP.Compile Kernel.Mod/s FileDir.Mod/s Files.Mod/s Modules.Mod/s
@@ -28,11 +28,11 @@ Batch.Run
 |> Batch.Collect |> XORP.Compile Texts.Mod/s Oberon.Mod/s MenuViewers.Mod/s ~
 |> Batch.Collect |> XORP.Compile TextFrames.Mod/s ~
 |> Batch.Collect |> XORP.Compile System.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 0F880FEC7H
+|> Batch.Collect |> Batch.VerifyLog 42389344H
 |> Batch.WriteLog * \ ""
 |> Batch.Collect |> XORP.Compile Edit.Mod/s ~
 |> Batch.Collect |> XORP.Compile Clipboard.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 068896E5EH
+|> Batch.Collect |> Batch.VerifyLog 0E89A7470H
 |> Batch.Collect |> Batch.WriteLog * 1 "*** Compiling more tools ***"
 |> Batch.Collect |> XORP.Compile ORS.Mod/s ORB.Mod/s ~
 |> Batch.Collect |> XORP.Compile ORG.Mod/s ~
@@ -45,7 +45,7 @@ Batch.Run
 |> Batch.Collect |> XORP.Compile GraphTool.Mod/s ~
 |> Batch.Collect |> XORP.Compile Rectangles.Mod/s ~
 |> Batch.Collect |> XORP.Compile Curves.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 0DC00D991H
+|> Batch.Collect |> Batch.VerifyLog 26A6E77H
 |> Batch.WriteLog * 1 "*** Building MinimalDiskImage.Bin ***"
 |> System.CopyFiles System.Tool.Min => System.Tool.X ~
 |> ImageORL.ExtractBootROM
@@ -61,7 +61,7 @@ Batch.Run
 |> ImageTool.Close
 |> Batch.Collect
 |> System.RenameFiles DiskImage.Bin => MinimalDiskImage.Bin ~
-|> Batch.VerifyLog 872C1824H
+|> Batch.VerifyLog 0BBF68AB7H
 |> Batch.Collect
 |> Batch.Collect
 |> Batch.WriteLog * 1 "*** Building DiskImage.Bin ***"
@@ -95,7 +95,7 @@ Batch.Run
 |> Batch.Collect
 |> ImageORL.Link
 |> ImageTool.Close
-|> Batch.VerifyLog 0D8D0E758H
+|> Batch.VerifyLog 0BDF750EDH
 |> Batch.Collect
 |> Batch.WriteLog * 3 "*** FINISHED ***"
 ||
