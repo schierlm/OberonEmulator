@@ -1,0 +1,141 @@
+Conventions used:
+  * Variables that are of type REAL become type INTEGER and a Q is added to the name
+  * Functions whose signature got changed because of this get a Q added to the name
+  * in case the function's return type was REAL two Q get added to the name
+
+--- ORG.Mod.txt
++++ ORG.Mod.txt
+@@ -246,9 +246,9 @@
+   BEGIN x.mode := ORB.Const; x.type := typ; x.a := val
+   END MakeConstItem;
+ 
+-  PROCEDURE MakeRealItem*(VAR x: Item; val: REAL);
+-  BEGIN x.mode := ORB.Const; x.type := ORB.realType; x.a := SYSTEM.VAL(LONGINT, val)
+-  END MakeRealItem;
++  PROCEDURE MakeRealItemQ*(VAR x: Item; valQ: INTEGER);
++  BEGIN x.mode := ORB.Const; x.type := ORB.realType; x.a := valQ
++  END MakeRealItemQ;
+ 
+   PROCEDURE MakeStringItem*(VAR x: Item; len: LONGINT); (*copies string from ORS-buffer to ORG-string array*)
+     VAR i: LONGINT;
+--- ORP.Mod.txt
++++ ORP.Mod.txt
+@@ -321,7 +321,7 @@
+         END
+       END
+     ELSIF sym = ORS.int THEN ORG.MakeConstItem(x, ORB.intType, ORS.ival); ORS.Get(sym)
+-    ELSIF sym = ORS.real THEN ORG.MakeRealItem(x, ORS.rval); ORS.Get(sym)
++    ELSIF sym = ORS.real THEN ORG.MakeRealItemQ(x, ORS.rvalQ); ORS.Get(sym)
+     ELSIF sym = ORS.char THEN ORG.MakeConstItem(x, ORB.charType, ORS.ival); ORS.Get(sym)
+     ELSIF sym = ORS.nil THEN ORS.Get(sym); ORG.MakeConstItem(x, ORB.nilType, 0)
+     ELSIF sym = ORS.string THEN ORG.MakeStringItem(x, ORS.slen); ORS.Get(sym)
+--- ORS.Mod.txt
++++ ORS.Mod.txt
+@@ -31,12 +31,17 @@
+     var* = 65; procedure* = 66; begin* = 67; import* = 68; module* = 69;
+ 
+   TYPE Ident* = ARRAY IdLen OF CHAR;
++    FltQQType = PROCEDURE(x: INTEGER): INTEGER;
++    BinaryQQType = PROCEDURE (xQ, yQ: INTEGER): INTEGER;
+ 
+   VAR ival*, slen*: LONGINT;  (*results of Get*)
+-    rval*: REAL;
++    rvalQ*: INTEGER;
+     id*: Ident;  (*for identifiers*)
+     str*: ARRAY stringBufSize OF CHAR;
+     errcnt*: INTEGER;
++    FltQQ : FltQQType;
++    MultQQ : BinaryQQType;
++    DivQQ : BinaryQQType;
+ 
+     ch: CHAR;  (*last character read*)
+     errpos: LONGINT;
+@@ -112,19 +117,19 @@
+     Texts.Read(R, ch); slen := i  (*no 0X appended!*)
+   END HexString;
+ 
+-  PROCEDURE Ten(e: LONGINT): REAL;
+-    VAR x, t: REAL;
+-  BEGIN x := 1.0; t := 10.0;
++  PROCEDURE TenQQ(e: LONGINT): INTEGER;
++    VAR xQ, tQ: INTEGER;
++  BEGIN xQ := FltQQ(1); tQ := FltQQ(10);
+     WHILE e > 0 DO
+-      IF ODD(e) THEN x := t * x END ;
+-      t := t * t; e := e DIV 2
++      IF ODD(e) THEN xQ := MultQQ(tQ, xQ) END ;
++      tQ := MultQQ(tQ, tQ); e := e DIV 2
+     END ;
+-    RETURN x
+-  END Ten;
++    RETURN xQ
++  END TenQQ;
+ 
+   PROCEDURE Number(VAR sym: INTEGER);
+     CONST max = 2147483647 (*2^31*); maxM = 16777216; (*2^24*)
+-    VAR i, k, e, n, s, h: LONGINT; x: REAL;
++    VAR i, k, e, n, s, h: LONGINT; xQ: INTEGER;
+       d: ARRAY 16 OF INTEGER;
+       negE: BOOLEAN;
+   BEGIN ival := 0; i := 0; n := 0; k := 0;
+@@ -139,7 +144,7 @@
+       UNTIL i = n;
+       IF ch = "X" THEN sym := char;
+         IF k < 100H THEN ival := k ELSE Mark("illegal value"); ival := 0 END
+-      ELSIF ch = "R" THEN sym := real; rval := SYSTEM.VAL(REAL, k)
++      ELSIF ch = "R" THEN sym := real; rvalQ := k
+       ELSE sym := int; ival := k
+       END ;
+       Texts.Read(R, ch)
+@@ -155,7 +160,7 @@
+           INC(i)
+         UNTIL i = n;
+         sym := int; ival := k
+-      ELSE (*real number*) x := 0.0; e := 0;
++      ELSE (*real number*) xQ := FltQQ(0); e := 0;
+         REPEAT (*integer part*) h := k*10 + d[i];
+           IF h < maxM THEN k := h ELSE Mark("too many digits") END ;
+           INC(i)
+@@ -165,7 +170,7 @@
+           IF h < maxM THEN k := h ELSE Mark("too many digits*") END ;
+           DEC(e); Texts.Read(R, ch)
+         END ;
+-        x := FLT(k);
++        xQ := FltQQ(k);
+         IF (ch = "E") OR (ch = "D") THEN  (*scale factor*)
+           Texts.Read(R, ch); s := 0; 
+           IF ch = "-" THEN negE := TRUE; Texts.Read(R, ch)
+@@ -180,11 +185,11 @@
+           END
+         END ;
+         IF e < 0 THEN
+-          IF e >= -maxExp THEN x := x / Ten(-e) ELSE x := 0.0 END
++          IF e >= -maxExp THEN rvalQ:=TenQQ(-e); xQ := DivQQ(xQ,rvalQ) ELSE xQ := FltQQ(0) END
+         ELSIF e > 0 THEN
+-          IF e <= maxExp THEN x := Ten(e) * x ELSE x := 0.0; Mark("too large") END
++          IF e <= maxExp THEN rvalQ:=TenQQ(-e); xQ := MultQQ(rvalQ,xQ) ELSE xQ := FltQQ(0); Mark("too large") END
+         END ;
+-        sym := real; rval := x
++        sym := real; rvalQ := xQ
+       END
+     ELSE  (*decimal integer*)
+       REPEAT
+@@ -315,4 +320,18 @@
+   KWX[7] := k; KWX[8] := k;
+   EnterKW(procedure, "PROCEDURE");
+   KWX[9] := k
++  ;FltQQ := SYSTEM.VAL(FltQQType, SYSTEM.ADR($004B0061 01000C20 0F0000C7$));
++  MultQQ := SYSTEM.VAL(BinaryQQType, SYSTEM.ADR($01000E00 0F0000C7$));
++  DivQQ := SYSTEM.VAL(BinaryQQType, SYSTEM.ADR($01000F00 0F0000C7$));
++(* FltQQ:
++     61004B00    MOV'  R1  R0  19200
++     200C0001    FAD'  R0  R0  R1
++     C700000F    B LNK
++   MultQQ:
++     000E0001    FML  R0  R0  R1
++     C700000F    B LNK
++   DivQQ:
++     000F0001    FDV  R0  R0  R1
++     C700000F    B LNK
++*)
+ END ORS.
