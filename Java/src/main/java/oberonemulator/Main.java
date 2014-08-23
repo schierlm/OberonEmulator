@@ -28,7 +28,11 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.util.Arrays;
 
+import oberonemulator.Keyboard.VirtualKeyboard;
+
 public class Main {
+
+	private static Keyboard keyboard = new Keyboard.VirtualKeyboard(true);
 
 	public static void main(String[] args) throws Exception {
 		if (args.length == 3 && args[0].equals("PCLink")) {
@@ -39,6 +43,27 @@ public class Main {
 			PNGEncoder.decode(args[1], args[2], args[3]);
 		} else if (args.length > 2 && args[0].equals("LimitFeatures")) {
 			Feature.allowedFeatures = Feature.parse(args[1]);
+			main(Arrays.copyOfRange(args, 2, args.length));
+		} else if (args.length > 2 && args[0].equals("KeyboardEmulation")) {
+			switch (args[1]) {
+			case "Virtual":
+				keyboard = new Keyboard.VirtualKeyboard(true);
+				break;
+			case "ParaVirtual":
+				keyboard = new Keyboard.ParavirtualKeyboard();
+				break;
+			case "NoParaVirtual":
+				keyboard = new Keyboard.VirtualKeyboard(false);
+				break;
+			case "Native":
+				keyboard = new Keyboard.NativeKeyboard();
+				break;
+			case "Hybrid":
+				keyboard = new Keyboard.HybridKeyboard();
+				break;
+			default:
+				throw new Exception("Unsupported keyboard type: " + args[1]);
+			}
 			main(Arrays.copyOfRange(args, 2, args.length));
 		} else if (args.length >= 4 && args.length <= 6) {
 			int[] bootloader;
@@ -96,7 +121,8 @@ public class Main {
 			MemoryMappedIO mmio = new MemoryMappedIO(args[2], rs232, net);
 			ImageMemory imgmem = new ImageMemory(span, img, (int)((displayStart & 0xFFFFFFFFL) / 4));
 			Memory mem = new Memory(imgmem, bootloader, mmio, largeAddressSpace, memSize, displayStart, romStart);
-			new EmulatorFrame(mem, mmio, img, imgmem, largeAddressSpace);
+			keyboard.setMMIO(mmio);
+			new EmulatorFrame(mem, keyboard, mmio, img, imgmem, largeAddressSpace);
 			if (pcLinkPort != -1) {
 				PCLink.start("localhost", pcLinkPort);
 			}
@@ -107,9 +133,11 @@ public class Main {
 			System.out.println("       java -jar OberonEmulator.jar <width> <height> <diskimage> <romimage> [<rs232> [<net>]]");
 			System.out.println("       java -jar OberonEmulator.jar <width> <height> -png <pngfile> [<rs232> [<net>]]");
 			System.out.println("       java -jar OberonEmulator.jar LimitFeatures <base>[+<feature>|-<feature>]* ...");
+			System.out.println("       java -jar OberonEmulator.jar KeyboardEmulation <kbdtype> ...");
 			System.out.println();
 			System.out.println("<rs232> can be a TCP port number, the word 'PCLink' to run PCLink over virtual RS232, or '-' to ignore.");
 			System.out.println("<net> is a broadcast IP address, in the form <host>[:<port>]. Default port is 48654 (0BE0Eh, for 0BEr0nnEt).");
+			System.out.println("<kbdtype> is one of Virtual, ParaVirtual, NoParaVirtual, Native, Hybrid.");
 		}
 	}
 }

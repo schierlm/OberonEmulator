@@ -304,27 +304,17 @@ public class MemoryMappedIO {
 		notifyAll();
 	}
 
-	private PS2 ps2 = new PS2();
-
-	public synchronized void keyboardInput(char keyChar) {
-		keyboardInput(ps2.ps2_encode(keyChar));
-	}
-
 	public synchronized void keyboardInput(int[] scancodes) {
 		int scancodeCount = scancodes.length;
-		if (!Feature.NATIVE_KEYBOARD.isAllowed()) {
-			scancodeCount = 0;
-			for (int i = 0; i < scancodes.length; i++) {
-				scancodes[i] &= ~0xff;
-				if (scancodes[i] != 0) {
-					scancodes[scancodeCount] = scancodes[i];
-					scancodeCount++;
-				}
+		if (scancodeCount == 0)
+			return;
+		for(int i=0; i < scancodeCount; i++) {
+			if ((scancodes[i] & 0xff) != 0) {
+				Feature.NATIVE_KEYBOARD.use();
 			}
-		}
-		if (!Feature.PARAVIRTUAL_KEYBOARD.isAllowed()) {
-			for(int i=0; i < scancodeCount; i++)
-				scancodes[i] &= 0xff;
+			if ((scancodes[i] & ~0xff) != 0) {
+				Feature.PARAVIRTUAL_KEYBOARD.use();
+			}
 		}
 		if (keyBuf.length - keyCnt >= scancodeCount) {
 			System.arraycopy(scancodes, 0, keyBuf, keyCnt, scancodeCount);

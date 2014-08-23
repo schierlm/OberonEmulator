@@ -37,7 +37,7 @@ public enum Feature {
 
 	public static EnumSet<Feature> allowedFeatures = null;
 
-	public boolean isAllowed() {
+	private boolean isAllowed() {
 		return allowedFeatures == null || allowedFeatures.contains(this);
 	}
 

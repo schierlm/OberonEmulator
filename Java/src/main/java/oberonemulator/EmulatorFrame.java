@@ -24,11 +24,13 @@ public class EmulatorFrame extends JFrame {
 	private CPU cpu;
 	private final Memory mem;
 	private MemoryMappedIO mmio;
+	private Keyboard keyboard;
 	private boolean largeAddressSpace;
 
-	public EmulatorFrame(final Memory mem, MemoryMappedIO mmio, BufferedImage img, ImageMemory imgmem, boolean largeAddressSpace) {
+	public EmulatorFrame(final Memory mem, Keyboard keyboard, MemoryMappedIO mmio, BufferedImage img, ImageMemory imgmem, boolean largeAddressSpace) {
 		super("Oberon Emulator");
 		this.mmio = mmio;
+		this.keyboard = keyboard;
 		setLayout(new BorderLayout());
 		this.mem = mem;
 		this.largeAddressSpace = largeAddressSpace;
@@ -65,7 +67,7 @@ public class EmulatorFrame extends JFrame {
 
 				@Override
 				public void keyTyped(KeyEvent e) {
-					mmio.keyboardInput(e.getKeyChar());
+					keyboard.type(e.getKeyChar());
 				}
 
 				@Override
@@ -77,9 +79,11 @@ public class EmulatorFrame extends JFrame {
 							cpu.start();
 						}
 					} else if (e.getKeyCode() == KeyEvent.VK_F1 || e.getKeyCode() == KeyEvent.VK_INSERT) {
-						mmio.keyboardInput((char) 26);
+						keyboard.press(KeyEvent.KEY_LOCATION_STANDARD, KeyEvent.VK_F1);
 					} else if (e.getKeyCode() == KeyEvent.VK_ALT && !e.isControlDown()) {
 						mmio.mouseButton(2, true);
+					} else {
+						keyboard.press(e.getKeyLocation(), e.getKeyCode());
 					}
 				}
 
@@ -87,6 +91,10 @@ public class EmulatorFrame extends JFrame {
 				public void keyReleased(KeyEvent e) {
 					if (e.getKeyCode() == KeyEvent.VK_ALT) {
 						mmio.mouseButton(2, false);
+					} else if (e.getKeyCode() == KeyEvent.VK_F1 || e.getKeyCode() == KeyEvent.VK_INSERT) {
+						keyboard.release(KeyEvent.KEY_LOCATION_STANDARD, KeyEvent.VK_F1);
+					} else if (e.getKeyCode() != KeyEvent.VK_F12) {
+						keyboard.release(e.getKeyLocation(), e.getKeyCode());
 					}
 				}
 			});
