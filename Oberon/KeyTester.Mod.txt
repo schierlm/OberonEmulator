@@ -1,0 +1,332 @@
+MODULE KeyTester;
+  IMPORT SYSTEM, Kernel, Modules, Display, Fonts, Viewers, Oberon, MenuViewers, TextFrames;
+
+  CONST
+    Menu = "System.Close  System.Copy  System.Grow  KeyTester.Start  KeyTester.Delay0  KeyTester.Delay100  KeyTester.Delay500";
+    Factor = 10; Space = 5; KeyCount = 128;
+    msAdr = -40; kbdAdr = -36;
+
+  TYPE
+    KeyInfo = RECORD
+        x, y, w, h: INTEGER;
+        label: ARRAY 7 OF CHAR;
+        pressed: BOOLEAN;
+      END;
+
+  VAR
+    keys: ARRAY KeyCount OF KeyInfo;
+    keylookup: ARRAY 3*256 OF INTEGER;
+    delay: INTEGER;
+
+  PROCEDURE DrawText(text: ARRAY OF CHAR; x, y: INTEGER);
+  VAR
+    dx, xx, yy, ww, hh, patAdr, i: INTEGER;
+  BEGIN
+    i := 0;
+    WHILE text[i] # 0X DO
+      Fonts.GetPat(Fonts.Default, text[i], dx, xx, yy, ww, hh, patAdr);
+      Display.CopyPattern(Display.white, patAdr, x+xx, y+yy, Display.invert);
+      INC(x, dx);
+      INC(i)
+    END
+  END DrawText;
+
+  PROCEDURE DrawKey(F: Display.Frame; i: INTEGER);
+  VAR
+    xx, yy, ww, hh, col: INTEGER;
+  BEGIN
+    xx := F.X + 5 + keys[i].x * Factor;
+    yy := F.Y + F.H - 40 - keys[i].y * Factor;
+    ww := keys[i].w * Factor - Space;
+    hh := keys[i].h * Factor - Space;
+    IF (keys[i].h = 2) & (keys[i].y MOD 4 = 0) THEN INC(hh,Space-2) END;
+    IF (keys[i].h = 2) & (keys[i].y MOD 4 = 2) THEN DEC(yy,2); INC(hh,2) END;
+    IF (keys[i].w > 0) & (xx + ww < F.W) & (yy > 0) THEN
+      col := Display.white;
+      IF keys[i].pressed THEN
+          col := Display.black
+      END;
+      Display.ReplConst(1-col, xx, yy, ww, hh, Display.replace);
+      Display.ReplConst(col, xx, yy, ww, 1, Display.replace);
+      Display.ReplConst(col, xx, yy + hh, ww, 1, Display.replace);
+      Display.ReplConst(col, xx, yy, 1, hh, Display.replace);
+      Display.ReplConst(col, xx + ww, yy, 1, hh, Display.replace);
+      DrawText(keys[i].label, xx + 5, yy + hh - 11)
+    END
+  END DrawKey;
+
+  PROCEDURE DrawKeyboard(F: Display.Frame);
+  VAR
+    i: INTEGER;
+  BEGIN
+    Oberon.RemoveMarks(F.X, F.Y, F.W, F.H);
+    Display.ReplConst(Display.black, F.X, F.Y, F.W, F.H, Display.replace);
+    FOR i := 0 TO KeyCount - 1 DO
+      DrawKey(F, i)
+    END
+  END DrawKeyboard;
+
+  PROCEDURE Handler(F: Display.Frame; VAR M: Display.FrameMsg);
+    VAR F1: Display.Frame;
+  BEGIN
+    IF M IS Oberon.InputMsg THEN
+      IF M(Oberon.InputMsg).id = Oberon.track THEN
+        Oberon.DrawMouseArrow(M(Oberon.InputMsg).X, M(Oberon.InputMsg).Y)
+      END
+    ELSIF M IS MenuViewers.ModifyMsg THEN
+      F.Y := M(MenuViewers.ModifyMsg).Y; F.H := M(MenuViewers.ModifyMsg).H; DrawKeyboard(F)
+    ELSIF M IS Oberon.ControlMsg THEN
+      IF M(Oberon.ControlMsg).id = Oberon.neutralize THEN Oberon.RemoveMarks(F.X, F.Y, F.W, F.H) END
+    ELSIF M IS Oberon.CopyMsg THEN
+       NEW(F1); F1^ := F^; M(Oberon.CopyMsg).F := F1
+    END
+  END Handler;
+
+  PROCEDURE Open*();
+    VAR F: Display.Frame; V: Viewers.Viewer; X, Y: INTEGER;
+  BEGIN
+    Oberon.AllocateUserViewer(Oberon.Par.vwr.X, X, Y);
+    NEW(F); F.handle := Handler;
+    V := MenuViewers.New(TextFrames.NewMenu("KeyTester", Menu), F, TextFrames.menuH, X, Y)
+  END Open;
+
+  PROCEDURE Delay0*();
+  BEGIN
+    delay := 0
+  END Delay0;
+
+  PROCEDURE Delay100*();
+  BEGIN
+    delay := 100
+  END Delay100;
+
+  PROCEDURE Delay500*();
+  BEGIN
+    delay := 500
+  END Delay500;
+
+  PROCEDURE Start*();
+  VAR
+    t, base, idx: INTEGER;
+    c: BYTE;
+    release: BOOLEAN;
+  BEGIN
+    base := 0;
+    release := FALSE;
+    WHILE TRUE DO
+      t := Kernel.Time();
+      IF SYSTEM.BIT(msAdr, 28) THEN
+        SYSTEM.GET(kbdAdr, c);
+        IF c = 0F0H THEN
+          release := TRUE
+        ELSIF c = 0E0H THEN
+          base := 256
+        ELSIF c = 0E1H THEN
+          base := 512
+        ELSE
+          idx := keylookup[base+c];
+          IF idx # -1 THEN
+            keys[idx].pressed := ~release;
+            release := FALSE;
+            base := 0;
+            DrawKey(Oberon.Par.frame.next, idx);
+            WHILE Kernel.Time() < t + delay DO END
+          END
+        END
+      END
+    END
+  END Start;
+
+  PROCEDURE AddKey(label: ARRAY OF CHAR; ext, code: INTEGER; VAR ctr, x, y: INTEGER);
+  BEGIN
+    keys[ctr].x := x;
+    keys[ctr].y := y;
+    keys[ctr].w := 4;
+    keys[ctr].h := 4;
+    keys[ctr].pressed := FALSE;
+    keys[ctr].label := label;
+    keylookup[ext * 256 + code] := ctr;
+    INC(ctr); INC(x, 4)
+  END AddKey;
+
+  PROCEDURE InitKeys();
+  VAR
+    x, y, ctr: INTEGER;
+  BEGIN
+    FOR ctr := 0 TO 3*256-1 DO keylookup[ctr] := -1 END;
+
+    x := 0; y := 0; ctr := 0;
+    AddKey("ESC", 0, 76H, ctr, x, y); INC(x,4);
+    AddKey("F1", 0, 05H, ctr, x, y);
+    AddKey("F2", 0, 06H, ctr, x, y);
+    AddKey("F3", 0, 04H, ctr, x, y);
+    AddKey("F4", 0, 0CH, ctr, x, y); INC(x,2);
+    AddKey("F5", 0, 03H, ctr, x, y);
+    AddKey("F6", 0, 0BH, ctr, x, y);
+    AddKey("F7", 0, 83H, ctr, x, y);
+    AddKey("F8", 0, 0AH, ctr, x, y); INC(x,2);
+    AddKey("F9", 0, 01H, ctr, x, y);
+    AddKey("F10", 0, 09H, ctr, x, y);
+    AddKey("F11", 0, 78H, ctr, x, y);
+    AddKey("F12", 0, 07H, ctr, x, y);
+
+    x := 0; y := 6;
+    AddKey("`", 0, 0EH, ctr, x, y);
+    AddKey("1", 0, 16H, ctr, x, y);
+    AddKey("2", 0, 1EH, ctr, x, y);
+    AddKey("3", 0, 26H, ctr, x, y);
+    AddKey("4", 0, 25H, ctr, x, y);
+    AddKey("5", 0, 2EH, ctr, x, y);
+    AddKey("6", 0, 36H, ctr, x, y);
+    AddKey("7", 0, 3DH, ctr, x, y);
+    AddKey("8", 0, 3EH, ctr, x, y);
+    AddKey("9", 0, 46H, ctr, x, y);
+    AddKey("0", 0, 45H, ctr, x, y);
+    AddKey("-", 0, 4EH, ctr, x, y);
+    AddKey("=", 0, 55H, ctr, x, y);
+    AddKey("<X", 0, 66H, ctr, x, y); keys[ctr-1].w:=8;
+
+    x := 0; y := 10;
+    AddKey("Tab", 0, 0DH, ctr, x, y); keys[ctr-1].w:=6; INC(x,2);
+    AddKey("Q", 0, 15H, ctr, x, y);
+    AddKey("W", 0, 1DH, ctr, x, y);
+    AddKey("E", 0, 24H, ctr, x, y);
+    AddKey("R", 0, 2DH, ctr, x, y);
+    AddKey("T", 0, 2CH, ctr, x, y);
+    AddKey("Y", 0, 35H, ctr, x, y);
+    AddKey("U", 0, 3CH, ctr, x, y);
+    AddKey("I", 0, 43H, ctr, x, y);
+    AddKey("O", 0, 44H, ctr, x, y);
+    AddKey("P", 0, 4DH, ctr, x, y);
+    AddKey("[", 0, 54H, ctr, x, y);
+    AddKey("]", 0, 5BH, ctr, x, y);
+    AddKey("\", 0, 5DH, ctr, x, y); keys[ctr-1].w:=6;
+
+    x := 0; y := 14;
+    AddKey("Caps", 0, 58H, ctr, x, y); keys[ctr-1].w:=7; INC(x,3);
+    AddKey("A", 0, 1CH, ctr, x, y);
+    AddKey("S", 0, 1BH, ctr, x, y);
+    AddKey("D", 0, 23H, ctr, x, y);
+    AddKey("F", 0, 2BH, ctr, x, y);
+    AddKey("G", 0, 34H, ctr, x, y);
+    AddKey("H", 0, 33H, ctr, x, y);
+    AddKey("J", 0, 3BH, ctr, x, y);
+    AddKey("K", 0, 42H, ctr, x, y);
+    AddKey("L", 0, 4BH, ctr, x, y);
+    AddKey(";", 0, 4CH, ctr, x, y);
+    AddKey("'", 0, 52H, ctr, x, y);
+    AddKey("Enter", 0, 5AH, ctr, x, y); keys[ctr-1].w:=9;
+
+    x := 0; y := 18;
+    AddKey("Shift", 0, 12H, ctr, x, y); keys[ctr-1].w:=9; INC(x,5);
+    AddKey("Z", 0, 1AH, ctr, x, y);
+    AddKey("X", 0, 22H, ctr, x, y);
+    AddKey("C", 0, 21H, ctr, x, y);
+    AddKey("V", 0, 2AH, ctr, x, y);
+    AddKey("B", 0, 32H, ctr, x, y);
+    AddKey("N", 0, 31H, ctr, x, y);
+    AddKey("M", 0, 3AH, ctr, x, y);
+    AddKey(",", 0, 41H, ctr, x, y);
+    AddKey(".", 0, 49H, ctr, x, y);
+    AddKey("-", 0, 4AH, ctr, x, y);
+    AddKey("Shift", 0, 59H, ctr, x, y); keys[ctr-1].w:=11;
+
+    x := 0; y := 22;
+    AddKey("Ctrl", 0, 14H, ctr, x, y); keys[ctr-1].w:=5; INC(x);
+    AddKey("GUI", 1, 1FH, ctr, x, y); keys[ctr-1].w:=5; INC(x);
+    AddKey("Alt", 0, 11H, ctr, x, y); keys[ctr-1].w:=5; INC(x);
+    AddKey("", 0, 29H, ctr, x, y); keys[ctr-1].w:=25; INC(x,21);
+    AddKey("Alt", 1, 11H, ctr, x, y); keys[ctr-1].w:=5; INC(x);
+    AddKey("GUI", 1, 27H, ctr, x, y); keys[ctr-1].w:=5; INC(x);
+    AddKey("Apps", 1, 2FH, ctr, x, y); keys[ctr-1].w:=5; INC(x);
+    AddKey("Ctrl", 1, 14H, ctr, x, y); keys[ctr-1].w:=5;
+
+    x :=13; y:= 26;
+    AddKey("Pause", 2, 14H, ctr, x, y); keys[ctr-1].h:=2;
+
+    x :=5; y:= 28;
+    AddKey("Print", 1, 7CH, ctr, x, y);
+    AddKey("Scrl", 0, 7EH, ctr, x, y);
+    AddKey("Break", 0, 77H, ctr, x, y); keys[ctr-1].h:=2;
+
+    x :=5; y:= 34;
+    AddKey("Ins", 1, 70H, ctr, x, y);
+    AddKey("Home", 1, 6CH, ctr, x, y);
+    AddKey("PgUp", 1, 7DH, ctr, x, y);
+
+    x :=5; y:= 38;
+    AddKey("Del", 1, 71H, ctr, x, y);
+    AddKey("End", 1, 69H, ctr, x, y);
+    AddKey("PgDn", 1, 7AH, ctr, x, y);
+
+    x :=9; y:= 46;
+    AddKey("Up", 1, 75H, ctr, x, y);
+
+    x :=5; y:= 50;
+    AddKey("<-", 1, 6BH, ctr, x, y);
+    AddKey("Dn", 1, 72H, ctr, x, y);
+    AddKey("->", 1, 74H, ctr, x, y);
+
+    x :=20; y:= 34;
+    AddKey("Num", 0, 77H, ctr, x, y);
+    AddKey("/", 1, 4AH, ctr, x, y);
+    AddKey("*", 0, 7CH, ctr, x, y);
+    AddKey("-", 0, 7BH, ctr, x, y);
+
+    x :=20; y:= 38;
+    AddKey("7", 0, 6CH, ctr, x, y);
+    AddKey("8", 0, 75H, ctr, x, y);
+    AddKey("9", 0, 7DH, ctr, x, y);
+
+    x :=20; y:= 42;
+    AddKey("4", 0, 6BH, ctr, x, y);
+    AddKey("5", 0, 73H, ctr, x, y);
+    AddKey("6", 0, 74H, ctr, x, y);
+    AddKey("+", 0,79H, ctr, x, y); keys[ctr-1].h:=8;
+
+    x :=20; y:= 46;
+    AddKey("1", 0, 69H, ctr, x, y);
+    AddKey("2", 0, 72H, ctr, x, y);
+    AddKey("3", 0, 7AH, ctr, x, y);
+
+    x :=20; y:= 50;
+    AddKey("0", 0, 70H, ctr, x, y); keys[ctr-1].w:=8; INC(x,4);
+    AddKey(",", 0, 71H, ctr, x, y);
+    AddKey("<-'", 1, 5AH, ctr, x, y); keys[ctr-1].h := 8;
+
+    x := 24; y := 28; (* ACPI keys *)
+    AddKey("Pwr", 1, 37H, ctr, x, y);
+    AddKey("Sleep", 1, 3FH, ctr, x, y);
+    AddKey("Wake", 1, 5EH, ctr, x, y);
+
+    x := 42; y := 34; (* Quickstart keys *)
+    AddKey("Calc", 1, 2BH, ctr, x, y);
+    AddKey("Explo", 1, 40H, ctr, x, y);
+    AddKey("Email", 1, 48H, ctr, x, y);
+
+    x := 42; y := 38; (* WWW keys *)
+    AddKey("Home", 1, 3AH, ctr, x, y);
+    AddKey("Srch", 1, 10H, ctr, x, y);
+    AddKey("Favo", 1, 18H, ctr, x, y);
+
+    x := 40; y := 42;
+    AddKey("Back", 1, 38H, ctr, x, y);
+    AddKey("Fwd", 1, 30H, ctr, x, y);
+    AddKey("Refr", 1, 20H, ctr, x, y);
+    AddKey("Stop", 1, 28H, ctr, x, y);
+
+    x := 40; y := 46; (* Multimedia keys *)
+    AddKey("VlDn", 1, 21H, ctr, x, y);
+    AddKey("VlUp", 1, 32H, ctr, x, y);
+    AddKey("Mute", 1, 23H, ctr, x, y);
+    AddKey("Media", 1, 50H, ctr, x, y);
+
+    x := 40; y := 50;
+    AddKey("Play", 1, 34H, ctr, x, y);
+    AddKey("Stop", 1, 3BH, ctr, x, y);
+    AddKey("Prev", 1, 15H, ctr, x, y);
+    AddKey("Next", 1, 4DH, ctr, x, y)
+  END InitKeys;
+
+BEGIN InitKeys()
+END KeyTester.
