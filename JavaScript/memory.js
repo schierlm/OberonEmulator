@@ -157,8 +157,8 @@ function hwKeyboardInput(keyChar) {
 function memWriteIMGWord(wordAddress, value) {
 	var offs = wordAddress - DisplayStart/4;
 	var x = (offs % 32) * 32;
-	var y = screen.height - 1 - (offs / 32 | 0);
-	if (y < 0 || x >= screen.width) return;
+	var y = screenCanvas.height - 1 - (offs / 32 | 0);
+	if (y < 0 || x >= screenCanvas.width) return;
 	for (var i = 0; i < 32; i++) {
 		var white = ((value & (1 << i)) != 0);
 		pixelData.data[i*4] = white ? 0xfd : 0x65;
