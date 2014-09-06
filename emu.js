@@ -1,6 +1,6 @@
 var disk = [];
 var activeButton=1, interClickButton=0;
-var screen = null;
+var screenCanvas = null;
 var screenCtx;
 var pixelData;
 var clipboard;
@@ -10,7 +10,7 @@ var clipboard;
 	var params = window.location.hash.substring(1).split(",");
 	
 	var checkAll = function() {
-		if (screen && disk.length > 0) {
+		if (screenCanvas && disk.length > 0) {
 			document.getElementById("breakbutton").onclick= function() {cpuReset(false);};
 			document.getElementById("resetbutton").onclick= function() {cpuReset(true);};
 			running = true;
@@ -40,7 +40,8 @@ var clipboard;
 	img.src=params[0]+".png";
 	window.onload=function() {
 		clipboard = document.getElementById("clipboardText");
-		screen = document.getElementById("screen");
+		screenCanvas = document.getElementById("screen");
+		var screen = screenCanvas;
 		screen.width=params[1] | 0;
 		screen.height=params[2] | 0;
 		screenCtx = screen.getContext("2d");

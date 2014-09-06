@@ -12,8 +12,8 @@ function cpuReset(cold) {
 	if (cold) {
 		reg_R[15] = 0;
 		memWriteWord(DisplayStart/4, 0x53697A65); // magic value SIZE
-		memWriteWord(DisplayStart/4+1, screen.width);
-		memWriteWord(DisplayStart/4+2, screen.height);
+		memWriteWord(DisplayStart/4+1, screenCanvas.width);
+		memWriteWord(DisplayStart/4+2, screenCanvas.height);
 	}
 	reg_PC[0] = ROMStart / 4;
 	if (cpuTimeout != null)
