@@ -48,24 +48,24 @@
      END
 --- 1/ORG.Mod.txt
 +++ 2/ORG.Mod.txt
-@@ -777,6 +777,7 @@
-     IF r > 0 THEN SaveRegs(r) END ;
-     IF x.type.form = ORB.Proc THEN
-       IF x.mode = ORB.Const THEN
-+        Trap(15, 0);
-         IF x.r >= 0 THEN Put3(BL, 7, (x.a DIV 4)-pc-1)
-         ELSE (*imported*)
-           IF pc - fixorgP < 1000H THEN
-@@ -784,7 +785,7 @@
-           ELSE ORS.Mark("fixup impossible")
-           END
-         END
--      ELSE Put3(BLR, 7, x.r)
-+      ELSE Put3(BLR, 7, ORS.Pos()*100H + x.r)
-       END
-     ELSE ORS.Mark("not a procedure")
+@@ -773,6 +773,7 @@
+   PROCEDURE Call*(VAR x: Item; r: LONGINT);
+   BEGIN (*x.type.form = ORB.Proc*)
+     IF x.mode = ORB.Const THEN
++      Trap(15, 0);
+       IF x.r >= 0 THEN Put3(BL, 7, (x.a DIV 4)-pc-1)
+       ELSE (*imported*)
+         IF pc - fixorgP < 1000H THEN
+@@ -785,7 +786,7 @@
+       ELSE Put2(Ldr, RH, SP, 0); Put1(Add, SP, SP, 4); DEC(r); DEC(frame, 4)
+       END ;
+       IF check THEN Trap(EQ, 5) END ;
+-      Put3(BLR, 7, RH)
++      Put3(BLR, 7, ORS.Pos()*100H + RH)
      END ;
-@@ -876,7 +877,7 @@
+     IF x.type.base.form = ORB.NoTyp THEN (*procedure*) RH := 0
+     ELSE (*function*)
+@@ -870,7 +871,7 @@
    END Assert; 
  
    PROCEDURE New*(VAR x: Item);

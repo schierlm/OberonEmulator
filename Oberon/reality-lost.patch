@@ -103,37 +103,33 @@
          ELSE (*decimal integer*)
            IF neg THEN S.i := -n ELSE S.i := n END;
            IF hex THEN S.class := Inval ELSE S.class := Int END
-@@ -466,56 +422,6 @@
+@@ -466,53 +422,6 @@
      REPEAT DEC(i); Write(W, a[i]) UNTIL i = 0
    END WriteHex;
  
--  PROCEDURE WriteReal* (VAR W: Writer; x: REAL; n: INTEGER);
--    VAR e, i, m: INTEGER; x0: REAL; neg: BOOLEAN;
+- PROCEDURE WriteReal* (VAR W: Writer; x: REAL; n: INTEGER);
+-    VAR e, i, m: INTEGER;
 -      d: ARRAY 16 OF CHAR;
--  BEGIN
--    IF x = 0.0 THEN
--      WriteString(W, "  0.0"); i := 5;
--      WHILE i < n DO Write(W, " "); INC(i) END
--    ELSE
--      IF x < 0.0 THEN x := -x; neg := TRUE ELSE neg := FALSE END ;
--      x0 := x; UNPK(x0, e);
--      IF e = 255 THEN WriteString(W, " NaN")
--      ELSE
--        REPEAT Write(W, " "); DEC(n) UNTIL n <= 14;
--        IF neg THEN Write(W, "-") ELSE Write(W, " ") END ;
--        e := e * 77 DIV 256 - 6;
--        IF e >= 0 THEN x := x / Ten(e) ELSE x := x * Ten(-e) END ;
--        IF x >= 10.0E6 THEN x := 0.1*x; INC(e) END ;
--        m := FLOOR(x + 0.5); i := 0;
--        IF x >= 10.0E6 THEN x := 0.1*x; INC(e) END ;
--        REPEAT d[i] := CHR(m MOD 10 + 30H); m := m DIV 10; INC(i) UNTIL m = 0;
--        DEC(i); Write(W, d[i]); Write(W, ".");
--        IF i < n-6 THEN n := 0 ELSE n := 13-n END ;
--        WHILE i > n DO DEC(i); Write(W, d[i]) END ;
--        Write(W, "E"); INC(e, 6);
--        IF e < 0 THEN Write(W, "-"); e := -e ELSE Write(W, "+") END ;
--        Write(W, CHR(e DIV 10 + 30H)); Write(W, CHR(e MOD 10 + 30H))
--      END
+-  BEGIN e := ASR(ORD(x), 23) MOD 100H;  (*binary exponent*)
+-    IF e = 0 THEN
+-      WriteString(W, "  0 ");
+-      WHILE n >= 3 DO Write(W, " "); DEC(n) END
+-    ELSIF e = 255 THEN WriteString(W, " NaN ")
+-    ELSE Write(W, " ");
+-      WHILE n >= 15 DO DEC(n); Write(W, " ") END ;
+-      (* 2 < n < 9 digits to be written*)
+-      IF x < 0.0 THEN Write(W, "-"); x := -x ELSE Write(W, " ") END ;
+-      e := (e - 127) * 77 DIV 256 - 6;  (*decimal exponent*)
+-      IF e >= 0 THEN x := x / Ten(e) ELSE x := Ten(-e) * x END ;
+-      m := FLOOR(x + 0.5); i := 0;
+-      IF m >= 10000000 THEN INC(e); m := m DIV 10 END ;
+-      REPEAT d[i] := CHR(m MOD 10 + 30H); m := m DIV 10; INC(i) UNTIL m = 0;
+-      DEC(i); Write(W, d[i]); Write(W, ".");
+-      IF i < n-7 THEN n := 0 ELSE n := 14 - n END ;
+-      WHILE i > n DO DEC(i); Write(W, d[i]) END ;
+-      Write(W, "E"); INC(e, 6);
+-       IF e < 0 THEN Write(W, "-"); e := -e ELSE Write(W, "+") END ;
+-      Write(W, CHR(e DIV 10 + 30H)); Write(W, CHR(e MOD 10 + 30H))
 -    END
 -  END WriteReal;
 -
@@ -148,7 +144,8 @@
 -      x := Ten(k) * x; m := FLOOR(x + 0.5);
 -      i := 0;
 -      REPEAT d[i] := CHR(m MOD 10 + 30H); m := m DIV 10; INC(i) UNTIL m = 0;
--      REPEAT Write(W, " "); DEC(n) UNTIL n <= i+3;
+-      Write(W, " ");
+-      WHILE n > i+3 DO  Write(W, " "); DEC(n) END ;
 -      IF neg THEN Write(W, "-"); DEC(n) ELSE Write(W, " ") END ;
 -      WHILE i > k DO DEC(i); Write(W, d[i]) END ;
 -      Write(W, ".");
@@ -189,7 +186,7 @@
              ELSIF class = Var THEN Files.ReadNum(R, obj.val); obj.rdo := TRUE
              END
            END ;
-@@ -330,7 +330,6 @@
+@@ -326,7 +326,6 @@
            Write(R, 0)
          ELSIF obj.class = Const THEN
            IF obj.type.form = Proc THEN Files.WriteNum(R, obj.exno)
@@ -197,7 +194,7 @@
            ELSE Files.WriteNum(R, obj.val)
            END
          ELSIF obj.class = Var THEN
-@@ -379,14 +378,13 @@
+@@ -375,14 +374,13 @@
    boolType := type(Bool, Bool, 1);
    charType := type(Char, Char,1);
    intType := type(Int, Int, 4);
@@ -210,10 +207,10 @@
    (*initialize universe with data types and in-line procedures;
 -    LONGINT is synonym to INTEGER, LONGREAL to REAL.
 +    LONGINT is synonym to INTEGER.
-     LED, ADC, SBC; LDPSR, LDREG, REG, COND, MSK are not in language definition*)
+     LED, ADC, SBC; LDPSR, LDREG, REG, COND are not in language definition*)
    system := NIL;  (*n = procno*10 + nofpar*)
    enter("UML", SFunc, intType, 132);  (*functions*)
-@@ -398,7 +396,6 @@
+@@ -394,7 +392,6 @@
    enter("LEN", SFunc, intType, 61);
    enter("CHR", SFunc, charType, 51);
    enter("ORD", SFunc, intType, 41);
@@ -221,7 +218,7 @@
    enter("FLOOR", SFunc, intType, 21);
    enter("ODD", SFunc, boolType, 11);
    enter("ABS", SFunc, intType, 1);
-@@ -415,8 +412,6 @@
+@@ -411,8 +408,6 @@
    enter("BOOLEAN", Typ, boolType, 0);
    enter("BYTE", Typ, byteType, 0);
    enter("CHAR", Typ, charType, 0);
@@ -232,7 +229,7 @@
    topScope := NIL; OpenScope; topScope.next := system; universe := topScope;
 --- 1/ORG.Mod.txt
 +++ 2/ORG.Mod.txt
-@@ -246,10 +246,6 @@
+@@ -232,10 +232,6 @@
    BEGIN x.mode := ORB.Const; x.type := typ; x.a := val
    END MakeConstItem;
  
@@ -243,7 +240,7 @@
    PROCEDURE MakeStringItem*(VAR x: Item; len: LONGINT); (*copies string from ORS-buffer to ORG-string array*)
      VAR i: LONGINT;
    BEGIN x.mode := ORB.Const; x.type := ORB.strType; x.a := strx; x.b := len; i := 0;
-@@ -424,10 +420,6 @@
+@@ -414,10 +410,6 @@
        IF x.mode = ORB.Const THEN x.a := -x.a
        ELSE load(x); Put1(Mov, RH, 0, 0); Put0(Sub, x.r, RH, x.r)
        END
@@ -254,7 +251,7 @@
      ELSE (*form = Set*)
        IF x.mode = ORB.Const THEN x.a := -x.a-1 
        ELSE load(x); Put1(Xor, x.r, x.r, -1)
-@@ -497,18 +489,6 @@
+@@ -487,18 +479,6 @@
      END
    END DivOp;
  
@@ -273,7 +270,7 @@
    (* Code generation for set operators *)
  
    PROCEDURE Singleton*(VAR x: Item);  (* x := {x} *)
-@@ -597,14 +577,6 @@
+@@ -587,14 +567,6 @@
      END
    END SetRelation;
  
@@ -288,7 +285,7 @@
    PROCEDURE StringRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
      (*x, y are char arrays or strings*)
    BEGIN
-@@ -935,9 +907,7 @@
+@@ -929,9 +901,7 @@
    BEGIN
      IF x.mode = ORB.Const THEN x.a := ABS(x.a)
      ELSE load(x);
@@ -417,7 +414,7 @@
 -  END Ten;
 -
    PROCEDURE Number(VAR sym: INTEGER);
-     CONST max = 2147483647 (*2^31*); maxM = 16777216; (*2^24*)
+     CONST max = 2147483647 (*2^31 - 1*);
 -    VAR i, k, e, n, s, h: LONGINT; x: REAL;
 +    VAR i, k, e, n, s, h: LONGINT;
        d: ARRAY 16 OF INTEGER;
@@ -439,21 +436,15 @@
        ELSE sym := int; ival := k
        END ;
        Texts.Read(R, ch)
-@@ -155,36 +143,8 @@
+@@ -154,30 +142,8 @@
            INC(i)
          UNTIL i = n;
          sym := int; ival := k
 -      ELSE (*real number*) x := 0.0; e := 0;
--        REPEAT (*integer part*) h := k*10 + d[i];
--          IF h < maxM THEN k := h ELSE Mark("too many digits") END ;
--          INC(i)
--        UNTIL i = n;
--        WHILE (ch >= "0") & (ch <= "9") DO (*fraction*)
--          h := k*10 + ORD(ch) - 30H;
--          IF h < maxM THEN k := h ELSE Mark("too many digits*") END ;
--          DEC(e); Texts.Read(R, ch)
+-        REPEAT  (*integer part*) x := x * 10.0 + FLT(d[i]); INC(i) UNTIL i = n;
+-        WHILE (ch >= "0") & (ch <= "9") DO  (*fraction*)
+-          x := x * 10.0 + FLT(ORD(ch) - 30H); DEC(e); Texts.Read(R, ch)
 -        END ;
--        x := FLT(k);
 -        IF (ch = "E") OR (ch = "D") THEN  (*scale factor*)
 -          Texts.Read(R, ch); s := 0; 
 -          IF ch = "-" THEN negE := TRUE; Texts.Read(R, ch)

@@ -42,7 +42,7 @@
  END Kernel.
 --- 1/Oberon.Mod.txt
 +++ 2/Oberon.Mod.txt
-@@ -357,6 +357,7 @@
+@@ -359,6 +359,7 @@
  
    PROCEDURE Loop*;
      VAR V: Viewers.Viewer; M: InputMsg; N: ControlMsg;
@@ -50,7 +50,7 @@
         prevX, prevY, X, Y, t: INTEGER; keys: SET; ch: CHAR;
    BEGIN
      REPEAT
-@@ -375,6 +376,17 @@
+@@ -377,6 +378,17 @@
          UNTIL M.keys = {};
          DEC(ActCnt)
        ELSE
