@@ -25,6 +25,7 @@ MODULE ImageTool;
       newfile: ARRAY 32 OF CHAR;
   BEGIN
     f := Files.Old(file);
+    ASSERT(f # NIL);
     newfile := file;
     i := 0;
     WHILE newfile[i] # 0X DO INC(i) END;
