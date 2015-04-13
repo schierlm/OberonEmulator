@@ -20,3 +20,13 @@
      Files.Set(W.rider, Files.New(""), 0)
    END OpenWriter;
  
+--- 1/GraphicFrames.Mod.txt
++++ 2/GraphicFrames.Mod.txt
+@@ -480,6 +480,7 @@
+             fnt := R.fnt; x0 := x; y0 := y - fnt.minY;
+             REPEAT Fonts.GetPat(fnt, ch, dx, x1, y1, w1, h1, pat);
+               IF x0+x1+w1 <= f.X1 THEN
++                col := Display.white;
+                 Display.CopyPattern(col, pat, x0+x1, y0+y1, Display.paint); INC(x0, dx); Texts.Read(R, ch)
+               ELSE ch := 0X
+               END
