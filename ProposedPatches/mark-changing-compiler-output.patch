@@ -1,0 +1,10 @@
+--- 1/ORP.Mod.txt
++++ 2/ORP.Mod.txt
+@@ -930,6 +930,6 @@
+       END ;
+       IF ORS.errcnt = 0 THEN
+-        ORG.Close(modid, key, exno);
++        ORG.Close(modid, key, exno); Texts.WriteString(W, "  `");
+         Texts.WriteInt(W, ORG.pc, 6); Texts.WriteInt(W, dc, 6); Texts.WriteHex(W, key)
+       ELSE Texts.WriteLn(W); Texts.WriteString(W, "compilation FAILED")
+       END ;

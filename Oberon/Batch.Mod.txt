@@ -81,14 +81,13 @@ MODULE Batch;
     ch := 0X;
     csum := 0;
     WHILE ~ R.eot DO
-      IF ch = "0" THEN
-        WHILE (ch >= "0") & (ch <= "9") DO Texts.Read(R, ch) END
+      IF ch = "`" THEN
+        WHILE ((ch >= "0") & (ch <= "9")) OR ((ch >= "A") & (ch <= "F")) OR (ch = " ") OR (ch = "`") DO Texts.Read(R, ch) END
       ELSIF ch = " " THEN
 	    WHILE ch = " " DO Texts.Read(R, ch) END
       ELSE
         Texts.Read(R, ch);
       END;
-      IF (ch >= "1") & (ch <= "9") THEN ch := "0" END;
       csum := ROR(csum + ORD(ch), 13);
     END;
     IF csum # vcsum THEN
