@@ -60,8 +60,9 @@ public class PCLink extends JFrame {
 					out.write(filename.getBytes("ISO-8859-1"));
 					out.flush();
 					waitAck(in);
+					int partLen;
 					do {
-						int partLen = Math.min(flen, 255);
+						partLen = Math.min(flen, 255);
 						out.write(partLen);
 						for (int i = 0; i < partLen; i++) {
 							out.write(fIn.read());
@@ -69,7 +70,7 @@ public class PCLink extends JFrame {
 						out.flush();
 						waitAck(in);
 						flen -= partLen;
-					} while (flen > 0);
+					} while (partLen == 255);
 					waitAck(in);
 					fIn.close();
 				}
