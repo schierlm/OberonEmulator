@@ -33,9 +33,9 @@
 --- 1/XORG.Mod.txt
 +++ 2/XORG.Mod.txt
 @@ -1,5 +1,5 @@
--MODULE ORG; (* NW  24.6.2014  code generator in Oberon-07 for RISC*)
+-MODULE ORG; (* NW  31.5.2015  code generator in Oberon-07 for RISC*)
 -  IMPORT SYSTEM, Files, ORS, ORB;
-+MODULE XORG; (* NW  24.6.2014  code generator in Oberon-07 for RISC*)
++MODULE XORG; (* NW  31.5.2015  code generator in Oberon-07 for RISC*)
 +  IMPORT SYSTEM, Files, ORS, ORB := XORB;
    (*Code generator for Oberon compiler for RISC processor.
       Procedural interface to Parser OSAP; result in array "code".
