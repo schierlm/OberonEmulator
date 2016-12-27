@@ -73,13 +73,19 @@ var clipboard;
 		screen.tabIndex = 1000;
 		screen.style.outline = "none";
 		screen.onkeydown = function(e) {
-			if (e.keyCode == 18) {
+			if (e.keyCode == 18 && !e.ctrlKey) {
 				hwMouseButton(2, true);
+				e.preventDefault();
+			} else if (e.keyCode == 8 || e.keyCode == 9 || e.keyCode == 27 || e.keyCode == 13) {
+				hwKeyboardInput(e.keyCode);
+				e.preventDefault();
+			} else if (e.keyCode == 112 || e.keyCode == 45) {
+				hwKeyboardInput(26);
 				e.preventDefault();
 			}
 		};
 		screen.onkeyup = function(e) {
-			if (e.keyCode == 18) {
+			if (e.keyCode == 18 && !e.ctrlKey) {
 				hwMouseButton(2, false);
 				e.preventDefault();
 			}
@@ -88,7 +94,7 @@ var clipboard;
 			var charCode = 0;
 			if (e.keyCode == 8 || e.keyCode == 9 || e.keyCode == 27 || e.keyCode == 13) {
 				charCode = e.keyCode;
-			} else if (e.keyCode == 112 || e.keyCode == 45) {
+			} else if (e.charCode == 0 && (e.keyCode == 112 || e.keyCode == 45)) {
 				charCode = 26;
 			} else if (e.charCode != 0) {
 				charCode = e.charCode;
