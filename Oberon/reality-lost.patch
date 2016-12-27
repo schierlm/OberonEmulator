@@ -193,8 +193,8 @@
 -          ELSIF obj.type.form = Real THEN Files.WriteInt(R, obj.val)
            ELSE Files.WriteNum(R, obj.val)
            END
-         ELSIF obj.class = Var THEN
-@@ -375,14 +374,13 @@
+         ELSIF obj.class = Var THEN Files.WriteNum(R, obj.exno)
+@@ -371,14 +370,13 @@
    boolType := type(Bool, Bool, 1);
    charType := type(Char, Char,1);
    intType := type(Int, Int, 4);
@@ -210,7 +210,7 @@
      LED, ADC, SBC; LDPSR, LDREG, REG, COND are not in language definition*)
    system := NIL;  (*n = procno*10 + nofpar*)
    enter("UML", SFunc, intType, 132);  (*functions*)
-@@ -394,7 +392,6 @@
+@@ -390,7 +388,6 @@
    enter("LEN", SFunc, intType, 61);
    enter("CHR", SFunc, charType, 51);
    enter("ORD", SFunc, intType, 41);
@@ -218,7 +218,7 @@
    enter("FLOOR", SFunc, intType, 21);
    enter("ODD", SFunc, boolType, 11);
    enter("ABS", SFunc, intType, 1);
-@@ -411,8 +408,6 @@
+@@ -407,8 +404,6 @@
    enter("BOOLEAN", Typ, boolType, 0);
    enter("BYTE", Typ, byteType, 0);
    enter("CHAR", Typ, charType, 0);
@@ -270,9 +270,9 @@
    (* Code generation for set operators *)
  
    PROCEDURE Singleton*(VAR x: Item);  (* x := {x} *)
-@@ -587,14 +567,6 @@
-     END
-   END SetRelation;
+@@ -578,14 +558,6 @@
+     SetCC(x, relmap[op - ORS.eql])
+   END IntRelation;
  
 -  PROCEDURE RealRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
 -  BEGIN load(x);
@@ -285,7 +285,7 @@
    PROCEDURE StringRelation*(op: INTEGER; VAR x, y: Item);   (* x := x < y *)
      (*x, y are char arrays or strings*)
    BEGIN
-@@ -929,9 +901,7 @@
+@@ -925,9 +897,7 @@
    BEGIN
      IF x.mode = ORB.Const THEN x.a := ABS(x.a)
      ELSE load(x);
@@ -310,7 +310,7 @@
    PROCEDURE CheckSet(VAR x: ORG.Item);
    BEGIN
      IF x.type.form # ORB.Set THEN ORS.Mark("not Set"); x.type := ORB.setType END 
-@@ -241,9 +236,8 @@
+@@ -246,9 +241,8 @@
      Check(ORS.rparen, "no )");
      IF n = npar THEN
        IF fct = 0 THEN (*ABS*)
@@ -321,7 +321,7 @@
        ELSIF fct = 3 THEN (*FLT*) CheckInt(x); ORG.Float(x)
        ELSIF fct = 4 THEN (*ORD*)
          IF x.type.form <= ORB.Proc THEN ORG.Ord(x)
-@@ -321,7 +315,6 @@
+@@ -326,7 +320,6 @@
          END
        END
      ELSIF sym = ORS.int THEN ORG.MakeConstItem(x, ORB.intType, ORS.ival); ORS.Get(sym)
@@ -329,7 +329,7 @@
      ELSIF sym = ORS.char THEN ORG.MakeConstItem(x, ORB.charType, ORS.ival); ORS.Get(sym)
      ELSIF sym = ORS.nil THEN ORS.Get(sym); ORG.MakeConstItem(x, ORB.nilType, 0)
      ELSIF sym = ORS.string THEN ORG.MakeStringItem(x, ORS.slen); ORS.Get(sym)
-@@ -341,15 +334,13 @@
+@@ -346,15 +339,13 @@
        op := sym; ORS.Get(sym);
        IF op = ORS.times THEN
          IF f = ORB.Int THEN factor(y); CheckInt(y); ORG.MulOp(x, y)
@@ -346,7 +346,7 @@
          ELSE ORS.Mark("bad type")
          END
        ELSE (*op = and*) CheckBool(x); ORG.And1(x); factor(y); CheckBool(y); ORG.And2(x, y)
-@@ -361,7 +352,7 @@
+@@ -366,7 +357,7 @@
      VAR y: ORG.Item; op: INTEGER;
    BEGIN
      IF sym = ORS.minus THEN ORS.Get(sym); term(x);
@@ -355,7 +355,7 @@
      ELSIF sym = ORS.plus THEN ORS.Get(sym); term(x);
      ELSE term(x)
      END ;
-@@ -369,7 +360,6 @@
+@@ -374,7 +365,6 @@
        op := sym; ORS.Get(sym);
        IF op = ORS.or THEN ORG.Or1(x); CheckBool(x); term(y); CheckBool(y); ORG.Or2(x, y)
        ELSIF x.type.form = ORB.Int THEN term(y); CheckInt(y); ORG.AddOp(op, x, y)
@@ -363,15 +363,15 @@
        ELSE CheckSet(x); term(y); CheckSet(y); ORG.SetOp(op, x, y)
        END
      END
-@@ -383,7 +373,6 @@
-       IF CompTypes(x.type, y.type, FALSE) OR
-           (xf = ORB.Pointer) & (yf = ORB.Pointer) & IsExtension(y.type.base, x.type.base) THEN
+@@ -387,7 +377,6 @@
+       rel := sym; ORS.Get(sym); SimpleExpression(y); xf := x.type.form; yf := y.type.form;
+       IF x.type = y.type THEN
          IF (xf IN {ORB.Char, ORB.Int}) THEN ORG.IntRelation(rel, x, y)
 -        ELSIF xf = ORB.Real THEN ORG.RealRelation(rel, x, y)
-         ELSIF xf = ORB.Set THEN ORG.SetRelation(rel, x, y)
-         ELSIF (xf IN {ORB.Pointer, ORB.Proc, ORB.NilTyp}) THEN
+         ELSIF (xf IN {ORB.Set, ORB.Pointer, ORB.Proc, ORB.NilTyp, ORB.Bool}) THEN
            IF rel <= ORS.neq THEN ORG.IntRelation(rel, x, y) ELSE ORS.Mark("only = or #") END
-@@ -439,8 +428,6 @@
+         ELSIF (xf = ORB.Array) & (x.type.base.form = ORB.Char) OR (xf = ORB.String) THEN
+@@ -446,8 +435,6 @@
           IF (x.type.form = ORB.Pointer) & (x.type.base.form = ORB.Record) THEN ORG.New(x)
           ELSE ORS.Mark("not a pointer to record")
           END

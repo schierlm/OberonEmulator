@@ -12,8 +12,8 @@
 --- ImageORL.Mod.txt
 +++ ImageORL.Mod.txt
 @@ -229,7 +229,7 @@
-     NEW(buf);
-     DoLink(TRUE, buf);
+     adr := SYSTEM.ADR(buf);
+     DoLink(TRUE, adr);
      f := Files.Old("DiskImage.Bin");
 -    Files.Set(r, f, 400H);
 +    Files.Set(r, f, 800H);

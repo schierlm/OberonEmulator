@@ -1,7 +1,7 @@
 --- 1/ImageORL.Mod.txt
 +++ 2/ImageORL.Mod.txt
 @@ -1,5 +1,5 @@
--MODULE Modules;  (*Link and load on RISC; NW 20.10.2013*)
+-MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 9.4.2016*)
 -  IMPORT SYSTEM, Files;
 +MODULE ImageORL;
 +  IMPORT SYSTEM, Kernel, Files;

@@ -1,6 +1,6 @@
 --- 1/ORG.Mod.txt
 +++ 2/ORG.Mod.txt
-@@ -802,6 +802,18 @@
+@@ -797,6 +797,18 @@
        a := 4; r := 0;
        Put1(Sub, SP, SP, locblksize); Put2(Str, LNK, SP, 0);
        WHILE a < parblksize DO Put2(Str, r, SP, a); INC(r); INC(a, 4) END
@@ -17,5 +17,5 @@
 +        WHILE a < locblksize DO Put2(Str, r, SP, a); INC(a, 4) END
 +      END
      ELSE (*interrupt procedure*)
+       IF locblksize > 0H THEN ORS.Mark("locals not allowed") END ;
        Put1(Sub, SP, SP, 12); Put2(Str, 0, SP, 0); Put2(Str, 1, SP, 4); Put2(Str, SB, SP, 8)
-       (*R0, R1, SB saved os stack*)

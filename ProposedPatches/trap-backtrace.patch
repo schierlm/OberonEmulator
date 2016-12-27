@@ -8,7 +8,7 @@
 +      name: ARRAY 32 OF CHAR;
 +      beg, end, time, pos, i, X, Y: LONGINT;
    BEGIN
-     V := Oberon.MarkedViewer();
+     V := Oberon.FocusViewer;
      IF (V.dsc # NIL) & (V.dsc.next IS TextFrames.Frame) THEN
 -      Text := V.dsc.next(TextFrames.Frame);
        Oberon.GetSelection(T, beg, end, time);
@@ -48,7 +48,7 @@
      END
 --- 1/ORG.Mod.txt
 +++ 2/ORG.Mod.txt
-@@ -773,6 +773,7 @@
+@@ -767,6 +767,7 @@
    PROCEDURE Call*(VAR x: Item; r: LONGINT);
    BEGIN (*x.type.form = ORB.Proc*)
      IF x.mode = ORB.Const THEN
@@ -56,7 +56,7 @@
        IF x.r >= 0 THEN Put3(BL, 7, (x.a DIV 4)-pc-1)
        ELSE (*imported*)
          IF pc - fixorgP < 1000H THEN
-@@ -785,7 +786,7 @@
+@@ -779,7 +780,7 @@
        ELSE Put2(Ldr, RH, SP, 0); Put1(Add, SP, SP, 4); DEC(r); DEC(frame, 4)
        END ;
        IF check THEN Trap(EQ, 5) END ;
@@ -65,18 +65,9 @@
      END ;
      IF x.type.base.form = ORB.NoTyp THEN (*procedure*) RH := 0
      ELSE (*function*)
-@@ -870,7 +871,7 @@
-   END Assert; 
- 
-   PROCEDURE New*(VAR x: Item);
--  BEGIN loadAdr(x); loadTypTagAdr(x.type.base); Put3(BLR, 7, MT); RH := 0; invalSB
-+  BEGIN loadAdr(x); loadTypTagAdr(x.type.base); Put3(BLR, 7, ORS.Pos()*100H + MT); RH := 0; invalSB
-   END New;
- 
-   PROCEDURE Pack*(VAR x, y: Item);
 --- 1/System.Mod.txt
 +++ 2/System.Mod.txt
-@@ -394,6 +394,42 @@
+@@ -393,6 +393,42 @@
      END
    END ExtendDisplay;
  
@@ -119,7 +110,7 @@
    PROCEDURE Trap(VAR a: INTEGER; b: INTEGER);
      VAR u, v, w: INTEGER; mod: Modules.Module;
    BEGIN u := SYSTEM.REG(15); SYSTEM.GET(u - 4, v); w := v DIV 10H MOD 10H; (*trap number*)
-@@ -403,14 +439,14 @@
+@@ -402,14 +438,14 @@
        WHILE (mod # NIL) & ((u < mod.code) OR (u >= mod.imp)) DO mod := mod.next END ;
        IF mod # NIL THEN Texts.WriteString(W, " in "); Texts.WriteString(W, mod.name) END ;
        Texts.WriteString(W, " at"); Texts.WriteHex(W, u);

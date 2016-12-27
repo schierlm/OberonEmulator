@@ -20,7 +20,7 @@ Conventions used:
      VAR i: LONGINT;
 --- ORP.Mod.txt
 +++ ORP.Mod.txt
-@@ -321,7 +321,7 @@
+@@ -326,7 +326,7 @@
          END
        END
      ELSIF sym = ORS.int THEN ORG.MakeConstItem(x, ORB.intType, ORS.ival); ORS.Get(sym)
@@ -32,7 +32,7 @@ Conventions used:
 --- ORS.Mod.txt
 +++ ORS.Mod.txt
 @@ -31,12 +31,17 @@
-     var* = 65; procedure* = 66; begin* = 67; import* = 68; module* = 69;
+     var* = 65; procedure* = 66; begin* = 67; import* = 68; module* = 69; eot = 70;
  
    TYPE Ident* = ARRAY IdLen OF CHAR;
 +    FltQQType = PROCEDURE(x: INTEGER): INTEGER;
@@ -118,7 +118,7 @@ Conventions used:
        END
      ELSE  (*decimal integer*)
        REPEAT
-@@ -308,4 +314,18 @@
+@@ -309,4 +315,18 @@
    KWX[7] := k; KWX[8] := k;
    EnterKW(procedure, "PROCEDURE");
    KWX[9] := k

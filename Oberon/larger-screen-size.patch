@@ -39,7 +39,7 @@
          END
 +        ;INC(a1, Span)
        END
-     ELSE
+     ELSIF ar > al THEN
        left := {(x MOD 32) .. 31}; right := {0 .. ((x+w-1) MOD 32)};
 -      FOR a0 := al TO al + (h-1)*128 BY 128 DO
 +      a0 := al;
@@ -115,7 +115,7 @@
          IF pta0 = pta1 THEN pta0 := patadr+4 END
 +        ;INC(a1, Span)
        END
-     ELSE
+     ELSIF ar > al THEN
        left := {(x MOD 32) .. 31}; right := {0 .. ((x+w-1) MOD 32)};
 -      FOR a0 := al TO al + (h-1)*128 BY 128 DO
 +      a0 := al;
