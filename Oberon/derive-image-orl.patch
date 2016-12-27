@@ -114,7 +114,7 @@
        ELSIF res = 3 THEN importing := name;
          WHILE nofimps > 0 DO DEC(nofimps); DEC(import[nofimps].refcnt) END
        END 
-@@ -185,6 +200,82 @@
+@@ -185,6 +200,106 @@
      newmod :=  mod
    END Load;
  
@@ -171,6 +171,30 @@
 +        INC(idx, Kernel.SectorLength);
 +    END;
 +  END Install;
++
++  PROCEDURE CopyLinkArea*();
++    VAR
++      idx, i, sector, adr, end: INTEGER;
++      secbuf: Kernel.Sector;
++      f: Files.File;
++      r: Files.Rider;
++  BEGIN
++    end := 1024;
++    idx := 0;
++    sector := 2 * 29;
++    f := Files.Old("DiskImage.Bin");
++    Files.Set(r, f, 800H);
++    WHILE (idx < end) DO
++        Kernel.GetSector(sector, secbuf);
++        FOR i := 0 TO Kernel.SectorLength-1 DO Files.WriteByte(r, secbuf[i]) END;
++	IF (sector = 2 * 29) THEN
++	   SYSTEM.GET(SYSTEM.ADR(secbuf)+16, end)
++	END;
++        INC(sector, 29);
++        INC(idx, Kernel.SectorLength)
++    END;
++    Files.Close(f);
++  END CopyLinkArea;
 +
 +  PROCEDURE ExtractBootROM*();
 +    VAR
