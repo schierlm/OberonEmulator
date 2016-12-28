@@ -2,7 +2,7 @@ var disk = [];
 var activeButton=1, interClickButton=0;
 var screenCanvas = null;
 var screenCtx;
-var pixelData;
+var backBuffer;
 var clipboard;
 
 (function() {
@@ -45,7 +45,7 @@ var clipboard;
 		screen.width=params[1] | 0;
 		screen.height=params[2] | 0;
 		screenCtx = screen.getContext("2d");
-		pixelData = screenCtx.createImageData(32,1);
+		backBuffer = screenCtx.createImageData(screen.width,screen.height);
 		document.getElementById("clipboardBtn").onclick = function() {
 			var cbs = document.getElementById("clipboard").style;
 			if(cbs.display == "none") {

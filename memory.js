@@ -6,6 +6,10 @@ var DisplayStart = 0x0E7F00;
 
 var ram = new Int32Array(MemSize/4);
 
+var backBufferMinX=4096, backBufferMinY=4096;
+var backBufferMaxX=0, backBufferMaxY=0;
+var backBufferDirty = false;
+
 function memReadWord(wordAddress, mapROM) {
 	if (mapROM && wordAddress >= ROMStart / 4) {
 		return disk[0][wordAddress - ROMStart / 4];
@@ -159,12 +163,27 @@ function memWriteIMGWord(wordAddress, value) {
 	var x = (offs % 32) * 32;
 	var y = screenCanvas.height - 1 - (offs / 32 | 0);
 	if (y < 0 || x >= screenCanvas.width) return;
+	var base = (y * screenCanvas.width + x) * 4;
 	for (var i = 0; i < 32; i++) {
 		var white = ((value & (1 << i)) != 0);
-		pixelData.data[i*4] = white ? 0xfd : 0x65;
-		pixelData.data[i*4+1] = white ? 0xf6 : 0x7b;
-		pixelData.data[i*4+2] = white ? 0xe3 : 0x83;
-		pixelData.data[i*4+3] = 255;
+		backBuffer.data[base++] = white ? 0xfd : 0x65;
+		backBuffer.data[base++] = white ? 0xf6 : 0x7b;
+		backBuffer.data[base++] = white ? 0xe3 : 0x83;
+		backBuffer.data[base++] = 255;
 	}
-	screenCtx.putImageData( pixelData, x, y ); 
+	if (x < backBufferMinX) backBufferMinX = x;
+	if (y < backBufferMinY) backBufferMinY = y;
+	if (x > backBufferMaxX) backBufferMaxX = x + 31;
+	if (y > backBufferMaxY) backBufferMaxY = y;
+	if (!backBufferDirty) {
+		setTimeout(drawBackBuffer, 1);
+		backBufferDirty = true;
+	}
+}
+
+function drawBackBuffer() {
+	screenCtx.putImageData(backBuffer, 0, 0, backBufferMinX, backBufferMinY, backBufferMaxX - backBufferMinX + 1, backBufferMaxY - backBufferMinY + 1);
+	backBufferMinX = backBufferMinY = 4096;
+	backBufferMaxX = backBufferMaxY = 0;
+	backBufferDirty = false;
 }
