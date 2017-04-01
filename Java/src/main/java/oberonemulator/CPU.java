@@ -162,13 +162,20 @@ public class CPU extends Thread {
 			}
 			case DIV: {
 				if (c_val <= 0) {
-					throw new IllegalStateException("ERROR: PC 0x" + Integer.toHexString(regPC * 4 - 4) + ": divisor " + c_val + " is not positive");
+					int[] q = illegal_div(b_val, c_val, (ir & ubit) != 0);
+					a_val = q[0];
+					regH = q[1];
 				} else {
-					a_val = b_val / c_val;
-					regH = b_val % c_val;
-					if (regH < 0) {
-						a_val--;
-						regH += c_val;
+					if ((ir & ubit) == 0) {
+						a_val = b_val / c_val;
+						regH = b_val % c_val;
+						if (regH < 0) {
+							a_val--;
+							regH += c_val;
+						}
+					} else {
+						a_val = (int) ((b_val & 0xFFFFFFFFL) / (c_val & 0xFFFFFFFFL));
+						regH = (int) ((b_val & 0xFFFFFFFFL) % (c_val & 0xFFFFFFFFL));
 					}
 				}
 				break;
@@ -352,11 +359,14 @@ public class CPU extends Thread {
 			e1 -= 24;
 		}
 
+		boolean xn = (x & 0x7FFFFFFF) == 0;
+		boolean yn = (y & 0x7FFFFFFF) == 0;
+
 		if (v) {
 			return (sum << 5) >> 6;
-		} else if ((x & 0x7FFFFFFF) == 0) {
-			return !u ? y : 0;
-		} else if ((y & 0x7FFFFFFF) == 0) {
+		} else if (xn) {
+			return (u | yn) ? 0 : y;
+		} else if (yn) {
 			return x;
 		} else if ((t3 & 0x01FFFFFF) == 0 || (e1 & 0x100) != 0) {
 			return 0;
@@ -378,17 +388,17 @@ public class CPU extends Thread {
 		int z0;
 		if ((m & (1L << 47)) != 0) {
 			e1++;
-			z0 = ((int) (m >> 24)) & 0x7FFFFF;
+			z0 = ((int) (m >> 23) + 1) & 0xFFFFFF;
 		} else {
-			z0 = ((int) (m >> 23)) & 0x7FFFFF;
+			z0 = ((int) (m >> 22) + 1) & 0xFFFFFF;
 		}
 
 		if (xe == 0 || ye == 0) {
 			return 0;
 		} else if ((e1 & 0x100) == 0) {
-			return sign | ((e1 & 0xFF) << 23) | z0;
+			return sign | ((e1 & 0xFF) << 23) | (z0 >> 1);
 		} else if ((e1 & 0x80) == 0) {
-			return sign | (0xFF << 23) | z0;
+			return sign | (0xFF << 23) | (z0 >> 1);
 		} else {
 			return 0;
 		}
@@ -401,15 +411,15 @@ public class CPU extends Thread {
 
 		int xm = (x & 0x7FFFFF) | 0x800000;
 		int ym = (y & 0x7FFFFF) | 0x800000;
-		int q1 = (int) (xm * (1L << 23) / ym);
+		int q1 = (int) (xm * (1L << 25) / ym);
 
 		int e1 = (xe - ye) + 126;
 		int q2;
-		if ((q1 & 0x800000) != 0) {
+		if ((q1 & (1 << 25)) != 0) {
 			e1++;
-			q2 = q1 & 0x7FFFFF;
+			q2 = (q1 >> 1) & 0xFFFFFF;
 		} else {
-			q2 = (q1 << 1) & 0x7FFFFF;
+			q2 = q1 & 0xFFFFFF;
 		}
 
 		if (xe == 0) {
@@ -417,11 +427,35 @@ public class CPU extends Thread {
 		} else if (ye == 0) {
 			return sign | (0xFF << 23);
 		} else if ((e1 & 0x100) == 0) {
-			return sign | ((e1 & 0xFF) << 23) | q2;
+			return sign | ((e1 & 0xFF) << 23) | ((q2 + 1) >> 1);
 		} else if ((e1 & 0x80) == 0) {
-			return sign | (0xFF << 23) | q2;
+			return sign | (0xFF << 23) | (q2 >> 1);
 		} else {
 			return 0;
 		}
+	}
+
+	private static int[] illegal_div(int x_s, int y_s, boolean signed_div) {
+		long x = x_s & 0xFFFFFFFFL, y = y_s & 0xFFFFFFFFL;
+		boolean sign = (x_s < 0) & signed_div;
+		long RQ = sign ? -x : x;
+		for (int S = 0; S < 32; S++) {
+			long w0 = (RQ >> 31) & 0xFFFFFFFFL;
+			long w1 = (w0 - y) & 0xFFFFFFFFL;
+			if ((int) w1 < 0) {
+				RQ = (w0 << 32) | ((RQ & 0x7FFFFFFFL) << 1);
+			} else {
+				RQ = (w1 << 32) | ((RQ & 0x7FFFFFFFL) << 1) | 1;
+			}
+		}
+		int[] d = { (int) RQ, (int) (RQ >> 32) };
+		if (sign) {
+			d[0] = -d[0];
+			if (d[1] != 0) {
+				d[0] -= 1;
+				d[1] = (int) (y - d[1]);
+			}
+		}
+		return d;
 	}
 }

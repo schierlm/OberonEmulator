@@ -136,11 +136,16 @@ function cpuSingleStep() {
 			break;
 		}
 		case 11: {
-			a_val = (b_val / c_val) | 0;
-			reg_H[0] = (b_val % c_val) | 0;
-			if (reg_H[0] < 0) {
-				a_val = (a_val - 1) | 0;
-				reg_H[0] += c_val;
+			if ((ir & ubit) == 0) {
+				a_val = (b_val / c_val) | 0;
+				reg_H[0] = (b_val % c_val) | 0;
+				if (reg_H[0] < 0) {
+					a_val = (a_val - 1) | 0;
+					reg_H[0] += c_val;
+				}
+			} else {
+				a_val = ((b_val>>>0) / (c_val>>>0)) | 0;
+				reg_H[0] = ((b_val>>>0) % (c_val>>>0)) | 0;
 			}
 			break;
 		}
