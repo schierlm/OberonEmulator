@@ -41,6 +41,9 @@ public class Main {
 			PNGEncoder.encode(args[1], args[2], args[3]);
 		} else if (args.length == 4 && args[0].equals("DecodePNG")) {
 			PNGEncoder.decode(args[1], args[2], args[3]);
+		} else if (args.length > 1 && args[0].equals("NativeFloatingPoint")) {
+			CPU.nativeFloatingPoint = true;
+			main(Arrays.copyOfRange(args, 1, args.length));
 		} else if (args.length > 2 && args[0].equals("LimitFeatures")) {
 			Feature.allowedFeatures = Feature.parse(args[1]);
 			main(Arrays.copyOfRange(args, 2, args.length));
@@ -132,6 +135,7 @@ public class Main {
 			System.out.println("       java -jar OberonEmulator.jar DecodePNG <pngfile> <diskimage> <romimage>");
 			System.out.println("       java -jar OberonEmulator.jar <width> <height> <diskimage> <romimage> [<rs232> [<net>]]");
 			System.out.println("       java -jar OberonEmulator.jar <width> <height> -png <pngfile> [<rs232> [<net>]]");
+			System.out.println("       java -jar OberonEmulator.jar NativeFloatingPoint ...");
 			System.out.println("       java -jar OberonEmulator.jar LimitFeatures <base>[+<feature>|-<feature>]* ...");
 			System.out.println("       java -jar OberonEmulator.jar KeyboardEmulation <kbdtype> ...");
 			System.out.println();

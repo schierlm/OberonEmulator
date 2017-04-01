@@ -2,6 +2,8 @@ package oberonemulator;
 
 public class CPU extends Thread {
 
+	public static boolean nativeFloatingPoint = false;
+
 	private boolean running = true;
 	private Memory mem;
 
@@ -308,6 +310,9 @@ public class CPU extends Thread {
 	}
 
 	private static int fp_add(int x, int y, boolean u, boolean v) {
+		if (nativeFloatingPoint)
+			return native_fp_add(x, y, u, v);
+
 		boolean xs = (x & 0x80000000) != 0;
 		int xe;
 		int x0;
@@ -376,6 +381,9 @@ public class CPU extends Thread {
 	}
 
 	private static int fp_mul(int x, int y) {
+		if (nativeFloatingPoint)
+			return native_fp_mul(x, y);
+
 		int sign = (x ^ y) & 0x80000000;
 		int xe = (x >> 23) & 0xFF;
 		int ye = (y >> 23) & 0xFF;
@@ -405,6 +413,9 @@ public class CPU extends Thread {
 	}
 
 	private static int fp_div(int x, int y) {
+		if (nativeFloatingPoint)
+			return native_fp_div(x, y);
+
 		int sign = (x ^ y) & 0x80000000;
 		int xe = (x >> 23) & 0xFF;
 		int ye = (y >> 23) & 0xFF;
@@ -457,5 +468,23 @@ public class CPU extends Thread {
 			}
 		}
 		return d;
+	}
+
+	private static strictfp int native_fp_add(int x, int y, boolean u, boolean v) {
+		if (!u && !v)
+			return Float.floatToRawIntBits(Float.intBitsToFloat(x) + Float.intBitsToFloat(y));
+		if (u && !v && y == 0x4B000000)
+			return Float.floatToRawIntBits(x);
+		if (!u && v && y == 0x4B000000)
+			return (int) Math.floor(Float.intBitsToFloat(x));
+		throw new IllegalStateException("Unsupported FP_ADD parameters");
+	}
+
+	private static strictfp int native_fp_mul(int x, int y) {
+		return Float.floatToRawIntBits(Float.intBitsToFloat(x) * Float.intBitsToFloat(y));
+	}
+
+	private static strictfp int native_fp_div(int x, int y) {
+		return Float.floatToRawIntBits(Float.intBitsToFloat(x) / Float.intBitsToFloat(y));
 	}
 }
