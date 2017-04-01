@@ -3,6 +3,9 @@ var reg_PC = new Int32Array(1);
 var reg_H = new Int32Array(1);
 var reg_R = new Int32Array(16);
 var flag_Z = false, flag_N = false, flag_C = false, flag_V = false;
+var ieeeBuffer = new ArrayBuffer(4);
+var floatBuffer = new Float32Array(ieeeBuffer);
+var intBuffer = new Int32Array(ieeeBuffer);
 
 var cpuTimeout = null;
 var running = false;
@@ -136,14 +139,36 @@ function cpuSingleStep() {
 			break;
 		}
 		case 11: {
-			a_val = (b_val / c_val) | 0;
-			reg_H[0] = (b_val % c_val) | 0;
-			if (reg_H[0] < 0) {
-				a_val = (a_val - 1) | 0;
-				reg_H[0] += c_val;
+			if ((ir & ubit) == 0) {
+				a_val = (b_val / c_val) | 0;
+				reg_H[0] = (b_val % c_val) | 0;
+				if (reg_H[0] < 0) {
+					a_val = (a_val - 1) | 0;
+					reg_H[0] += c_val;
+				}
+			} else {
+				a_val = ((b_val>>>0) / (c_val>>>0)) | 0;
+				reg_H[0] = ((b_val>>>0) % (c_val>>>0)) | 0;
 			}
 			break;
 		}
+		case 13:
+			c_val ^= 0x80000000;
+			// fall through
+		case 12:
+			if ((ir & ubit) == 0 && (ir & vbit) == 0)
+				a_val = cpuFloat2Int(cpuInt2Float(b_val) + cpuInt2Float(c_val));
+			if ((ir & ubit) != 0 && (ir & vbit) == 0 && c_val == 0x4B000000)
+				a_val = cpuFloat2Int(b_val);
+			if ((ir & ubit) == 0 && (ir & vbit) != 0 && c_val == 0x4B000000)
+				a_val = Math.floor(cpuInt2Float(b_val)) | 0;
+			break;
+		case 14:
+			a_val = cpuFloat2Int(cpuInt2Float(b_val) * cpuInt2Float(c_val));
+			break;
+		case 15:
+			a_val = cpuFloat2Int(cpuInt2Float(b_val) / cpuInt2Float(c_val));
+			break;
 		}
 		cpuSetRegister(a, a_val);
 	}
@@ -242,4 +267,14 @@ function cpuStoreByte(address, value) {
 	} else {
 		memWriteWord(address / 4|0, value & 0xFF);
 	}
+}
+
+function cpuFloat2Int(v) {
+	floatBuffer[0] = v;
+	return intBuffer[0];
+}
+
+function cpuInt2Float(v) {
+	intBuffer[0] = v;
+	return floatBuffer[0];
 }
