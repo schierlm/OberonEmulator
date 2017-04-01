@@ -12,11 +12,10 @@ patch -d work <paravirtualized-disk.patch
 patch -d work <power-management.patch
 patch -d work <power-management-keyboard-unresponsive.patch
 patch -d work <reduce-filesystem-offset.patch
-patch -d work <reality-lost.patch
 
 ./derive-files.sh
 
-sed 's/ RealCalc.Tool//;s/PCLink1.Run  //' \
+sed 's/PCLink1.Run  //' \
     -i work/System.Tool.Full.txt
 
 patch -d work <fix-js-start-offset.patch

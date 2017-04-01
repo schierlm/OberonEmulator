@@ -9,7 +9,7 @@ Batch.Run
 |> ORP.Compile ORS.Mod ORB.Mod ORG.Mod ~
 |> Batch.Collect |> ORP.Compile ORP.Mod ~
 |> Batch.Collect |> System.Free ORP ORG ORB ORS ~
-|> Batch.VerifyLog 0B2D00A5H
+|> Batch.VerifyLog 90B3AE79H
 |> Batch.WriteLog * 1 "*** Compiling crosscompiler ***"
 |> Batch.DeleteFiles X*.smb
 |> Batch.DeleteFiles BootLoad.smb
@@ -18,7 +18,7 @@ Batch.Run
 |> Batch.Collect |> Batch.DeleteFiles Image*.smb
 |> ORP.Compile ImageKernel.Mod/s ImageFileDir.Mod/s ImageFiles.Mod/s
         ImageTool.Mod/s ImageORL.Mod/s BootLoad.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 26F54BA0H
+|> Batch.Collect |> Batch.VerifyLog 8802BB25H
 |> Batch.WriteLog * 1 "*** Starting crosscompile ***"
 |> Batch.DeleteFiles *.X
 |> XORP.Compile Kernel.Mod/s FileDir.Mod/s Files.Mod/s Modules.Mod/s
@@ -28,20 +28,20 @@ Batch.Run
 |> Batch.Collect |> XORP.Compile MenuViewers.Mod/s ~
 |> Batch.Collect |> XORP.Compile TextFrames.Mod/s ~
 |> Batch.Collect |> XORP.Compile System.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 973E30ADH
+|> Batch.Collect |> Batch.VerifyLog 86C308C9H
 |> Batch.WriteLog * \ ""
 |> Batch.Collect |> XORP.Compile Edit.Mod/s ~
 |> Batch.Collect |> XORP.Compile Clipboard.Mod/s ~
 |> Batch.Collect |> XORP.Compile ORS.Mod/s ORB.Mod/s ~
 |> Batch.Collect |> XORP.Compile ORG.Mod/s ~
 |> Batch.Collect |> XORP.Compile ORP.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 54A0EDF2H
+|> Batch.Collect |> Batch.VerifyLog 170CFBEAH
 |> Batch.WriteLog * \ ""
 |> Batch.Collect |> XORP.Compile ORTool.Mod/s ~
 |> Batch.Collect |> XORP.Compile Calc.Mod/s ResourceMonitor.Mod/s ~
 |> Batch.Collect |> XORP.Compile Graphics.Mod/s ~
 |> Batch.Collect |> XORP.Compile GraphicFrames.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 0A40B2EDEH
+|> Batch.Collect |> Batch.VerifyLog 8387559FH
 |> Batch.WriteLog * \ 2 "*** First part done - "
 |> Batch.WriteLog \ 0 "Restart Oberon and run second "
 |> Batch.WriteLog 0 "part ***"
@@ -50,16 +50,17 @@ Batch.Run
 >>> Second part starts below <<<
 
 Batch.Run
+|> XORP.Compile ~
 |> Batch.ClearLog
 |> Batch.Collect |> XORP.Compile Draw.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 0B0EFDED4H
+|> Batch.Collect |> Batch.VerifyLog 9F40BFE8H
 |> Batch.WriteLog * \ ""
 |> Batch.Collect |> XORP.Compile  GraphTool.Mod/s ~
 |> Batch.Collect |> XORP.Compile Rectangles.Mod/s ~
 |> Batch.Collect |> XORP.Compile Curves.Mod/s ~
 |> Batch.Collect |> XORP.Compile PCLink1.Mod/s RealCalc.Mod/s ~
 |> Batch.Collect |> XORP.Compile SCC.Mod/s Net.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 1383EFF8H
+|> Batch.Collect |> Batch.VerifyLog 0F497DE48H
 |> Batch.WriteLog * 1 "*** Building DiskImage.Bin ***"
 |> System.CopyFiles System.Tool.Full => System.Tool.X ~
 |> ImageTool.Init
@@ -93,6 +94,6 @@ Batch.Run
 |> Batch.Collect
 |> ImageORL.Link
 |> ImageTool.Close
-|> Batch.Collect |> Batch.VerifyLog 4C1AB42AH
+|> Batch.Collect |> Batch.VerifyLog 73F755ECH
 |> Batch.WriteLog 3 "*** FINISHED ***"
 ||
