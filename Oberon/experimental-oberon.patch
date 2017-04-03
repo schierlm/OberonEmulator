@@ -200,7 +200,7 @@ diff -Naur experimental2_orig/Oberon.Mod.txt experimental2/Oberon.Mod.txt
 @@ -398,9 +399,15 @@
            IF Y >= DH THEN Y := DH END ;
            M.Y := Y; M.keys := keys; V := Viewers.This(Viewers.CurDisplay, X, Y); V.handle(V, M); prevX := X; prevY := Y
-         END;
+         END ;
 +        SYSTEM.PUT(-64, minTime);
          CurTask := CurTask.next; t := Kernel.Time();
          IF t >= CurTask.nextTime THEN

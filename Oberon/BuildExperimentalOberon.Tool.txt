@@ -1,0 +1,34 @@
+ORP.Compile Batch.Mod/s ~
+
+System.Free Batch ~
+
+Batch.Run
+|> Batch.ClearLog
+|> Batch.Collect
+|> ORP.Compile ImageKernel.Mod/s ImageFileDir.Mod/s ImageFiles.Mod/s
+        ImageTool.Mod/s ImageORL.Mod/s ~
+|> Batch.Collect
+|> ImageTool.Init
+|> Batch.Collect
+|> ImageTool.AddFiles Clipboard.rsc Curves.rsc Draw.rsc Edit.rsc Fonts.rsc
+	GraphTool.rsc GraphicFrames.rsc Graphics.rsc Input.rsc MenuViewers.rsc
+	ORB.rsc ORG.rsc ORP.rsc ORS.rsc ORTool.rsc Oberon.rsc Raster.rsc
+	Rectangles.rsc System.rsc TextFrames.rsc Texts.rsc Viewers.rsc
+~ |> Batch.Collect |> ImageTool.AddFiles
+	Kernel.smb FileDir.smb Files.smb  Modules.smb
+	Clipboard.smb Curves.smb Draw.smb Edit.smb Fonts.smb
+	GraphTool.smb GraphicFrames.smb Graphics.smb Input.smb MenuViewers.smb
+	ORB.smb ORG.smb ORP.smb ORS.smb ORTool.smb Oberon.smb Raster.smb
+	Rectangles.smb System.smb TextFrames.smb Texts.smb Viewers.smb
+~ |> Batch.Collect |> ImageTool.AddFiles
+	Elektra.Scn.Fnt Oberon10.Scn.Fnt Oberon10b.Scn.Fnt Oberon10i.Scn.Fnt
+	Oberon12.Scn.Fnt Oberon12b.Scn.Fnt Oberon12i.Scn.Fnt Oberon16.Scn.Fnt
+	Oberon8.Scn.Fnt Oberon8i.Scn.Fnt Times24.Scn.Fnt
+	TTL0.Lib TTL1.Lib Draw.Tool System.Tool ~
+|> Batch.Collect
+|> ImageORL.CopyLinkArea
+|> ImageTool.Close
+|> Batch.Collect
+|> Batch.WriteLog 3 "*** FINISHED ***"
+|>
+||
