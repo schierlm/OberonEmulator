@@ -7,7 +7,6 @@ var ieeeBuffer = new ArrayBuffer(4);
 var floatBuffer = new Float32Array(ieeeBuffer);
 var intBuffer = new Int32Array(ieeeBuffer);
 
-var cpuTimeout = null;
 var running = false;
 
 function cpuReset(cold) {
@@ -19,15 +18,11 @@ function cpuReset(cold) {
 		memWriteWord(DisplayStart/4+2, screenCanvas.height);
 	}
 	reg_PC[0] = ROMStart / 4;
-	if (cpuTimeout != null)
-		clearTimeout(cpuTimeout);
-	cpuTimeout = setTimeout(cpuRun, 1);
 }
 
+/** @deprecated use WebDriver#resume or equivalent */
 function cpuResume() {
-	if (cpuTimeout != null)
-		clearTimeout(cpuTimeout);
-	cpuTimeout = setTimeout(cpuRun, 1);
+	emulator.resume();
 }
 
 function cpuRun() {
