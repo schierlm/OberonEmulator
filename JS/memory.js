@@ -40,16 +40,10 @@ function memReadIOWord(wordAddress) {
 		return emulator.tickCount | 0;
 	}
 	case 24: {
-		// XXX Move this logic to WebDriver.
-		var mouse = emulator.mouse;
-		if (emulator.keyBuffer.length > 0) mouse |= 0x10000000;
-		return mouse;
+		return emulator.getInputStatus();
 	}
 	case 28: {
-		if (emulator.keyBuffer.length > 0) {
-			return emulator.keyBuffer.shift();
-		}
-		return 0;
+		return emulator.getKeyCode();
 	}
 	case 40: {
 		clipboardBuffer = clipboard.value.split("\n").join("\r");
@@ -116,12 +110,6 @@ function memWriteIOWord(wordAddress, value) {
 		break;
 	}
 	}
-}
-
-function hwKeyboardInput(keyChar) {
-	emulator.keyBuffer.push(keyChar << 24);
-	emulator.wait(-1);
-	cpuResume();
 }
 
 function memWriteIMGWord(wordAddress, value) {

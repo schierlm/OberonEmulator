@@ -76,10 +76,10 @@ emuInit = function() {
 			emulator.registerMouseButton(2, true);
 			e.preventDefault();
 		} else if (e.keyCode == 8 || e.keyCode == 9 || e.keyCode == 27 || e.keyCode == 13) {
-			hwKeyboardInput(e.keyCode);
+			emulator.registerKey(e.keyCode);
 			e.preventDefault();
 		} else if (e.keyCode == 112 || e.keyCode == 45) {
-			hwKeyboardInput(26);
+			emulator.registerKey(26);
 			e.preventDefault();
 		}
 	};
@@ -99,7 +99,7 @@ emuInit = function() {
 			charCode = e.charCode;
 		}
 		if (charCode != 0) {
-			hwKeyboardInput(charCode|0);
+			emulator.registerKey(charCode|0);
 			e.preventDefault();
 		}
 	};

@@ -88,4 +88,24 @@ function WebDriver() {
 		this.wait(-1);
 		this.resume();
 	};
+
+	$proto.registerKey = function(keyCode) {
+		this.keyBuffer.push(keyCode << 24);
+		this.wait(-1);
+		this.resume();
+	};
+
+	$proto.hasInput = function() {
+		return this.keyBuffer.length > 0;
+	};
+
+	$proto.getInputStatus = function() {
+		if (!this.hasInput()) return this.mouse;
+		return this.mouse | 0x10000000;
+	};
+
+	$proto.getKeyCode = function() {
+		if (!this.hasInput()) return 0;
+		return this.keyBuffer.shift();
+	};
 }
