@@ -17,11 +17,6 @@ function cpuReset(cold) {
 	reg_PC[0] = ROMStart / 4;
 }
 
-/** @deprecated use WebDriver#resume or equivalent */
-function cpuResume() {
-	emulator.resume();
-}
-
 function cpuSingleStep() {
 	var pbit = 0x80000000;
 	var qbit = 0x40000000;
