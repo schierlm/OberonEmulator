@@ -118,33 +118,6 @@ function memWriteIOWord(wordAddress, value) {
 	}
 }
 
-function hwMouseMoved(mouse_x, mouse_y) {
-	var oldMouse = mouse;
-	if (mouse_x >= 0 && mouse_x < 4096) {
-		mouse = (mouse & ~0x00000FFF) | mouse_x;
-	}
-	if (mouse_y >= 0 && mouse_y < 4096) {
-		mouse = (mouse & ~0x00FFF000) | (mouse_y << 12);
-	}
-	if (mouse != oldMouse) {
-		emulator.wait(-1);
-		cpuResume();
-	}
-}
-
-function hwMouseButton(button, down) {
-	if (button >= 1 && button < 4) {
-		var bit = 1 << (27 - button);
-		if (down) {
-			mouse |= bit;
-		} else {
-			mouse &= ~bit;
-		}
-	}
-	emulator.wait(-1);
-	cpuResume();
-}
-
 function hwKeyboardInput(keyChar) {
 	emulator.keyBuffer.push(keyChar << 24);
 	emulator.wait(-1);
