@@ -31,7 +31,6 @@ function memWriteWord(wordAddress, value) {
 		}
 }
 
-var startMillis = Date.now(), waitMillis = 0;
 var paravirtPtr = 0;
 var mouse = 0;
 var clipboardBuffer = '', clipboardRemaining = 0;
@@ -39,7 +38,7 @@ var clipboardBuffer = '', clipboardRemaining = 0;
 function memReadIOWord(wordAddress) {
 	switch (wordAddress * 4 - IOStart) {
 	case 0: {
-		return (Date.now() - startMillis) | 0;
+		return emulator.tickCount | 0;
 	}
 	case 24: {
 		var _mouse = mouse;
@@ -73,10 +72,7 @@ function memReadIOWord(wordAddress) {
 function memWriteIOWord(wordAddress, value) {
 	switch (wordAddress * 4 - IOStart) {
 	case 0: {
-		if (waitMillis == -1)
-			waitMillis = 0;
-		else
-			waitMillis = startMillis + value;
+		emulator.wait(value);
 		break;
 	}
 	case 4: {
@@ -133,7 +129,7 @@ function hwMouseMoved(mouse_x, mouse_y) {
 		mouse = (mouse & ~0x00FFF000) | (mouse_y << 12);
 	}
 	if (mouse != oldMouse) {
-		waitMillis = -1;
+		emulator.wait(-1);
 		cpuResume();
 	}
 }
@@ -147,13 +143,13 @@ function hwMouseButton(button, down) {
 			mouse &= ~bit;
 		}
 	}
-	waitMillis = -1;
+	emulator.wait(-1);
 	cpuResume();
 }
 
 function hwKeyboardInput(keyChar) {
 	emulator.keyBuffer.push(keyChar << 24);
-	waitMillis = -1;
+	emulator.wait(-1);
 	cpuResume();
 }
 

@@ -28,10 +28,10 @@ function cpuResume() {
 function cpuRun() {
 	if (!running) return;
 	var now = Date.now();
-	for(var i=0; i < 200000 && waitMillis < now; i++) {
+	for(var i=0; i < 200000 && emulator.waitMillis < now; i++) {
 		cpuSingleStep();
 	}
-	cpuTimeout = setTimeout(cpuRun, Math.max(waitMillis-Date.now(), 10));
+	cpuTimeout = setTimeout(cpuRun, Math.max(emulator.waitMillis - Date.now(), 10));
 }
 
 function cpuSingleStep() {
