@@ -33,7 +33,6 @@ function memWriteWord(wordAddress, value) {
 
 var startMillis = Date.now(), waitMillis = 0;
 var paravirtPtr = 0;
-var keyBuf = [];
 var mouse = 0;
 var clipboardBuffer = '', clipboardRemaining = 0;
 
@@ -44,14 +43,14 @@ function memReadIOWord(wordAddress) {
 	}
 	case 24: {
 		var _mouse = mouse;
-		if (keyBuf.length > 0) {
+		if (emulator.keyBuffer.length > 0) {
 			_mouse |= 0x10000000;
 		}
 		return _mouse;
 	}
 	case 28: {
-		if (keyBuf.length > 0) {
-			return keyBuf.shift();
+		if (emulator.keyBuffer.length > 0) {
+			return emulator.keyBuffer.shift();
 		}
 		return 0;
 	}
@@ -153,7 +152,7 @@ function hwMouseButton(button, down) {
 }
 
 function hwKeyboardInput(keyChar) {
-	keyBuf.push(keyChar << 24);
+	emulator.keyBuffer.push(keyChar << 24);
 	waitMillis = -1;
 	cpuResume();
 }

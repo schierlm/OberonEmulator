@@ -5,6 +5,8 @@ window.onload = function() {
 }
 
 function WebDriver() {
+	this.keyBuffer = [];
+
 	emuInit();
 }
 
@@ -12,6 +14,7 @@ function WebDriver() {
 	let $proto = WebDriver.prototype;
 
 	$proto.cpuTimeout = null;
+	$proto.keyBuffer = null;
 
 	$proto.reset = function(cold) {
 		cpuReset(cold);
