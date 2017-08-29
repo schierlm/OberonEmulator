@@ -11,6 +11,7 @@ function WebDriver() {
 
 	this.keyBuffer = [];
 	this.waitMillis = 0;
+	this.paused = false;
 
 	this.startMillis = Date.now();
 	emuInit();
@@ -23,6 +24,7 @@ function WebDriver() {
 
 	$proto.cpuTimeout = null;
 	$proto.keyBuffer = null;
+	$proto.paused = null;
 	$proto.startMillis = null;
 	$proto.waitMillis = null;
 
@@ -42,7 +44,7 @@ function WebDriver() {
 
 	$proto.run = function()
 	{
-		if (!cpuRunning()) return;
+		if (this.paused) return;
 		let now = Date.now();
 		for (var i = 0; i < 200000 && this.waitMillis < now; ++i) {
 			cpuSingleStep();

@@ -7,10 +7,7 @@ var ieeeBuffer = new ArrayBuffer(4);
 var floatBuffer = new Float32Array(ieeeBuffer);
 var intBuffer = new Int32Array(ieeeBuffer);
 
-var running = false;
-
 function cpuReset(cold) {
-	running = true;
 	if (cold) {
 		reg_R[15] = 0;
 		memWriteWord(DisplayStart/4, 0x53697A65); // magic value SIZE
@@ -23,11 +20,6 @@ function cpuReset(cold) {
 /** @deprecated use WebDriver#resume or equivalent */
 function cpuResume() {
 	emulator.resume();
-}
-
-/** @deprecated needs to be managed by the driver; no replacement yet */
-function cpuRunning() {
-	return running;
 }
 
 function cpuSingleStep() {

@@ -13,7 +13,6 @@ emuInit = function() {
 		if (screenCanvas && disk.length > 0) {
 			document.getElementById("breakbutton").onclick= function() {emulator.reset(false);};
 			document.getElementById("resetbutton").onclick= function() {emulator.reset(true);};
-			running = true;
 			emulator.reset(true);
 		}
 	};
