@@ -60,4 +60,32 @@ function WebDriver() {
 			this.waitMillis = this.startMillis + x;
 		}
 	};
+
+	$proto.registerMousePosition = function(x, y) {
+		let before = this.mouse;
+
+		let after = this.mouse;
+		if (0 <= x && x < 4096) after = (after & ~0x00000FFF) | x;
+		if (0 <= y && y < 4096) after = (after & ~0x00FFF000) | (y << 12);
+
+		if (before === after) return;
+
+		this.mouse = after;
+		this.wait(-1);
+		this.resume();
+	};
+
+	$proto.registerMouseButton = function(button, down) {
+		if (1 <= button && button <= 3) {
+			let bit = 1 << (27 - button);
+			if (down) {
+				this.mouse |= bit;
+			}
+			else {
+				this.mouse &= ~bit;
+			}
+		}
+		this.wait(-1);
+		this.resume();
+	};
 }

@@ -32,7 +32,6 @@ function memWriteWord(wordAddress, value) {
 }
 
 var paravirtPtr = 0;
-var mouse = 0;
 var clipboardBuffer = '', clipboardRemaining = 0;
 
 function memReadIOWord(wordAddress) {
@@ -41,11 +40,10 @@ function memReadIOWord(wordAddress) {
 		return emulator.tickCount | 0;
 	}
 	case 24: {
-		var _mouse = mouse;
-		if (emulator.keyBuffer.length > 0) {
-			_mouse |= 0x10000000;
-		}
-		return _mouse;
+		// XXX Move this logic to WebDriver.
+		var mouse = emulator.mouse;
+		if (emulator.keyBuffer.length > 0) mouse |= 0x10000000;
+		return mouse;
 	}
 	case 28: {
 		if (emulator.keyBuffer.length > 0) {

@@ -73,7 +73,7 @@ emuInit = function() {
 	screen.style.outline = "none";
 	screen.onkeydown = function(e) {
 		if (e.keyCode == 18 && !e.ctrlKey) {
-			hwMouseButton(2, true);
+			emulator.registerMouseButton(2, true);
 			e.preventDefault();
 		} else if (e.keyCode == 8 || e.keyCode == 9 || e.keyCode == 27 || e.keyCode == 13) {
 			hwKeyboardInput(e.keyCode);
@@ -85,7 +85,7 @@ emuInit = function() {
 	};
 	screen.onkeyup = function(e) {
 		if (e.keyCode == 18 && !e.ctrlKey) {
-			hwMouseButton(2, false);
+			emulator.registerMouseButton(2, false);
 			e.preventDefault();
 		}
 	};
@@ -104,24 +104,27 @@ emuInit = function() {
 		}
 	};
 	screen.onmousemove = function(e) {
-		hwMouseMoved(e.clientX - screen.offsetLeft + document.body.scrollLeft,
-			screen.height - e.clientY - 1 + screen.offsetTop - document.body.scrollTop)
+		let scrollX = document.body.scrollLeft;
+		let scrollY = document.body.scrollTop;
+		let x = e.clientX - screen.offsetLeft + scrollX;
+		let y = -(e.clientY - screen.offsetTop + scrollY) + screen.height - 1;
+		emulator.registerMousePosition(x, y);
 	};
 	screen.onmousedown = function(e) {
 		var button = e.button + 1;
 		if (button == 1) button = activeButton;
-		hwMouseButton(button, true);
+		emulator.registerMouseButton(button, true);
 	};
 	screen.onmouseup = function(e) {
 		var button = e.button + 1;
 		if (button == 1) {
 			if (interClickButton != 0) {
-				hwMouseButton(interClickButton, true);
-				hwMouseButton(interClickButton, false);
+				emulator.registerMouseButton(interClickButton, true);
+				emulator.registerMouseButton(interClickButton, false);
 			}
 			button = activeButton;
 		}
-		hwMouseButton(button, false);
+		emulator.registerMouseButton(button, false);
 	};
 	screen.oncontextmenu = function(e) {
 		e.preventDefault();
