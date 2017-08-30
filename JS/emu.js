@@ -1,8 +1,6 @@
 emuInit = function(width, height) {
 	emulator.screen.width=width | 0;
 	emulator.screen.height=height | 0;
-	emulator.screen.tabIndex = 1000;
-	emulator.screen.style.outline = "none";
 	emulator.screen.onkeydown = function(e) {
 		if (e.keyCode == 18 && !e.ctrlKey) {
 			emulator.registerMouseButton(2, true);

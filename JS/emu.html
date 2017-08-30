@@ -7,7 +7,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 .mousebtn.interclick {background-color: yellow;}
 .led {border:1px solid gray; background-color: black; color: white; border-radius: 50% }
 .led.lit {background-color: #0f0; color: black; }
-#screen {cursor: none; }
+#screen {cursor: none; outline: none;}
 </style>
 <script src="memory.js"></script>
 <script src="cpu.js"></script>
@@ -43,4 +43,4 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 
 </div>
 <textarea id="clipboardText" style="width:1024;"></textarea>
-<canvas id="screen"></canvas>
+<canvas id="screen" tabindex="1000"></canvas>
