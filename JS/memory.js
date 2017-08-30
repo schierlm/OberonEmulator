@@ -24,7 +24,6 @@ function memWriteWord(wordAddress, value) {
 		if (wordAddress >= IOStart / 4) {
 			memWriteIOWord(wordAddress, value);
 		} else if (wordAddress >= DisplayStart / 4) {
-			ram[wordAddress] = value;
 			memWriteIMGWord(wordAddress, value);
 		} else {
 			ram[wordAddress] = value;
@@ -113,31 +112,9 @@ function memWriteIOWord(wordAddress, value) {
 }
 
 function memWriteIMGWord(wordAddress, value) {
-	var offs = wordAddress - DisplayStart/4;
-	var x = (offs % 32) * 32;
-	var y = emulator.screen.height - 1 - (offs / 32 | 0);
-	if (y < 0 || x >= emulator.screen.width) return;
-	var base = (y * emulator.screen.width + x) * 4;
-	for (var i = 0; i < 32; i++) {
-		var white = ((value & (1 << i)) != 0);
-		backBuffer.data[base++] = white ? 0xfd : 0x65;
-		backBuffer.data[base++] = white ? 0xf6 : 0x7b;
-		backBuffer.data[base++] = white ? 0xe3 : 0x83;
-		backBuffer.data[base++] = 255;
-	}
-	if (x < backBufferMinX) backBufferMinX = x;
-	if (y < backBufferMinY) backBufferMinY = y;
-	if (x > backBufferMaxX) backBufferMaxX = x + 31;
-	if (y > backBufferMaxY) backBufferMaxY = y;
-	if (!backBufferDirty) {
-		setTimeout(drawBackBuffer, 1);
-		backBufferDirty = true;
-	}
-}
-
-function drawBackBuffer() {
-	screenCtx.putImageData(backBuffer, 0, 0, backBufferMinX, backBufferMinY, backBufferMaxX - backBufferMinX + 1, backBufferMaxY - backBufferMinY + 1);
-	backBufferMinX = backBufferMinY = 4096;
-	backBufferMaxX = backBufferMaxY = 0;
-	backBufferDirty = false;
+	ram[wordAddress] = value;
+	let offset = wordAddress - DisplayStart / 4;
+	let x = (offset % 32) * 32;
+	let y = emulator.screen.height - 1 - (offset / 32 | 0);
+	emulator.registerVideo(x, y, value);
 }

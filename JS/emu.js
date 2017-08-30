@@ -1,12 +1,6 @@
-var screenCtx;
-var backBuffer;
-
 emuInit = function(width, height) {
 	emulator.screen.width=width | 0;
 	emulator.screen.height=height | 0;
-	screenCtx = emulator.screen.getContext("2d");
-	backBuffer =
-		screenCtx.createImageData(emulator.screen.width,emulator.screen.height);
 	emulator.screen.tabIndex = 1000;
 	emulator.screen.style.outline = "none";
 	emulator.screen.onkeydown = function(e) {

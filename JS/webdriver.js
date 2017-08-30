@@ -3,7 +3,7 @@ var emulator;
 window.onload = function() {
 	let [ imageName, width, height ] =
 		window.location.hash.substring(1).split(",");
-	emulator = new WebDriver(imageName, width, height);
+	emulator = new WebDriver(imageName, width | 0, height | 0);
 }
 
 function WebDriver(imageName, width, height) {
@@ -23,6 +23,10 @@ function WebDriver(imageName, width, height) {
 	this.startMillis = Date.now();
 	emulator = this; // XXX Remove this when `emuInit` gets refactored out
 	emuInit(width, height);
+
+	this.screenUpdater = new ScreenUpdater(
+		this.screen.getContext("2d"), width, height
+	);
 
 	this.diskLoader = new DiskLoader(imageName, this);
 }
@@ -78,6 +82,20 @@ function WebDriver(imageName, width, height) {
 		else {
 			this.waitMillis = this.startMillis + x;
 		}
+	};
+
+	$proto.registerVideo = function(x, y, value) {
+		if (y < 0 || x >= this.screen.width) return;
+		let base = (y * this.screen.width + x) * 4;
+		let { data } = this.screenUpdater.backBuffer;
+		for (let i = 0; i < 32; i++) {
+			let lit = ((value & (1 << i)) != 0);
+			data[base++] = lit ? 0xfd : 0x65;
+			data[base++] = lit ? 0xf6 : 0x7b;
+			data[base++] = lit ? 0xe3 : 0x83;
+			data[base++] = 255;
+		}
+		this.screenUpdater.mark(x, y);
 	};
 
 	$proto.registerMousePosition = function(x, y) {
@@ -200,6 +218,47 @@ function WebDriver(imageName, width, height) {
 			this.interClickButton = clickButton.dataset.button;
 			clickButton.classList.add("interclick");
 		}
+	};
+}
+
+function ScreenUpdater(context, width, height) {
+	this.context = context;
+	this.backBuffer = context.createImageData(width, height);
+
+	this.clear();
+}
+
+{
+	let $proto = ScreenUpdater.prototype;
+
+	$proto.backBuffer = null;
+	$proto.context = null;
+	$proto.maxX = null;
+	$proto.maxY = null;
+	$proto.minX = null;
+	$proto.minY = null;
+	$proto.update = null;
+
+	ScreenUpdater.paint = $proto.paint = function(updater) {
+		updater.context.putImageData(
+			updater.backBuffer, 0, 0, updater.minX, updater.minY,
+			updater.maxX - updater.minX + 1, updater.maxY - updater.minY + 1
+		);
+		updater.clear();
+	};
+
+	$proto.mark = function(x, y) {
+		if (x < this.minX) this.minX = x;
+		if (y < this.minY) this.minY = y;
+		if (x > this.maxX) this.maxX = x + 31;
+		if (y > this.maxY) this.maxY = y;
+		if (!this.update) this.update = window.setTimeout(this.paint, 1, this);
+	};
+
+	$proto.clear = function() {
+		this.minX = this.minY = 4096;
+		this.maxX = this.maxY = 0;
+		this.update = null;
 	};
 }
 
