@@ -31,5 +31,4 @@ emuInit = function(width, height) {
 			e.preventDefault();
 		}
 	};
-	emulator.screen.focus();
 };

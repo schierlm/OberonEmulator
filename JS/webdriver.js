@@ -173,6 +173,8 @@ function WebDriver(imageName, width, height) {
 		this.screen.addEventListener("mouseup", this, false);
 		this.screen.addEventListener("contextmenu", this, false);
 
+		this.screen.focus();
+
 		$ = document.querySelector.bind(document);
 		this.clickLeft = $(".mousebtn[data-button='1']");
 		this.clickMiddle = $(".mousebtn[data-button='2']");
