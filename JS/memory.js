@@ -63,13 +63,7 @@ function memWriteIOWord(wordAddress, value) {
 		break;
 	}
 	case 4: {
-		var leds = value;
-		for(var i=0; i<8; i++) {
-			var cn = "led";
-			if (leds & (1 << i))
-				cn = "led lit";
-			document.getElementById("led"+i).className=cn;
-		}
+		emulator.registerLEDs(value);
 		break;
 	}
 	case 36: {

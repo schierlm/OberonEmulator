@@ -126,6 +126,12 @@ function WebDriver(imageName, width, height) {
 		this.resume();
 	};
 
+	$proto.registerLEDs = function(bitstring) {
+	  for (let i = 0; i < 8; i++) {
+		this.LEDs[i].classList.toggle("lit", (bitstring & (1 << i)));
+	  }
+	};
+
 	$proto.registerKey = function(keyCode) {
 		this.keyBuffer.push(keyCode << 24);
 		this.wait(-1);
@@ -161,6 +167,11 @@ function WebDriver(imageName, width, height) {
 
 	$proto._initWidgets = function(width, height) {
 	let $ = document.getElementById.bind(document);
+		this.LEDs = [
+			$("led0"), $("led1"), $("led2"), $("led3"),
+			$("led4"), $("led5"), $("led6"), $("led7")
+		];
+
 	this.buttonBox = $("buttonbox");
 	this.clipboard = $("clipboardText");
 	this.screen = $("screen");
