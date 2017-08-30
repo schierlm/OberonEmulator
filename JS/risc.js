@@ -6,28 +6,28 @@ var DisplayStart = 0x0E7F00;
 
 var ram = new Int32Array(MemSize/4);
 
-function memReadWord(wordAddress, mapROM) {
-	if (mapROM && wordAddress >= ROMStart / 4) {
-		return emulator.disk[0][wordAddress - ROMStart / 4];
-	} else if (wordAddress >= IOStart / 4) {
-		return memReadIOWord(wordAddress);
+function memReadWord(address, mapROM) {
+	if (mapROM && address >= ROMStart / 4) {
+		return emulator.disk[0][address - ROMStart / 4];
+	} else if (address >= IOStart / 4) {
+		return memReadIO(address);
 	} else {
-		return ram[wordAddress];
+		return ram[address];
 	}
 }
 
-function memWriteWord(wordAddress, value) {
-	if (wordAddress >= IOStart / 4) {
-		memWriteIOWord(wordAddress, value);
-	} else if (wordAddress >= DisplayStart / 4) {
-		memWriteIMGWord(wordAddress, value);
+function memWriteWord(address, value) {
+	if (address >= IOStart / 4) {
+		memWriteIO(address, value);
+	} else if (address >= DisplayStart / 4) {
+		memWriteVideo(address, value);
 	} else {
-		ram[wordAddress] = value;
+		ram[address] = value;
 	}
 }
 
-function memReadIOWord(wordAddress) {
-	switch (wordAddress * 4 - IOStart) {
+function memReadIO(address) {
+	switch (address * 4 - IOStart) {
 		case  0: return emulator.tickCount | 0;
 		case 24: return emulator.getInputStatus();
 		case 28: return emulator.getKeyCode();
@@ -37,24 +37,24 @@ function memReadIOWord(wordAddress) {
 	}
 }
 
-function memWriteIOWord(wordAddress, value) {
-	switch (wordAddress * 4 - IOStart) {
+function memWriteIO(address, word) {
+	switch (address * 4 - IOStart) {
 		// NB: The return statements are for control flow; none of these
 		// methods should actually return anything.
-		case  0: return emulator.wait(value);
-		case  4: return emulator.registerLEDs(value);
-		case 36: return emulator.storageRequest(value, ram);
-		case 40: return emulator.clipboard.expect(value);
-		case 44: return emulator.clipboard.put(value);
+		case  0: return emulator.wait(word);
+		case  4: return emulator.registerLEDs(word);
+		case 36: return emulator.storageRequest(word, ram);
+		case 40: return emulator.clipboard.expect(word);
+		case 44: return emulator.clipboard.put(word);
 	}
 }
 
-function memWriteIMGWord(wordAddress, value) {
-	ram[wordAddress] = value;
-	let offset = wordAddress - DisplayStart / 4;
+function memWriteVideo(address, word) {
+	ram[address] = word;
+	let offset = address - DisplayStart / 4;
 	let x = (offset % 32) * 32;
 	let y = emulator.screen.height - 1 - (offset / 32 | 0);
-	emulator.registerVideo(x, y, value);
+	emulator.registerVideo(x, y, word);
 }
 
 var reg_PC = new Int32Array(1);
