@@ -31,13 +31,6 @@ emuInit = function(width, height) {
 			e.preventDefault();
 		}
 	};
-	emulator.screen.onmousemove = function(e) {
-		let scrollX = document.body.scrollLeft;
-		let scrollY = document.body.scrollTop;
-		let x = e.clientX - emulator.screen.offsetLeft + scrollX;
-		let y = -(e.clientY - emulator.screen.offsetTop + scrollY) + emulator.screen.height - 1;
-		emulator.registerMousePosition(x, y);
-	};
 	emulator.screen.onmousedown = function(e) {
 		var button = e.button + 1;
 		if (button == 1) button = emulator.activeButton;

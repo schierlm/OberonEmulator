@@ -168,6 +168,8 @@ function WebDriver(imageName, width, height) {
 		this.screen.width = width;
 		this.screen.height = height;
 
+		this.screen.addEventListener("mousemove", this, false);
+
 		$ = document.querySelector.bind(document);
 		this.clickLeft = $(".mousebtn[data-button='1']");
 		this.clickMiddle = $(".mousebtn[data-button='2']");
@@ -187,6 +189,9 @@ function WebDriver(imageName, width, height) {
 				"load": this._onLoad(event);
 			break;
 			case
+				"mousemove": this._onMouseMove(event);
+			break;
+			case
 				"mousedown": this._onMouseButton(event);
 			break;
 			case
@@ -201,6 +206,15 @@ function WebDriver(imageName, width, height) {
 	$proto._onLoad = function(event) {
 		this.disk = this.diskLoader.contents;
 		this.reset(true);
+	};
+
+	$proto._onMouseMove = function(event) {
+		let { offsetLeft, offsetTop } = this.screen;
+		let scrollX = document.body.scrollLeft;
+		let scrollY = document.body.scrollTop;
+		let x = event.clientX - offsetLeft + scrollX;
+		let y = -(event.clientY - offsetTop + scrollY) + this.screen.height - 1;
+		this.registerMousePosition(x, y);
 	};
 
 	$proto._onMouseButton = function(event) {
