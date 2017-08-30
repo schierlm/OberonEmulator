@@ -26,8 +26,6 @@ function memWriteWord(wordAddress, value) {
 		}
 }
 
-var paravirtPtr = 0;
-
 function memReadIOWord(wordAddress) {
 	switch (wordAddress * 4 - IOStart) {
 		case  0: return emulator.tickCount | 0;
@@ -45,24 +43,7 @@ function memWriteIOWord(wordAddress, value) {
 		// methods should actually return anything.
 		case  0: return emulator.wait(value);
 		case  4: return emulator.registerLEDs(value);
-		case 36:
-			// paravirtualized storage
-			if ((value & 0xC0000000) == 0) { // setPtr
-				paravirtPtr = value | 0;
-			}
-			if ((value & 0xC0000000) == (0x80000000|0)) { // read
-				var sector = (value - 0x80000000)|0;
-				var s = emulator.disk[sector|0];
-				if (!s) s = new Int32Array(256);
-				ram.set(s, paravirtPtr / 4);
-			}
-			if ((value & 0xC0000000) == (0xC0000000|0)) { // write
-				var sector = (value - 0xC0000000)|0;
-				var s = new Int32Array(256);
-				s.set(ram.subarray(paravirtPtr/4, paravirtPtr/4 + 256))
-				emulator.disk[sector|0] = s;
-			}
-		break;
+		case 36: return emulator.storageRequest(value, ram);
 		case 40: return emulator.clipboard.expect(value);
 		case 44: return emulator.clipboard.put(value);
 	}

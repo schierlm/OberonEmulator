@@ -19,6 +19,7 @@ function WebDriver(imageName, width, height) {
 	this.paused = false;
 	this.activeButton = 1;
 	this.interclickButton = 0;
+	this.paravirtPointer = 0;
 
 	this.startMillis = Date.now();
 
@@ -133,6 +134,31 @@ function WebDriver(imageName, width, height) {
 	  for (let i = 0; i < 8; i++) {
 		this.LEDs[i].classList.toggle("lit", (bitstring & (1 << i)));
 	  }
+	};
+
+	$proto.storageRequest = function(value, memory) {
+		let address = this.paravirtPointer / 4;
+		if ((value & 0xC0000000) === 0) {
+			// set pointer
+			this.paravirtPointer = value | 0;
+			return;
+		}
+		if ((value & 0xC0000000) === (0x80000000 | 0)) {
+			// read
+			let sectorNumber = (value - 0x80000000) | 0;
+			let sector = this.disk[sectorNumber | 0];
+			if (!sector) sector = new Int32Array(256);
+			memory.set(sector, address);
+			return;
+		}
+		if ((value & 0xC0000000) === (0xC0000000 | 0)) {
+			// write
+			let sectorNumber = (value - 0xC0000000) | 0;
+			let sector = new Int32Array(256);
+			sector.set(memory.subarray(address, address + 256));
+			this.disk[sectorNumber | 0] = sector;
+			return;
+		}
 	};
 
 	$proto.registerKey = function(keyCode) {
