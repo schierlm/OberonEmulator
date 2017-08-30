@@ -22,6 +22,8 @@ function WebDriver(imageName, width, height) {
 
 	this.startMillis = Date.now();
 
+	this.clipboard = new Clipboard(this.clipboardInput);
+
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
 
 	this.screenUpdater = new ScreenUpdater(
@@ -36,10 +38,11 @@ function WebDriver(imageName, width, height) {
 
 	$proto.run = null;
 
-	$proto.clipboard = null;
+	$proto.clipboardInput = null;
 	$proto.screen = null;
 
 	$proto.activeButton = null;
+	$proto.clipboard = null;
 	$proto.cpuTimeout = null;
 	$proto.disk = null;
 	$proto.diskLoader = null;
@@ -154,14 +157,14 @@ function WebDriver(imageName, width, height) {
 
 	$proto.toggleClipboard = function()
 	{
-		this.clipboard.style.width = this.screen.width;
-		if (this.clipboard.style.visibility == "hidden") {
-			this.clipboard.style.visibility = "visible";
-			this.clipboard.style.height = 200;
+		this.clipboardInput.style.width = this.screen.width;
+		if (this.clipboardInput.style.visibility == "hidden") {
+			this.clipboardInput.style.visibility = "visible";
+			this.clipboardInput.style.height = 200;
 		}
 		else {
-			this.clipboard.style.visibility = "hidden";
-			this.clipboard.style.height = 0;
+			this.clipboardInput.style.visibility = "hidden";
+			this.clipboardInput.style.height = 0;
 		}
 	};
 
@@ -173,7 +176,7 @@ function WebDriver(imageName, width, height) {
 		];
 
 	this.buttonBox = $("buttonbox");
-	this.clipboard = $("clipboardText");
+	this.clipboardInput = $("clipboardText");
 	this.screen = $("screen");
 
 		this.screen.width = width;
@@ -315,6 +318,49 @@ function ScreenUpdater(context, width, height) {
 		this.minX = this.minY = 4096;
 		this.maxX = this.maxY = 0;
 		this.update = null;
+	};
+}
+
+function Clipboard(widget) {
+	this._input = widget;
+}
+
+{
+	let $proto = Clipboard.prototype;
+
+	$proto._buffer = null;
+	$proto._input = null;
+	$proto._count = null;
+
+	$proto.__defineGetter__("size", function() {
+		// assert(this._buffer.length !== 0)
+		this._buffer = this._input.value.split("\n").join("\r").split("");
+		return this._buffer.length;
+	});
+
+	$proto.expect = function(count) {
+		// assert(this._buffer.length !== 0)
+		// assert(this._count !== 0)
+		this._buffer = [];
+		this._count = count;
+	};
+
+	$proto.put = function(charBits) {
+		// assert(this._count === 0)
+		this._buffer.push(String.fromCharCode(charBits));
+		this._count--;
+		if (this._count === 0) {
+			this._input.value = this._buffer.join("").split("\r").join("\n");
+			this._buffer = null;
+			this._count = null;
+		}
+	};
+
+	$proto.get = function() {
+		// assert(this._buffer.length === 0)
+		// XXX Warn for non-ASCII?
+		let singleChar = this._buffer.shift();
+		return singleChar.charCodeAt(0) | 0;
 	};
 }
 

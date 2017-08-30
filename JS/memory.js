@@ -27,7 +27,6 @@ function memWriteWord(wordAddress, value) {
 }
 
 var paravirtPtr = 0;
-var clipboardBuffer = '', clipboardRemaining = 0;
 
 function memReadIOWord(wordAddress) {
 	switch (wordAddress * 4 - IOStart) {
@@ -41,14 +40,10 @@ function memReadIOWord(wordAddress) {
 		return emulator.getKeyCode();
 	}
 	case 40: {
-		clipboardBuffer = emulator.clipboard.value.split("\n").join("\r");
-		clipboardRemaining = 0;
-		return clipboardBuffer.length;
+		return emulator.clipboard.size;
 	}
 	case 44: {
-		var ch = clipboardBuffer.charCodeAt(0);
-		clipboardBuffer = clipboardBuffer.substring(1);
-		return ch;
+		return emulator.clipboard.get();
 	}
 	default: {
 			return 0;
@@ -86,16 +81,11 @@ function memWriteIOWord(wordAddress, value) {
 		break;
 	}
 	case 40: {
-		clipboardBuffer = '';
-		clipboardRemaining = value;
+		emulator.clipboard.expect(value);
 		break;
 	}
 	case 44: {
-		clipboardBuffer += String.fromCharCode(value);
-		clipboardRemaining--;
-		if (clipboardRemaining == 0) {
-			emulator.clipboard.value = clipboardBuffer.split("\r").join("\n");
-		}
+		emulator.clipboard.put(value);
 		break;
 	}
 	}
