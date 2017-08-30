@@ -12,7 +12,7 @@ var backBufferDirty = false;
 
 function memReadWord(wordAddress, mapROM) {
 	if (mapROM && wordAddress >= ROMStart / 4) {
-		return disk[0][wordAddress - ROMStart / 4];
+		return emulator.disk[0][wordAddress - ROMStart / 4];
 	} else if (wordAddress >= IOStart / 4) {
 		return memReadIOWord(wordAddress);
 	} else {
@@ -84,7 +84,7 @@ function memWriteIOWord(wordAddress, value) {
 		}
 		if ((value & 0xC0000000) == (0x80000000|0)) { // read
 			var sector = (value - 0x80000000)|0;
-			var s = disk[sector|0];
+			var s = emulator.disk[sector|0];
 			if (!s) s = new Int32Array(256);
 			ram.set(s, paravirtPtr / 4);
 		}
@@ -92,7 +92,7 @@ function memWriteIOWord(wordAddress, value) {
 			var sector = (value - 0xC0000000)|0;
 			var s = new Int32Array(256);
 			s.set(ram.subarray(paravirtPtr/4, paravirtPtr/4 + 256))
-			disk[sector|0] = s;
+			emulator.disk[sector|0] = s;
 		}
 		break;
 	}

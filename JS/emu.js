@@ -1,18 +1,11 @@
-var disk = [];
 var activeButton=1, interClickButton=0;
 var screenCanvas = null;
 var screenCtx;
 var backBuffer;
 var clipboard;
 
-emuInit = function() {
+loadImage = function(imageName) {
 	var img = new Image();
-	var params = window.location.hash.substring(1).split(",");
-	
-	var checkAll = function() {
-		if (screenCanvas && disk.length > 0) emulator.reset(true);
-	};
-
 	img.onload = function() {
 		var c = document.createElement("canvas");
 		var w = this.width;
@@ -28,19 +21,21 @@ emuInit = function() {
 				var b = i*4096+j*16+2;
 				r[j] = (d[b] & 0xFF) | ((d[b+4] & 0xFF) << 8) | ((d[b+8] & 0xFF) << 16) | ((d[b+12] & 0xFF) << 24);
 			}
-			disk[i] = r;
+			emulator.disk[i] = r;
 		}
-		checkAll();
+		emulator.reset(true);
 	}
-	img.src=params[0]+".png";
+	img.src=imageName+".png";
+};
 
+emuInit = function(width, height) {
 	document.getElementById("breakbutton").onclick= function() {emulator.reset(false);};
 	document.getElementById("resetbutton").onclick= function() {emulator.reset(true);};
 	clipboard = document.getElementById("clipboardText");
 	screenCanvas = document.getElementById("screen");
 	var screen = screenCanvas;
-	screen.width=params[1] | 0;
-	screen.height=params[2] | 0;
+	screen.width=width | 0;
+	screen.height=height | 0;
 	screenCtx = screen.getContext("2d");
 	backBuffer = screenCtx.createImageData(screen.width,screen.height);
 	document.getElementById("clipboardBtn").onclick = function() {
@@ -129,5 +124,4 @@ emuInit = function() {
 		return false;
 	}
 	screen.focus();
-	checkAll();
 };

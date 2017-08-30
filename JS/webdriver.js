@@ -1,20 +1,25 @@
 var emulator;
 
 window.onload = function() {
-	emulator = new WebDriver();
+	let [ imageName, width, height ] =
+		window.location.hash.substring(1).split(",");
+	emulator = new WebDriver(imageName, width, height);
 }
 
-function WebDriver() {
+function WebDriver(imageName, width, height) {
 	// Init callback suitable for passing to `setTimeout`.  This is necessary
 	// in order for `this` to resolve correctly within the method body.
 	this.$run = this.run.bind(this);
 
+	this.disk = [];
 	this.keyBuffer = [];
 	this.waitMillis = 0;
 	this.paused = false;
 
 	this.startMillis = Date.now();
-	emuInit();
+	emuInit(width, height);
+
+	loadImage(imageName);
 }
 
 {
@@ -23,6 +28,7 @@ function WebDriver() {
 	$proto.run = null;
 
 	$proto.cpuTimeout = null;
+	$proto.disk = null;
 	$proto.keyBuffer = null;
 	$proto.paused = null;
 	$proto.startMillis = null;
