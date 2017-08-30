@@ -169,6 +169,9 @@ function WebDriver(imageName, width, height) {
 		this.screen.height = height;
 
 		this.screen.addEventListener("mousemove", this, false);
+		this.screen.addEventListener("mousedown", this, false);
+		this.screen.addEventListener("mouseup", this, false);
+		this.screen.addEventListener("contextmenu", this, false);
 
 		$ = document.querySelector.bind(document);
 		this.clickLeft = $(".mousebtn[data-button='1']");
@@ -197,6 +200,9 @@ function WebDriver(imageName, width, height) {
 			case
 				"mouseup": this._onMouseButton(event);
 			break;
+			case
+				"contextmenu": event.preventDefault();
+			break;
 			default:
 				throw new Error("got event " + event.type);
 			break;
@@ -218,6 +224,26 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto._onMouseButton = function(event) {
+		if (event.target !== this.screen) return this._onButtonSelect(event);
+
+		let button = event.button + 1;
+		if (event.type === "mousedown") {
+			if (button === 1) button = this.activeButton;
+			this.registerMouseButton(button, true);
+		}
+		else {
+			if (button === 1) {
+				if (this.interClickButton !== 0) {
+					this.registerMouseButton(this.interClickButton, true);
+					this.registerMouseButton(this.interClickButton, false);
+				}
+				button = this.activeButton;
+			}
+			this.registerMouseButton(button, false);
+		}
+	};
+
+	$proto._onButtonSelect = function(event) {
 		let clickButton = event.target;
 		if (event.type === "mousedown") {
 			event.preventDefault();

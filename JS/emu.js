@@ -31,25 +31,5 @@ emuInit = function(width, height) {
 			e.preventDefault();
 		}
 	};
-	emulator.screen.onmousedown = function(e) {
-		var button = e.button + 1;
-		if (button == 1) button = emulator.activeButton;
-		emulator.registerMouseButton(button, true);
-	};
-	emulator.screen.onmouseup = function(e) {
-		var button = e.button + 1;
-		if (button == 1) {
-			if (emulator.interClickButton != 0) {
-				emulator.registerMouseButton(emulator.interClickButton, true);
-				emulator.registerMouseButton(emulator.interClickButton, false);
-			}
-			button = emulator.activeButton;
-		}
-		emulator.registerMouseButton(button, false);
-	};
-	emulator.screen.oncontextmenu = function(e) {
-		e.preventDefault();
-		return false;
-	}
 	emulator.screen.focus();
 };
