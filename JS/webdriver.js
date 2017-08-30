@@ -21,8 +21,8 @@ function WebDriver(imageName, width, height) {
 	this.interclickButton = 0;
 
 	this.startMillis = Date.now();
-	emulator = this; // XXX Remove this when `emuInit` gets refactored out
-	emuInit(width, height);
+
+	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
 
 	this.screenUpdater = new ScreenUpdater(
 		this.screen.getContext("2d"), width, height
@@ -305,6 +305,96 @@ function ScreenUpdater(context, width, height) {
 		this.maxX = this.maxY = 0;
 		this.update = null;
 	};
+}
+
+// TODO: Avoid anything exotic for virtualized keys.
+//
+// For example, Macs don't typically make the F keys easily discoverable.
+// They also don't have a real delete key.  Chromebooks neither have a delete
+// key nor do they have F11 and F12 keys.  The F keys that do exist are worse
+// than undiscoverable--some of theme aren't even usable as F keys unless you
+// get rid of ChromeOS.  So in making our choices to virualize things that may
+// be difficult or impossible to access (such as middle click, interclicks) we
+// need to make sure avoid all of these, otherwise we're offering one
+// impossibility as an alternative to another impossibility.
+//
+// What seems to be relatively safe are Ctrl, Alt, and Shift.  I'm not sure
+// that Esc is safe on the MacBook Touchbar.  However, presently we're already
+// using Alt to emulate middle click, its limitations have made themselves
+// known, given that we're targeting the Web.  However, the emulators also use
+// Alt to emulate middle click.  This is prone to error, given that Alt+Left
+// and Alt+Right are popular shortcuts for back and forwards, and Firefox
+// shows the menubar when tapping Alt.  When switching desktops using a
+// keyboard shortcut that involves Alt, releasing the Alt key after landing on
+// the desired desktop still fires if that desktop contains an focused window
+// running our emulator.  So Alt should be regarded as partially safe:
+// keyboard shortcuts involving Alt (including bare Alt), but mouse clicks
+// with Alt modifiers should be okay.
+//
+// We also need to be sensitive to platform conventions.  We aren't right now,
+// but we should be doing something like:
+//
+//   * Alt+Click -> right
+//   * Ctrl+Click (non-mac) -> middle
+//   * Ctrl+Click (Mac) -> right
+//   * Cmd+Click (Mac) -> middle
+//   * Cmd+Ctrl+Click (Mac) -> right
+//   * Cmd+Alt+Click (Mac) -> right
+//
+// (The latter two are said to be the typical way that applications simulate
+// non-Mac Ctrl+click in Mac apps, but this hasn't been verified.)
+function VirtualKeyboard(screen, emulator) {
+	// Reading keyboard input on the Web is still a big mess.
+	screen.addEventListener("keydown", function(event) {
+		let code = event.keyCode;
+		// Backspace, Tab, Enter, or Escape
+		if (code === 8 || code === 9 || code === 13 || code == 27) {
+			event.preventDefault();
+			emulator.registerKey(code);
+			return;
+		}
+		// Insert or F1
+		if (code === 45 || code === 112) {
+			event.preventDefault();
+			emulator.registerKey(26);
+			return;
+		}
+		// Alt
+		if (code === 18 && !event.ctrlKey) {
+			event.preventDefault();
+			emulator.registerMouseButton(2, true);
+			return;
+		}
+	});
+	screen.addEventListener("keyup", function(event) {
+		// Alt
+		if (event.keyCode === 18 && !event.ctrlKey) {
+			event.preventDefault();
+			emulator.registerMouseButton(2, false);
+			return;
+		}
+	});
+	screen.addEventListener("keypress", function(event) {
+		let code = event.keyCode;
+		// Backspace, Tab, Enter, or Escape
+		if (code === 8 || code === 9 || code === 13 || code == 27) {
+			event.preventDefault();
+			emulator.registerKey(code);
+			return;
+		}
+		// Insert or F1
+		if (event.charCode === 0 && (code === 45 || code === 112)) {
+			event.preventDefault();
+			emulator.registerKey(26);
+			return;
+		}
+		// printable char
+		if (event.charCode !== 0) {
+			event.preventDefault();
+			emulator.registerKey(event.charCode | 0);
+			return;
+		}
+	});
 }
 
 function DiskLoader(imageName, observer) {
