@@ -124,10 +124,30 @@ function WebDriver(imageName, width, height) {
 		return this.keyBuffer.shift();
 	};
 
+	$proto.toggleClipboard = function()
+	{
+		this.clipboard.style.width = this.screen.width;
+		if (this.clipboard.style.visibility == "hidden") {
+			this.clipboard.style.visibility = "visible";
+			this.clipboard.style.height = 200;
+		}
+		else {
+			this.clipboard.style.visibility = "hidden";
+			this.clipboard.style.height = 0;
+		}
+	};
+
 	$proto._initWidgets = function() {
 	let $ = document.getElementById.bind(document);
 	this.clipboard = $("clipboardText");
 	this.screen = $("screen");
+
+		$ = document.querySelector.bind(document);
+		this.clickLeft = $(".mousebtn[data-button='1']");
+		this.clickMiddle = $(".mousebtn[data-button='2']");
+		this.clickRight = $(".mousebtn[data-button='3']");
+
+		this.toggleClipboard();
 	};
 
 	// DOM Event handling

@@ -4,38 +4,25 @@ var backBuffer;
 
 emuInit = function(width, height) {
 	let $ = document.getElementById.bind(document);
-	let ml = $("mouseL");
-	let mm = $("mouseM");
-	let mr = $("mouseR");
+	let ml = emulator.clickLeft;
+	let mm = emulator.clickMiddle;
+	let mr = emulator.clickRight;
 
 	emulator.screen.width=width | 0;
 	emulator.screen.height=height | 0;
 	screenCtx = emulator.screen.getContext("2d");
 	backBuffer =
 		screenCtx.createImageData(emulator.screen.width,emulator.screen.height);
-	let clipboardButton = $("clipboardBtn")
-	clipboardButton.onclick = function() {
-		if (emulator.clipboard.style.height == "0px") {
-			emulator.clipboard.style.height = 200;
-			emulator.clipboard.style.width = width;
-		} else {
-			emulator.clipboard.style.height = 0;
-			emulator.clipboard.style.width = 0;
-		}
-	}
-	ml.dataBtn = 1;
-	mm.dataBtn = 2;
-	mr.dataBtn = 3;
 	ml.onmousedown = mm.onmousedown = mr.onmousedown = function(e) {
 		e.preventDefault();
 		ml.className = mm.className = mr.className = "mousebtn";
 		this.className = "mousebtn active";
-		activeButton = this.dataBtn;
+		activeButton = this.dataset.button;
 		interClickButton = 0;
 	};
 	ml.onmouseup = mm.onmouseup = mr.onmouseup = function(e) {
-		if (this.dataBtn != activeButton) {
-			interClickButton = this.dataBtn;
+		if (this.dataset.button != activeButton) {
+			interClickButton = this.dataset.button;
 			this.className="mousebtn interclick";
 		}
 	}
