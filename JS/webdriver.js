@@ -481,7 +481,7 @@ function VirtualKeyboard(screen, emulator) {
 }
 
 function DiskLoader(imageName, observer) {
-	this.contents = [];
+	this.contents = null;
 	this.container = new Image();
 
 	this.handleEvent = function(event) {
@@ -492,7 +492,7 @@ function DiskLoader(imageName, observer) {
 
 		context.drawImage(this.container, 0, 0);
 		let { data } = context.getImageData(0, 0, width, height);
-		this.read(data, width, height, this.contents);
+		this.contents = DiskLoader.read(data, width, height);
 
 		observer.handleEvent(event);
 	}
@@ -501,7 +501,8 @@ function DiskLoader(imageName, observer) {
 	this.container.src = imageName + ".png";
 }
 
-DiskLoader.prototype.read = function(imageData, width, height, contents) {
+DiskLoader.read = function(imageData, width, height) {
+	let contents = [];
 	for (let i = 0; i < height; i++) {
 		let sectorWords = new Int32Array(width / 4);
 		for (let j = 0; j < width / 4; j++) {
@@ -515,4 +516,6 @@ DiskLoader.prototype.read = function(imageData, width, height, contents) {
 		}
 		contents[i] = sectorWords;
 	}
+
+	return contents;
 };
