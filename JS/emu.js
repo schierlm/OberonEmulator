@@ -7,18 +7,13 @@ emuInit = function(width, height) {
 	let ml = $("mouseL");
 	let mm = $("mouseM");
 	let mr = $("mouseR");
-	let resetButton = $("resetbutton");
-	let breakButton = $("breakbutton");
-	let clipboardButton = $("clipboardBtn")
-
-	breakButton.onclick = function() {emulator.reset(false);};
-	resetButton.onclick = function() {emulator.reset(true);};
 
 	emulator.screen.width=width | 0;
 	emulator.screen.height=height | 0;
 	screenCtx = emulator.screen.getContext("2d");
 	backBuffer =
 		screenCtx.createImageData(emulator.screen.width,emulator.screen.height);
+	let clipboardButton = $("clipboardBtn")
 	clipboardButton.onclick = function() {
 		if (emulator.clipboard.style.height == "0px") {
 			emulator.clipboard.style.height = 200;

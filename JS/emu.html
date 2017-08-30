@@ -25,9 +25,18 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 <span id="led2" class="led">2</span>
 <span id="led1" class="led">1</span>
 <span id="led0" class="led">0</span>
+
 <input id="clipboardBtn" type="button" value="Clipboard">
-<input id="breakbutton" type="button" value="Break">
-<input id="resetbutton" type="button" value="Reset">
+
+<input type="button"
+	   id="breakbutton"
+	   value="Break"
+	   onclick="emulator.reset(false);">
+<input type="button"
+	   id="resetbutton"
+	   value="Reset"
+	   onclick="emulator.reset(true);">
+
 </div>
 <textarea id="clipboardText" style="width:0; height: 0;"></textarea>
 <canvas id="screen"></canvas>

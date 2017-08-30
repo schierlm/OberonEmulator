@@ -11,7 +11,7 @@ function WebDriver(imageName, width, height) {
 	// in order for `this` to resolve correctly within the method body.
 	this.$run = this.run.bind(this);
 
-	this._cacheWidgets();
+	this._initWidgets();
 
 	this.disk = [];
 	this.keyBuffer = [];
@@ -124,7 +124,7 @@ function WebDriver(imageName, width, height) {
 		return this.keyBuffer.shift();
 	};
 
-	$proto._cacheWidgets = function() {
+	$proto._initWidgets = function() {
 	let $ = document.getElementById.bind(document);
 	this.clipboard = $("clipboardText");
 	this.screen = $("screen");
