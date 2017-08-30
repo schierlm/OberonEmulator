@@ -11,7 +11,7 @@ function WebDriver(imageName, width, height) {
 	// in order for `this` to resolve correctly within the method body.
 	this.$run = this.run.bind(this);
 
-	this._initWidgets();
+	this._initWidgets(width, height);
 
 	this.disk = [];
 	this.keyBuffer = [];
@@ -159,11 +159,14 @@ function WebDriver(imageName, width, height) {
 		}
 	};
 
-	$proto._initWidgets = function() {
+	$proto._initWidgets = function(width, height) {
 	let $ = document.getElementById.bind(document);
 	this.buttonBox = $("buttonbox");
 	this.clipboard = $("clipboardText");
 	this.screen = $("screen");
+
+		this.screen.width = width;
+		this.screen.height = height;
 
 		$ = document.querySelector.bind(document);
 		this.clickLeft = $(".mousebtn[data-button='1']");
