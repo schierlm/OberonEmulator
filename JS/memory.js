@@ -30,64 +30,41 @@ var paravirtPtr = 0;
 
 function memReadIOWord(wordAddress) {
 	switch (wordAddress * 4 - IOStart) {
-	case 0: {
-		return emulator.tickCount | 0;
-	}
-	case 24: {
-		return emulator.getInputStatus();
-	}
-	case 28: {
-		return emulator.getKeyCode();
-	}
-	case 40: {
-		return emulator.clipboard.size;
-	}
-	case 44: {
-		return emulator.clipboard.get();
-	}
-	default: {
-			return 0;
-	}
+		case  0: return emulator.tickCount | 0;
+		case 24: return emulator.getInputStatus();
+		case 28: return emulator.getKeyCode();
+		case 40: return emulator.clipboard.size;
+		case 44: return emulator.clipboard.get();
+		default: return 0;
 	}
 }
 
 function memWriteIOWord(wordAddress, value) {
 	switch (wordAddress * 4 - IOStart) {
-	case 0: {
-		emulator.wait(value);
+		// NB: The return statements are for control flow; none of these
+		// methods should actually return anything.
+		case  0: return emulator.wait(value);
+		case  4: return emulator.registerLEDs(value);
+		case 36:
+			// paravirtualized storage
+			if ((value & 0xC0000000) == 0) { // setPtr
+				paravirtPtr = value | 0;
+			}
+			if ((value & 0xC0000000) == (0x80000000|0)) { // read
+				var sector = (value - 0x80000000)|0;
+				var s = emulator.disk[sector|0];
+				if (!s) s = new Int32Array(256);
+				ram.set(s, paravirtPtr / 4);
+			}
+			if ((value & 0xC0000000) == (0xC0000000|0)) { // write
+				var sector = (value - 0xC0000000)|0;
+				var s = new Int32Array(256);
+				s.set(ram.subarray(paravirtPtr/4, paravirtPtr/4 + 256))
+				emulator.disk[sector|0] = s;
+			}
 		break;
-	}
-	case 4: {
-		emulator.registerLEDs(value);
-		break;
-	}
-	case 36: {
-		// paravirtualized storage
-		if ((value & 0xC0000000) == 0) { // setPtr
-			paravirtPtr = value | 0;
-		}
-		if ((value & 0xC0000000) == (0x80000000|0)) { // read
-			var sector = (value - 0x80000000)|0;
-			var s = emulator.disk[sector|0];
-			if (!s) s = new Int32Array(256);
-			ram.set(s, paravirtPtr / 4);
-		}
-		if ((value & 0xC0000000) == (0xC0000000|0)) { // write
-			var sector = (value - 0xC0000000)|0;
-			var s = new Int32Array(256);
-			s.set(ram.subarray(paravirtPtr/4, paravirtPtr/4 + 256))
-			emulator.disk[sector|0] = s;
-		}
-		break;
-	}
-	case 40: {
-		emulator.clipboard.expect(value);
-		break;
-	}
-	case 44: {
-		emulator.clipboard.put(value);
-		break;
-	}
+		case 40: return emulator.clipboard.expect(value);
+		case 44: return emulator.clipboard.put(value);
 	}
 }
 
