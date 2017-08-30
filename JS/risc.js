@@ -1,11 +1,66 @@
+var ROMStart = 0x0FE000;
+var IOStart = 0x0FFFC0;
+var MemSize = 0x100000;
+var MemWords = (MemSize / 4);
+var DisplayStart = 0x0E7F00;
+
+var ram = new Int32Array(MemSize/4);
+
+function memReadWord(wordAddress, mapROM) {
+	if (mapROM && wordAddress >= ROMStart / 4) {
+		return emulator.disk[0][wordAddress - ROMStart / 4];
+	} else if (wordAddress >= IOStart / 4) {
+		return memReadIOWord(wordAddress);
+	} else {
+		return ram[wordAddress];
+	}
+}
+
+function memWriteWord(wordAddress, value) {
+	if (wordAddress >= IOStart / 4) {
+		memWriteIOWord(wordAddress, value);
+	} else if (wordAddress >= DisplayStart / 4) {
+		memWriteIMGWord(wordAddress, value);
+	} else {
+		ram[wordAddress] = value;
+	}
+}
+
+function memReadIOWord(wordAddress) {
+	switch (wordAddress * 4 - IOStart) {
+		case  0: return emulator.tickCount | 0;
+		case 24: return emulator.getInputStatus();
+		case 28: return emulator.getKeyCode();
+		case 40: return emulator.clipboard.size;
+		case 44: return emulator.clipboard.get();
+		default: return 0;
+	}
+}
+
+function memWriteIOWord(wordAddress, value) {
+	switch (wordAddress * 4 - IOStart) {
+		// NB: The return statements are for control flow; none of these
+		// methods should actually return anything.
+		case  0: return emulator.wait(value);
+		case  4: return emulator.registerLEDs(value);
+		case 36: return emulator.storageRequest(value, ram);
+		case 40: return emulator.clipboard.expect(value);
+		case 44: return emulator.clipboard.put(value);
+	}
+}
+
+function memWriteIMGWord(wordAddress, value) {
+	ram[wordAddress] = value;
+	let offset = wordAddress - DisplayStart / 4;
+	let x = (offset % 32) * 32;
+	let y = emulator.screen.height - 1 - (offset / 32 | 0);
+	emulator.registerVideo(x, y, value);
+}
 
 var reg_PC = new Int32Array(1);
 var reg_H = new Int32Array(1);
 var reg_R = new Int32Array(16);
 var flag_Z = false, flag_N = false, flag_C = false, flag_V = false;
-var ieeeBuffer = new ArrayBuffer(4);
-var floatBuffer = new Float32Array(ieeeBuffer);
-var intBuffer = new Int32Array(ieeeBuffer);
 
 function cpuReset(cold) {
 	if (cold) {
@@ -22,7 +77,7 @@ function cpuSingleStep() {
 	var qbit = 0x40000000;
 	var ubit = 0x20000000;
 	var vbit = 0x10000000;
-	
+
 	var ir = memReadWord(reg_PC[0], true);
 	reg_PC[0]++;
 
@@ -135,17 +190,17 @@ function cpuSingleStep() {
 			// fall through
 		case 12:
 			if ((ir & ubit) == 0 && (ir & vbit) == 0)
-				a_val = cpuFloat2Int(cpuInt2Float(b_val) + cpuInt2Float(c_val));
+				a_val = _float2Int(_int2Float(b_val) + _int2Float(c_val));
 			if ((ir & ubit) != 0 && (ir & vbit) == 0 && c_val == 0x4B000000)
-				a_val = cpuFloat2Int(b_val);
+				a_val = _float2Int(b_val);
 			if ((ir & ubit) == 0 && (ir & vbit) != 0 && c_val == 0x4B000000)
-				a_val = Math.floor(cpuInt2Float(b_val)) | 0;
+				a_val = Math.floor(_int2Float(b_val)) | 0;
 			break;
 		case 14:
-			a_val = cpuFloat2Int(cpuInt2Float(b_val) * cpuInt2Float(c_val));
+			a_val = _float2Int(_int2Float(b_val) * _int2Float(c_val));
 			break;
 		case 15:
-			a_val = cpuFloat2Int(cpuInt2Float(b_val) / cpuInt2Float(c_val));
+			a_val = _float2Int(_int2Float(b_val) / _int2Float(c_val));
 			break;
 		}
 		cpuSetRegister(a, a_val);
@@ -247,12 +302,14 @@ function cpuStoreByte(address, value) {
 	}
 }
 
-function cpuFloat2Int(v) {
-	floatBuffer[0] = v;
-	return intBuffer[0];
+var _ieeeBuffer = new ArrayBuffer(4);
+var _floatBuffer = new Float32Array(_ieeeBuffer);
+var _intBuffer = new Int32Array(_ieeeBuffer);
+
+function _float2Int(bits) {
+	return _floatBuffer[0] = bits, _intBuffer[0];
 }
 
-function cpuInt2Float(v) {
-	intBuffer[0] = v;
-	return floatBuffer[0];
+function _int2Float(bits) {
+	return _intBuffer[0] = bits, _floatBuffer[0];
 }
