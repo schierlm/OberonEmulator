@@ -6,10 +6,6 @@ var DisplayStart = 0x0E7F00;
 
 var ram = new Int32Array(MemSize/4);
 
-var backBufferMinX=4096, backBufferMinY=4096;
-var backBufferMaxX=0, backBufferMaxY=0;
-var backBufferDirty = false;
-
 function memReadWord(wordAddress, mapROM) {
 	if (mapROM && wordAddress >= ROMStart / 4) {
 		return emulator.disk[0][wordAddress - ROMStart / 4];
