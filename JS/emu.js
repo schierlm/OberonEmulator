@@ -4,30 +4,6 @@ var screenCtx;
 var backBuffer;
 var clipboard;
 
-loadImage = function(imageName) {
-	var img = new Image();
-	img.onload = function() {
-		var c = document.createElement("canvas");
-		var w = this.width;
-		var h = this.height;
-		c.width = w;
-		c.height = h;
-		var x = c.getContext("2d");
-		x.drawImage(this,0,0);
-		var d = x.getImageData(0,0,w,h).data;
-		for(var i=0; i < h; i++) {
-			var r = new Int32Array(w/4);
-			for (var j=0; j < w/4; j++) {
-				var b = i*4096+j*16+2;
-				r[j] = (d[b] & 0xFF) | ((d[b+4] & 0xFF) << 8) | ((d[b+8] & 0xFF) << 16) | ((d[b+12] & 0xFF) << 24);
-			}
-			emulator.disk[i] = r;
-		}
-		emulator.reset(true);
-	}
-	img.src=imageName+".png";
-};
-
 emuInit = function(width, height) {
 	let $ = document.getElementById.bind(document);
 	let ml = $("mouseL");
