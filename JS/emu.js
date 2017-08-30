@@ -1,8 +1,6 @@
 var activeButton=1, interClickButton=0;
-var screenCanvas = null;
 var screenCtx;
 var backBuffer;
-var clipboard;
 
 emuInit = function(width, height) {
 	let $ = document.getElementById.bind(document);
@@ -12,24 +10,22 @@ emuInit = function(width, height) {
 	let resetButton = $("resetbutton");
 	let breakButton = $("breakbutton");
 	let clipboardButton = $("clipboardBtn")
-	clipboard = $("clipboardText");
-	screenCanvas = $("screen");
 
 	breakButton.onclick = function() {emulator.reset(false);};
 	resetButton.onclick = function() {emulator.reset(true);};
 
-	var screen = screenCanvas;
-	screen.width=width | 0;
-	screen.height=height | 0;
-	screenCtx = screen.getContext("2d");
-	backBuffer = screenCtx.createImageData(screen.width,screen.height);
+	emulator.screen.width=width | 0;
+	emulator.screen.height=height | 0;
+	screenCtx = emulator.screen.getContext("2d");
+	backBuffer =
+		screenCtx.createImageData(emulator.screen.width,emulator.screen.height);
 	clipboardButton.onclick = function() {
-		if (clipboard.style.height == "0px") {
-			clipboard.style.height = 200;
-			clipboard.style.width = width;
+		if (emulator.clipboard.style.height == "0px") {
+			emulator.clipboard.style.height = 200;
+			emulator.clipboard.style.width = width;
 		} else {
-			clipboard.style.height = 0;
-			clipboard.style.width = 0;
+			emulator.clipboard.style.height = 0;
+			emulator.clipboard.style.width = 0;
 		}
 	}
 	ml.dataBtn = 1;
@@ -48,9 +44,9 @@ emuInit = function(width, height) {
 			this.className="mousebtn interclick";
 		}
 	}
-	screen.tabIndex = 1000;
-	screen.style.outline = "none";
-	screen.onkeydown = function(e) {
+	emulator.screen.tabIndex = 1000;
+	emulator.screen.style.outline = "none";
+	emulator.screen.onkeydown = function(e) {
 		if (e.keyCode == 18 && !e.ctrlKey) {
 			emulator.registerMouseButton(2, true);
 			e.preventDefault();
@@ -62,13 +58,13 @@ emuInit = function(width, height) {
 			e.preventDefault();
 		}
 	};
-	screen.onkeyup = function(e) {
+	emulator.screen.onkeyup = function(e) {
 		if (e.keyCode == 18 && !e.ctrlKey) {
 			emulator.registerMouseButton(2, false);
 			e.preventDefault();
 		}
 	};
-	screen.onkeypress = function(e) {
+	emulator.screen.onkeypress = function(e) {
 		var charCode = 0;
 		if (e.keyCode == 8 || e.keyCode == 9 || e.keyCode == 27 || e.keyCode == 13) {
 			charCode = e.keyCode;
@@ -82,19 +78,19 @@ emuInit = function(width, height) {
 			e.preventDefault();
 		}
 	};
-	screen.onmousemove = function(e) {
+	emulator.screen.onmousemove = function(e) {
 		let scrollX = document.body.scrollLeft;
 		let scrollY = document.body.scrollTop;
-		let x = e.clientX - screen.offsetLeft + scrollX;
-		let y = -(e.clientY - screen.offsetTop + scrollY) + screen.height - 1;
+		let x = e.clientX - emulator.screen.offsetLeft + scrollX;
+		let y = -(e.clientY - emulator.screen.offsetTop + scrollY) + emulator.screen.height - 1;
 		emulator.registerMousePosition(x, y);
 	};
-	screen.onmousedown = function(e) {
+	emulator.screen.onmousedown = function(e) {
 		var button = e.button + 1;
 		if (button == 1) button = activeButton;
 		emulator.registerMouseButton(button, true);
 	};
-	screen.onmouseup = function(e) {
+	emulator.screen.onmouseup = function(e) {
 		var button = e.button + 1;
 		if (button == 1) {
 			if (interClickButton != 0) {
@@ -105,9 +101,9 @@ emuInit = function(width, height) {
 		}
 		emulator.registerMouseButton(button, false);
 	};
-	screen.oncontextmenu = function(e) {
+	emulator.screen.oncontextmenu = function(e) {
 		e.preventDefault();
 		return false;
 	}
-	screen.focus();
+	emulator.screen.focus();
 };

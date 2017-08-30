@@ -46,7 +46,7 @@ function memReadIOWord(wordAddress) {
 		return emulator.getKeyCode();
 	}
 	case 40: {
-		clipboardBuffer = clipboard.value.split("\n").join("\r");
+		clipboardBuffer = emulator.clipboard.value.split("\n").join("\r");
 		clipboardRemaining = 0;
 		return clipboardBuffer.length;
 	}
@@ -105,7 +105,7 @@ function memWriteIOWord(wordAddress, value) {
 		clipboardBuffer += String.fromCharCode(value);
 		clipboardRemaining--;
 		if (clipboardRemaining == 0) {
-			clipboard.value = clipboardBuffer.split("\r").join("\n");
+			emulator.clipboard.value = clipboardBuffer.split("\r").join("\n");
 		}
 		break;
 	}
@@ -115,9 +115,9 @@ function memWriteIOWord(wordAddress, value) {
 function memWriteIMGWord(wordAddress, value) {
 	var offs = wordAddress - DisplayStart/4;
 	var x = (offs % 32) * 32;
-	var y = screenCanvas.height - 1 - (offs / 32 | 0);
-	if (y < 0 || x >= screenCanvas.width) return;
-	var base = (y * screenCanvas.width + x) * 4;
+	var y = emulator.screen.height - 1 - (offs / 32 | 0);
+	if (y < 0 || x >= emulator.screen.width) return;
+	var base = (y * emulator.screen.width + x) * 4;
 	for (var i = 0; i < 32; i++) {
 		var white = ((value & (1 << i)) != 0);
 		backBuffer.data[base++] = white ? 0xfd : 0x65;

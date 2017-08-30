@@ -11,12 +11,15 @@ function WebDriver(imageName, width, height) {
 	// in order for `this` to resolve correctly within the method body.
 	this.$run = this.run.bind(this);
 
+	this._cacheWidgets();
+
 	this.disk = [];
 	this.keyBuffer = [];
 	this.waitMillis = 0;
 	this.paused = false;
 
 	this.startMillis = Date.now();
+	emulator = this; // XXX Remove this when `emuInit` gets refactored out
 	emuInit(width, height);
 
 	this.diskLoader = new DiskLoader(imageName, this);
@@ -26,6 +29,9 @@ function WebDriver(imageName, width, height) {
 	let $proto = WebDriver.prototype;
 
 	$proto.run = null;
+
+	$proto.clipboard = null;
+	$proto.screen = null;
 
 	$proto.cpuTimeout = null;
 	$proto.disk = null;
@@ -116,6 +122,12 @@ function WebDriver(imageName, width, height) {
 	$proto.getKeyCode = function() {
 		if (!this.hasInput()) return 0;
 		return this.keyBuffer.shift();
+	};
+
+	$proto._cacheWidgets = function() {
+	let $ = document.getElementById.bind(document);
+	this.clipboard = $("clipboardText");
+	this.screen = $("screen");
 	};
 
 	// DOM Event handling
