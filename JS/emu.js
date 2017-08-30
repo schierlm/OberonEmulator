@@ -10,11 +10,7 @@ emuInit = function() {
 	var params = window.location.hash.substring(1).split(",");
 	
 	var checkAll = function() {
-		if (screenCanvas && disk.length > 0) {
-			document.getElementById("breakbutton").onclick= function() {emulator.reset(false);};
-			document.getElementById("resetbutton").onclick= function() {emulator.reset(true);};
-			emulator.reset(true);
-		}
+		if (screenCanvas && disk.length > 0) emulator.reset(true);
 	};
 
 	img.onload = function() {
@@ -37,6 +33,9 @@ emuInit = function() {
 		checkAll();
 	}
 	img.src=params[0]+".png";
+
+	document.getElementById("breakbutton").onclick= function() {emulator.reset(false);};
+	document.getElementById("resetbutton").onclick= function() {emulator.reset(true);};
 	clipboard = document.getElementById("clipboardText");
 	screenCanvas = document.getElementById("screen");
 	var screen = screenCanvas;
