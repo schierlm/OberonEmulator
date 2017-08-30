@@ -29,26 +29,36 @@ loadImage = function(imageName) {
 };
 
 emuInit = function(width, height) {
-	document.getElementById("breakbutton").onclick= function() {emulator.reset(false);};
-	document.getElementById("resetbutton").onclick= function() {emulator.reset(true);};
-	clipboard = document.getElementById("clipboardText");
-	screenCanvas = document.getElementById("screen");
+	let $ = document.getElementById.bind(document);
+	let ml = $("mouseL");
+	let mm = $("mouseM");
+	let mr = $("mouseR");
+	let resetButton = $("resetbutton");
+	let breakButton = $("breakbutton");
+	let clipboardButton = $("clipboardBtn")
+	clipboard = $("clipboardText");
+	screenCanvas = $("screen");
+
+	breakButton.onclick = function() {emulator.reset(false);};
+	resetButton.onclick = function() {emulator.reset(true);};
+
 	var screen = screenCanvas;
 	screen.width=width | 0;
 	screen.height=height | 0;
 	screenCtx = screen.getContext("2d");
 	backBuffer = screenCtx.createImageData(screen.width,screen.height);
-	document.getElementById("clipboardBtn").onclick = function() {
-		var cbs = document.getElementById("clipboard").style;
-		if(cbs.display == "none") {
-			cbs.display="block";
+	clipboardButton.onclick = function() {
+		if (clipboard.style.height == "0px") {
+			clipboard.style.height = 200;
+			clipboard.style.width = width;
 		} else {
-			cbs.display="none";
+			clipboard.style.height = 0;
+			clipboard.style.width = 0;
 		}
 	}
-	var ml = document.getElementById("mouseL");ml.dataBtn=1;
-	var mm = document.getElementById("mouseM");mm.dataBtn=2;
-	var mr = document.getElementById("mouseR");mr.dataBtn=3;
+	ml.dataBtn = 1;
+	mm.dataBtn = 2;
+	mr.dataBtn = 3;
 	ml.onmousedown = mm.onmousedown = mr.onmousedown = function(e) {
 		e.preventDefault();
 		ml.className = mm.className = mr.className = "mousebtn";
