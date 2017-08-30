@@ -17,6 +17,8 @@ function WebDriver(imageName, width, height) {
 	this.keyBuffer = [];
 	this.waitMillis = 0;
 	this.paused = false;
+	this.activeButton = 1;
+	this.interclickButton = 0;
 
 	this.startMillis = Date.now();
 	emulator = this; // XXX Remove this when `emuInit` gets refactored out
@@ -33,9 +35,11 @@ function WebDriver(imageName, width, height) {
 	$proto.clipboard = null;
 	$proto.screen = null;
 
+	$proto.activeButton = null;
 	$proto.cpuTimeout = null;
 	$proto.disk = null;
 	$proto.diskLoader = null;
+	$proto.interclickButton = null;
 	$proto.keyBuffer = null;
 	$proto.paused = null;
 	$proto.startMillis = null;
@@ -139,6 +143,7 @@ function WebDriver(imageName, width, height) {
 
 	$proto._initWidgets = function() {
 	let $ = document.getElementById.bind(document);
+	this.buttonBox = $("buttonbox");
 	this.clipboard = $("clipboardText");
 	this.screen = $("screen");
 
@@ -146,6 +151,9 @@ function WebDriver(imageName, width, height) {
 		this.clickLeft = $(".mousebtn[data-button='1']");
 		this.clickMiddle = $(".mousebtn[data-button='2']");
 		this.clickRight = $(".mousebtn[data-button='3']");
+
+		this.buttonBox.addEventListener("mousedown", this, false);
+		this.buttonBox.addEventListener("mouseup", this, false);
 
 		this.toggleClipboard();
 	};
@@ -157,6 +165,12 @@ function WebDriver(imageName, width, height) {
 			case
 				"load": this._onLoad(event);
 			break;
+			case
+				"mousedown": this._onMouseButton(event);
+			break;
+			case
+				"mouseup": this._onMouseButton(event);
+			break;
 			default:
 				throw new Error("got event " + event.type);
 			break;
@@ -166,6 +180,26 @@ function WebDriver(imageName, width, height) {
 	$proto._onLoad = function(event) {
 		this.disk = this.diskLoader.contents;
 		this.reset(true);
+	};
+
+	$proto._onMouseButton = function(event) {
+		let clickButton = event.target;
+		if (event.type === "mousedown") {
+			event.preventDefault();
+			this.clickLeft.className = "mousebtn";
+			this.clickMiddle.className = "mousebtn";
+			this.clickRight.className = "mousebtn";
+
+			clickButton.classList.add("active");
+
+			this.activeButton = clickButton.dataset.button;
+			this.interClickButton = 0;
+		}
+		else {
+			if (clickButton.dataset.button === this.activeButton) return;
+			this.interClickButton = clickButton.dataset.button;
+			clickButton.classList.add("interclick");
+		}
 	};
 }
 

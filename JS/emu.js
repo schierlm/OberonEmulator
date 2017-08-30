@@ -1,31 +1,12 @@
-var activeButton=1, interClickButton=0;
 var screenCtx;
 var backBuffer;
 
 emuInit = function(width, height) {
-	let $ = document.getElementById.bind(document);
-	let ml = emulator.clickLeft;
-	let mm = emulator.clickMiddle;
-	let mr = emulator.clickRight;
-
 	emulator.screen.width=width | 0;
 	emulator.screen.height=height | 0;
 	screenCtx = emulator.screen.getContext("2d");
 	backBuffer =
 		screenCtx.createImageData(emulator.screen.width,emulator.screen.height);
-	ml.onmousedown = mm.onmousedown = mr.onmousedown = function(e) {
-		e.preventDefault();
-		ml.className = mm.className = mr.className = "mousebtn";
-		this.className = "mousebtn active";
-		activeButton = this.dataset.button;
-		interClickButton = 0;
-	};
-	ml.onmouseup = mm.onmouseup = mr.onmouseup = function(e) {
-		if (this.dataset.button != activeButton) {
-			interClickButton = this.dataset.button;
-			this.className="mousebtn interclick";
-		}
-	}
 	emulator.screen.tabIndex = 1000;
 	emulator.screen.style.outline = "none";
 	emulator.screen.onkeydown = function(e) {
@@ -69,17 +50,17 @@ emuInit = function(width, height) {
 	};
 	emulator.screen.onmousedown = function(e) {
 		var button = e.button + 1;
-		if (button == 1) button = activeButton;
+		if (button == 1) button = emulator.activeButton;
 		emulator.registerMouseButton(button, true);
 	};
 	emulator.screen.onmouseup = function(e) {
 		var button = e.button + 1;
 		if (button == 1) {
-			if (interClickButton != 0) {
-				emulator.registerMouseButton(interClickButton, true);
-				emulator.registerMouseButton(interClickButton, false);
+			if (emulator.interClickButton != 0) {
+				emulator.registerMouseButton(emulator.interClickButton, true);
+				emulator.registerMouseButton(emulator.interClickButton, false);
 			}
-			button = activeButton;
+			button = emulator.activeButton;
 		}
 		emulator.registerMouseButton(button, false);
 	};
