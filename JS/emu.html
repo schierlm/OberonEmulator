@@ -1,11 +1,14 @@
 <style>
 body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 .buttonbar {padding: 5px; }
-.mousebtn {width: 2em; height: 2em;}
+.mousebtn {width: 2em; height: 2em; background-color: #DDD; color:#FFF;
+text-shadow: -1px 0 #000, 0 -1px #000, 1px 0 #000, 0 1px #000, -1px -1px #000,
+-1px 1px #000, 1px -1px #000, 1px 1px #000; font-weight: bold;}
 .mousebtn, .led {padding: 2px 5px; border: 1px solid gray; cursor: default; }
-.mousebtn.active {background-color: blue;}
-.mousebtn.interclick {background-color: yellow;}
-.led {border:1px solid gray; background-color: black; color: white; border-radius: 50% }
+.mousebtn.active {background-color: #55E;}
+.mousebtn.interclick {background-color: #EE5;}
+.led {border:1px solid gray; background-color: black; color: white;
+border-radius: 50%; font-size: small;}
 .led.lit {background-color: #0f0; color: black; }
 #screen {cursor: none; outline: none;}
 </style>
