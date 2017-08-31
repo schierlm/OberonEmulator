@@ -1,11 +1,5 @@
-var ROMStart = 0x0FE000;
-var IOStart = 0x0FFFC0;
-var MemSize = 0x100000;
-var MemWords = (MemSize / 4);
-var DisplayStart = 0x0E7F00;
-
 function RISCMachine() {
-	this.mainMemory = new Int32Array(MemSize/4);
+	this.mainMemory = new Int32Array(this.MemSize/4);
 	this.reg_PC = new Int32Array(1);
 	this.reg_H = new Int32Array(1);
 	this.reg_R = new Int32Array(16);
@@ -16,6 +10,12 @@ function RISCMachine() {
 {
 	let $proto = RISCMachine.prototype;
 
+	RISCMachine.ROMStart = $proto.ROMStart = 0x0FE000;
+	RISCMachine.IOStart = $proto.IOStart = 0x0FFFC0;
+	RISCMachine.MemSize = $proto.MemSize = 0x100000;
+	RISCMachine.MemWords = $proto.MemWords = (RISCMachine.MemSize / 4);
+	RISCMachine.DisplayStart = $proto.DisplayStart = 0x0E7F00;
+
 	$proto.mainMemory = null;
 	$proto.reg_PC = null;
 	$proto.reg_H = null;
@@ -23,9 +23,9 @@ function RISCMachine() {
 	$proto.flag_Z = null;
 
 	$proto.memReadWord = function(address, mapROM) {
-		if (mapROM && address >= ROMStart / 4) {
-			return emulator.disk[0][address - ROMStart / 4];
-		} else if (address >= IOStart / 4) {
+		if (mapROM && address >= this.ROMStart / 4) {
+			return emulator.disk[0][address - this.ROMStart / 4];
+		} else if (address >= this.IOStart / 4) {
 			return this.memReadIO(address);
 		} else {
 			return this.mainMemory[address];
@@ -33,9 +33,9 @@ function RISCMachine() {
 	}
 
 	$proto.memWriteWord = function(address, value) {
-		if (address >= IOStart / 4) {
+		if (address >= this.IOStart / 4) {
 			this.memWriteIO(address, value);
-		} else if (address >= DisplayStart / 4) {
+		} else if (address >= this.DisplayStart / 4) {
 			this.memWriteVideo(address, value);
 		} else {
 			this.mainMemory[address] = value;
@@ -43,7 +43,7 @@ function RISCMachine() {
 	}
 
 	$proto.memReadIO = function(address) {
-		switch (address * 4 - IOStart) {
+		switch (address * 4 - this.IOStart) {
 			case  0: return emulator.tickCount | 0;
 			case 24: return emulator.getInputStatus();
 			case 28: return emulator.getKeyCode();
@@ -54,7 +54,7 @@ function RISCMachine() {
 	}
 
 	$proto.memWriteIO = function(address, word) {
-		switch (address * 4 - IOStart) {
+		switch (address * 4 - this.IOStart) {
 			// NB: The return statements are for control flow; none of these
 			// methods should actually return anything.
 			case  0: return emulator.wait(word);
@@ -67,7 +67,7 @@ function RISCMachine() {
 
 	$proto.memWriteVideo = function(address, word) {
 		this.mainMemory[address] = word;
-		let offset = address - DisplayStart / 4;
+		let offset = address - this.DisplayStart / 4;
 		let x = (offset % 32) * 32;
 		let y = emulator.screen.height - 1 - (offset / 32 | 0);
 		emulator.registerVideo(x, y, word);
@@ -76,11 +76,12 @@ function RISCMachine() {
 	$proto.cpuReset = function(cold) {
 		if (cold) {
 			this.reg_R[15] = 0;
-			this.memWriteWord(DisplayStart/4, 0x53697A65); // magic value SIZE
-			this.memWriteWord(DisplayStart/4+1, emulator.screen.width);
-			this.memWriteWord(DisplayStart/4+2, emulator.screen.height);
+			// magic value Size
+			this.memWriteWord(this.DisplayStart/4, 0x53697A65);
+			this.memWriteWord(this.DisplayStart/4+1, emulator.screen.width);
+			this.memWriteWord(this.DisplayStart/4+2, emulator.screen.height);
 		}
-		this.reg_PC[0] = ROMStart / 4;
+		this.reg_PC[0] = this.ROMStart / 4;
 	}
 
 	$proto.cpuSingleStep = function() {
@@ -221,7 +222,8 @@ function RISCMachine() {
 			var b = (ir & 0x00F00000) >> 20;
 			var off = ir & 0x000FFFFF;
 
-			var address = (((this.reg_R[b] >>>0) + (off >>>0)) % MemSize) | 0;
+			var address =
+				(((this.reg_R[b] >>>0) + (off >>>0)) % this.MemSize) | 0;
 			if ((ir & ubit) == 0) {
 				var a_val;
 				if ((ir & vbit) == 0) {
@@ -272,10 +274,12 @@ function RISCMachine() {
 				}
 				if ((ir & ubit) == 0) {
 					var c = ir & 0x0000000F;
-					this.reg_PC[0] = (((this.reg_R[c] >>> 0) / 4) % MemWords) | 0;
+					this.reg_PC[0] =
+						(((this.reg_R[c] >>> 0) / 4) % this.MemWords) | 0;
 				} else {
 					var off = ir & 0x00FFFFFF;
-					this.reg_PC[0] = ((this.reg_PC[0] + off) % MemWords) | 0;
+					this.reg_PC[0] =
+						((this.reg_PC[0] + off) % this.MemWords) | 0;
 				}
 			}
 		}
@@ -302,7 +306,7 @@ function RISCMachine() {
 	}
 
 	$proto.cpuStoreByte = function(address, value) {
-		if (address < IOStart) {
+		if (address < this.IOStart) {
 			var w = this.memReadWord(address / 4|0, false);
 			var shift = (address & 3) * 8;
 			w &= ~(0xFF << shift);
