@@ -17,17 +17,14 @@ function WebDriver(imageName, width, height) {
 	this.keyBuffer = [];
 	this.startMillis = Date.now();
 
-	this.clipboard = new Clipboard(this.clipboardInput);
-
-	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
-
 	this.screenUpdater = new ScreenUpdater(
 		this.screen.getContext("2d"), width, height
 	);
 
 	this.machine = new RISCMachine();
-
+	this.clipboard = new Clipboard(this.clipboardInput);
 	this.diskLoader = new DiskLoader(imageName, this);
+	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
 }
 
 {
