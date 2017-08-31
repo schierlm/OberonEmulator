@@ -31,6 +31,8 @@ function WebDriver(imageName, width, height) {
 		this.screen.getContext("2d"), width, height
 	);
 
+	this.machine = new RISCMachine();
+
 	this.diskLoader = new DiskLoader(imageName, this);
 }
 
@@ -49,6 +51,7 @@ function WebDriver(imageName, width, height) {
 	$proto.diskLoader = null;
 	$proto.interclickButton = null;
 	$proto.keyBuffer = null;
+	$proto.machine = null;
 	$proto.paused = null;
 	$proto.startMillis = null;
 	$proto.waitMillis = null;
@@ -58,7 +61,7 @@ function WebDriver(imageName, width, height) {
 	});
 
 	$proto.reset = function(cold) {
-		cpuReset(cold);
+		this.machine.cpuReset(cold);
 		this.resume();
 	};
 
@@ -72,7 +75,7 @@ function WebDriver(imageName, width, height) {
 		if (this.paused) return;
 		let now = Date.now();
 		for (var i = 0; i < 200000 && this.waitMillis < now; ++i) {
-			cpuSingleStep();
+			this.machine.cpuSingleStep();
 		}
 		this.cpuTimeout = window.setTimeout(
 			this.$run, Math.max(this.waitMillis - Date.now()), 10
