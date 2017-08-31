@@ -286,9 +286,9 @@ function WebDriver(imageName, width, height) {
 		}
 		else {
 			if (button === 1) {
-				if (this.interClickButton !== 0) {
-					this.registerMouseButton(this.interClickButton, true);
-					this.registerMouseButton(this.interClickButton, false);
+				if (this.interclickButton !== 0) {
+					this.registerMouseButton(this.interclickButton, true);
+					this.registerMouseButton(this.interclickButton, false);
 				}
 				button = this.activeButton;
 			}
@@ -307,11 +307,11 @@ function WebDriver(imageName, width, height) {
 			clickButton.classList.add("active");
 
 			this.activeButton = clickButton.dataset.button;
-			this.interClickButton = 0;
+			this.interclickButton = 0;
 		}
 		else {
 			if (clickButton.dataset.button === this.activeButton) return;
-			this.interClickButton = clickButton.dataset.button;
+			this.interclickButton = clickButton.dataset.button;
 			clickButton.classList.add("interclick");
 		}
 	};
