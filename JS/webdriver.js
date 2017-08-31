@@ -240,25 +240,15 @@ function WebDriver(imageName, width, height) {
 	// DOM Event handling
 
 	$proto.handleEvent = function(event) {
+		// NB: `handleEvent` is specced in the DOM standard to be a void method.
+		// The `return` in each case here is used for control flow only.
 		switch (event.type) {
-			case
-				"load": this._onLoad(event);
-			break;
-			case
-				"mousemove": this._onMouseMove(event);
-			break;
-			case
-				"mousedown": this._onMouseButton(event);
-			break;
-			case
-				"mouseup": this._onMouseButton(event);
-			break;
-			case
-				"contextmenu": event.preventDefault();
-			break;
-			default:
-				throw new Error("got event " + event.type);
-			break;
+			case "load": return this._onLoad(event);
+			case "mousemove": return this._onMouseMove(event);
+			case "mousedown": return this._onMouseButton(event);
+			case "mouseup": return this._onMouseButton(event);
+			case "contextmenu": return event.preventDefault();
+			default: throw new Error("got event " + event.type);
 		}
 	};
 
