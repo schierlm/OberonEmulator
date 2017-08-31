@@ -68,20 +68,12 @@ function RISCMachine() {
 	$proto.memWriteVideo = function(address, word) {
 		this.mainMemory[address] = word;
 		let offset = address - this.DisplayStart / 4;
-		let x = (offset % 32) * 32;
-		let y = emulator.screen.height - 1 - (offset / 32 | 0);
-		emulator.registerVideo(x, y, word);
+		emulator.registerVideoChange(offset, word);
 	}
 
 	$proto.cpuReset = function(cold) {
-		if (cold) {
-			this.reg_R[15] = 0;
-			// magic value Size
-			this.memWriteWord(this.DisplayStart/4, 0x53697A65);
-			this.memWriteWord(this.DisplayStart/4+1, emulator.screen.width);
-			this.memWriteWord(this.DisplayStart/4+2, emulator.screen.height);
-		}
 		this.reg_PC[0] = this.ROMStart / 4;
+		if (cold) this.reg_R[15] = 0;
 	}
 
 	$proto.cpuSingleStep = function() {

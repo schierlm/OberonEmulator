@@ -62,6 +62,12 @@ function WebDriver(imageName, width, height) {
 
 	$proto.reset = function(cold) {
 		this.machine.cpuReset(cold);
+		if (cold) {
+			let base = this.machine.DisplayStart / 4;
+			this.machine.memWriteWord(base, 0x53697A65); // magic value 'Size'
+			this.machine.memWriteWord(base + 1, this.screen.width);
+			this.machine.memWriteWord(base + 2, this.screen.height);
+		}
 		this.resume();
 	};
 
@@ -91,7 +97,9 @@ function WebDriver(imageName, width, height) {
 		}
 	};
 
-	$proto.registerVideo = function(x, y, value) {
+	$proto.registerVideoChange = function(offset, value) {
+		let x = (offset % 32) * 32;
+		let y = this.screen.height - 1 - (offset / 32 | 0);
 		if (y < 0 || x >= this.screen.width) return;
 		let base = (y * this.screen.width + x) * 4;
 		let { data } = this.screenUpdater.backBuffer;
