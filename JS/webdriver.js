@@ -41,7 +41,12 @@ function WebDriver(imageName, width, height) {
 
 	$proto.run = null;
 
+	$proto.buttonBox = null;
+	$proto.clickLeft = null;
+	$proto.clickMiddle = null;
+	$proto.clickRight = null;
 	$proto.clipboardInput = null;
+	$proto.leds = null;
 	$proto.screen = null;
 
 	$proto.activeButton = null;
@@ -52,8 +57,12 @@ function WebDriver(imageName, width, height) {
 	$proto.interclickButton = null;
 	$proto.keyBuffer = null;
 	$proto.machine = null;
+	$proto.mouse = null;
+	$proto.paravirtPointer = null;
 	$proto.paused = null;
+	$proto.screenUpdater = null;
 	$proto.startMillis = null;
+	$proto.virtualClipboard = null;
 	$proto.waitMillis = null;
 
 	$proto.__defineGetter__("tickCount", function() {
@@ -143,7 +152,7 @@ function WebDriver(imageName, width, height) {
 
 	$proto.registerLEDs = function(bitstring) {
 	  for (let i = 0; i < 8; i++) {
-		this.LEDs[i].classList.toggle("lit", (bitstring & (1 << i)));
+		this.leds[i].classList.toggle("lit", (bitstring & (1 << i)));
 	  }
 	};
 
@@ -207,7 +216,7 @@ function WebDriver(imageName, width, height) {
 
 	$proto._initWidgets = function(width, height) {
 	let $ = document.getElementById.bind(document);
-		this.LEDs = [
+		this.leds = [
 			$("led0"), $("led1"), $("led2"), $("led3"),
 			$("led4"), $("led5"), $("led6"), $("led7")
 		];
