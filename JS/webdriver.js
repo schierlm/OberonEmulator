@@ -15,12 +15,6 @@ function WebDriver(imageName, width, height) {
 
 	this.disk = [];
 	this.keyBuffer = [];
-	this.waitMillis = 0;
-	this.paused = false;
-	this.activeButton = 1;
-	this.interclickButton = 0;
-	this.paravirtPointer = 0;
-
 	this.startMillis = Date.now();
 
 	this.clipboard = new Clipboard(this.clipboardInput);
@@ -49,21 +43,21 @@ function WebDriver(imageName, width, height) {
 	$proto.leds = null;
 	$proto.screen = null;
 
-	$proto.activeButton = null;
+	$proto.activeButton = 1;
 	$proto.clipboard = null;
 	$proto.cpuTimeout = null;
 	$proto.disk = null;
 	$proto.diskLoader = null;
-	$proto.interclickButton = null;
+	$proto.interclickButton = 0;
 	$proto.keyBuffer = null;
 	$proto.machine = null;
 	$proto.mouse = null;
-	$proto.paravirtPointer = null;
-	$proto.paused = null;
+	$proto.paravirtPointer = 0;
+	$proto.paused = false;
 	$proto.screenUpdater = null;
 	$proto.startMillis = null;
 	$proto.virtualClipboard = null;
-	$proto.waitMillis = null;
+	$proto.waitMillis = 0;
 
 	$proto.__defineGetter__("tickCount", function() {
 		return Date.now() - this.startMillis;
