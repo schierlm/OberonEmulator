@@ -360,20 +360,22 @@ function Clipboard(widget) {
 	$proto._count = null;
 
 	$proto.__defineGetter__("size", function() {
-		// assert(this._buffer.length !== 0)
+		// assert(this._buffer === null)
+		// assert(this._count === null)
 		this._buffer = this._input.value.split("\n").join("\r").split("");
 		return this._buffer.length;
 	});
 
 	$proto.expect = function(count) {
-		// assert(this._buffer.length !== 0)
-		// assert(this._count !== 0)
+		// assert(this._buffer === null)
+		// assert(this._count === null)
 		this._buffer = [];
 		this._count = count;
 	};
 
 	$proto.put = function(charBits) {
-		// assert(this._count === 0)
+		// assert(this._buffer !== null)
+		// assert(this._count > 0)
 		this._buffer.push(String.fromCharCode(charBits));
 		this._count--;
 		if (this._count === 0) {
@@ -384,9 +386,10 @@ function Clipboard(widget) {
 	};
 
 	$proto.get = function() {
-		// assert(this._buffer.length === 0)
-		// XXX Warn for non-ASCII?
+		// assert(this._buffer.length > 0)
 		let singleChar = this._buffer.shift();
+		if (this._buffer.length === 0) this._buffer = null;
+		// XXX Warn for non-ASCII?
 		return singleChar.charCodeAt(0) | 0;
 	};
 }
