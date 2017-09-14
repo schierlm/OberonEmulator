@@ -16,12 +16,6 @@ function RISCMachine() {
 	RISCMachine.MemWords = $proto.MemWords = (RISCMachine.MemSize / 4);
 	RISCMachine.DisplayStart = $proto.DisplayStart = 0x0E7F00;
 
-	$proto.mainMemory = null;
-	$proto.reg_PC = null;
-	$proto.reg_H = null;
-	$proto.reg_R = null;
-	$proto.flag_Z = null;
-
 	$proto.memReadWord = function(address, mapROM) {
 		if (mapROM && address >= this.ROMStart / 4) {
 			return emulator.disk[0][address - this.ROMStart / 4];
