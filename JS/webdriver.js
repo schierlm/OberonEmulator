@@ -76,8 +76,7 @@ function WebDriver(imageName, width, height) {
 		this.cpuTimeout = window.setTimeout(this.$run, 1);
 	};
 
-	$proto.run = function()
-	{
+	$proto.run = function() {
 		if (this.paused) return;
 		let now = Date.now();
 		for (var i = 0; i < 200000 && this.waitMillis < now; ++i) {
@@ -192,8 +191,7 @@ function WebDriver(imageName, width, height) {
 		return this.keyBuffer.shift();
 	};
 
-	$proto.toggleClipboard = function()
-	{
+	$proto.toggleClipboard = function() {
 		this.clipboardInput.style.width = this.screen.width;
 		if (this.clipboardInput.style.visibility == "hidden") {
 			this.clipboardInput.style.visibility = "visible";
