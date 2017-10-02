@@ -142,9 +142,9 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.registerLEDs = function(bitstring) {
-	  for (let i = 0; i < 8; i++) {
-		this.leds[i].classList.toggle("lit", (bitstring & (1 << i)));
-	  }
+		for (let i = 0; i < 8; i++) {
+			this.leds[i].classList.toggle("lit", (bitstring & (1 << i)));
+		}
 	};
 
 	$proto.storageRequest = function(value, memory) {
@@ -206,15 +206,15 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto._initWidgets = function(width, height) {
-	let $ = document.getElementById.bind(document);
+		let $ = document.getElementById.bind(document);
 		this.leds = [
 			$("led0"), $("led1"), $("led2"), $("led3"),
 			$("led4"), $("led5"), $("led6"), $("led7")
 		];
 
-	this.buttonBox = $("buttonbox");
-	this.clipboardInput = $("clipboardText");
-	this.screen = $("screen");
+		this.buttonBox = $("buttonbox");
+		this.clipboardInput = $("clipboardText");
+		this.screen = $("screen");
 
 		this.screen.width = width;
 		this.screen.height = height;
