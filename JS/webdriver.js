@@ -30,7 +30,7 @@ function WebDriver(imageName, width, height) {
 {
 	let $proto = WebDriver.prototype;
 
-	$proto.run = null;
+	$proto.$run = null;
 
 	$proto.buttonBox = null;
 	$proto.clickLeft = null;
