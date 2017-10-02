@@ -83,7 +83,7 @@ function WebDriver(imageName, width, height) {
 			this.machine.cpuSingleStep();
 		}
 		this.cpuTimeout = window.setTimeout(
-			this.$run, Math.max(this.waitMillis - Date.now()), 10
+			this.$run, Math.max(this.waitMillis - Date.now(), 10)
 		);
 	};
 
