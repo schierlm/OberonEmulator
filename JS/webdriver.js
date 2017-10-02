@@ -1,9 +1,14 @@
 var emulator;
 
 window.onload = function() {
-	let [ imageName, width, height ] =
-		window.location.hash.substring(1).split(",");
-	emulator = new WebDriver(imageName, width | 0, height | 0);
+	let params = Object.create(null);
+	let pairs = window.location.search.substr(1).split("&");
+	for (let i = 0, n = pairs.length; i < n; ++i) {
+		let [ name, value ] = pairs[i].split("=");
+		params[name] = value;
+	}
+	let { image, width, height } = params;
+	emulator = new WebDriver(image, width | 0, height | 0);
 }
 
 function WebDriver(imageName, width, height) {
