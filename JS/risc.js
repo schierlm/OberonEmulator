@@ -47,15 +47,13 @@ function RISCMachine() {
 		}
 	}
 
-	$proto.memWriteIO = function(address, word) {
+	$proto.memWriteIO = function(address, val) {
 		switch (address * 4 - this.IOStart) {
-			// NB: The return statements are for control flow; none of these
-			// methods should actually return anything.
-			case  0: return emulator.wait(word);
-			case  4: return emulator.registerLEDs(word);
-			case 36: return emulator.storageRequest(word, this.mainMemory);
-			case 40: return emulator.clipboard.expect(word);
-			case 44: return emulator.clipboard.put(word);
+			case  0: return void(emulator.wait(val));
+			case  4: return void(emulator.registerLEDs(val));
+			case 36: return void(emulator.storageRequest(val, this.mainMemory));
+			case 40: return void(emulator.clipboard.expect(val));
+			case 44: return void(emulator.clipboard.put(val));
 		}
 	}
 
