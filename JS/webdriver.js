@@ -28,8 +28,12 @@ function WebDriver(imageName, width, height) {
 
 	this.machine = new RISCMachine();
 	this.clipboard = new Clipboard(this.clipboardInput);
-	this.diskLoader = new DiskLoader(imageName, this);
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
+	this.sync = new DiskSync(this);
+
+	// We save no reference because we don't need one; we just want to kick
+	// off the load, be notified when it's done, and then let this get GCed.
+	new ImageReader(imageName, this);
 }
 
 {
@@ -49,7 +53,6 @@ function WebDriver(imageName, width, height) {
 	$proto.clipboard = null;
 	$proto.cpuTimeout = null;
 	$proto.disk = null;
-	$proto.diskLoader = null;
 	$proto.interclickButton = 0;
 	$proto.keyBuffer = null;
 	$proto.machine = null;
@@ -58,6 +61,7 @@ function WebDriver(imageName, width, height) {
 	$proto.paused = false;
 	$proto.screenUpdater = null;
 	$proto.startMillis = null;
+	$proto.sync = null;
 	$proto.virtualClipboard = null;
 	$proto.waitMillis = 0;
 
@@ -244,7 +248,7 @@ function WebDriver(imageName, width, height) {
 
 	$proto.handleEvent = function(event) {
 		switch (event.type) {
-			case "load": return void(this._onLoad(event));
+			case "load": return void(this._onImageLoad(event));
 			case "mousemove": return void(this._onMouseMove(event));
 			case "mousedown": return void(this._onMouseButton(event));
 			case "mouseup": return void(this._onMouseButton(event));
@@ -253,8 +257,8 @@ function WebDriver(imageName, width, height) {
 		}
 	};
 
-	$proto._onLoad = function(event) {
-		this.disk = this.diskLoader.contents;
+	$proto._onImageLoad = function(event) {
+		this.disk = event.target.reader.contents;
 		this.reset(true);
 	};
 
@@ -485,10 +489,11 @@ function VirtualKeyboard(screen, emulator) {
 	});
 }
 
-function DiskLoader(imageName, observer) {
-	this.contents = null;
+function ImageReader(imageName, observer) {
 	this.container = new Image();
+	this.container.reader = this;
 
+	this.contents = null;
 	this.handleEvent = function(event) {
 		let canvas = document.createElement("canvas");
 		let width = canvas.width = this.container.width;
@@ -497,7 +502,7 @@ function DiskLoader(imageName, observer) {
 
 		context.drawImage(this.container, 0, 0);
 		let { data } = context.getImageData(0, 0, width, height);
-		this.contents = DiskLoader.read(data, width, height);
+		this.contents = ImageReader.unpack(data, width, height);
 
 		observer.handleEvent(event);
 	}
@@ -506,7 +511,7 @@ function DiskLoader(imageName, observer) {
 	this.container.src = imageName + ".png";
 }
 
-DiskLoader.read = function(imageData, width, height) {
+ImageReader.unpack = function(imageData, width, height) {
 	let contents = [];
 	for (let i = 0; i < height; i++) {
 		let sectorWords = new Int32Array(width / 4);
@@ -524,3 +529,21 @@ DiskLoader.read = function(imageData, width, height) {
 
 	return contents;
 };
+
+function DiskSync(observer) {
+	this.observer = observer;
+}
+
+{
+	let $proto = DiskSync.prototype;
+
+	$proto.load = function(file) {
+		throw new Error("unimplemented"); // XXX
+		return this;
+	};
+
+	$proto.save = function() {
+		throw new Error("unimplemented"); // XXX
+		return this;
+	};
+}
