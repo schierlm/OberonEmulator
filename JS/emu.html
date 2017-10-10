@@ -34,6 +34,12 @@ border-radius: 50%; font-size: small;}
 <span id="led1" class="led">1</span>
 <span id="led0" class="led">0</span>
 
+<a>
+<input type="button" id="exportbutton" value="Save"
+	   onclick="return emulator.exportDiskImage(), false;"
+	   title="Export disk image">
+</a>
+
 <input type="button" id="clipboardToggle" value="Clipboard"
 	   onclick="emulator.toggleClipboard();">
 

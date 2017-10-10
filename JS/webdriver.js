@@ -47,6 +47,7 @@ function WebDriver(imageName, width, height) {
 	$proto.clickRight = null;
 	$proto.clipboardInput = null;
 	$proto.leds = null;
+	$proto.saveLink = null;
 	$proto.screen = null;
 
 	$proto.activeButton = 1;
@@ -212,6 +213,10 @@ function WebDriver(imageName, width, height) {
 		}
 	};
 
+	$proto.exportDiskImage = function() {
+		this.sync.save(this.disk, this.saveLink);
+	};
+
 	$proto._initWidgets = function(width, height) {
 		let $ = document.getElementById.bind(document);
 		this.leds = [
@@ -222,6 +227,8 @@ function WebDriver(imageName, width, height) {
 		this.buttonBox = $("buttonbox");
 		this.clipboardInput = $("clipboardText");
 		this.screen = $("screen");
+
+		this.saveLink = $("exportbutton").parentNode;
 
 		this.screen.width = width;
 		this.screen.height = height;
@@ -542,8 +549,11 @@ function DiskSync(observer) {
 		return this;
 	};
 
-	$proto.save = function() {
-		throw new Error("unimplemented"); // XXX
-		return this;
+	$proto.save = function(sectors, link) {
+		link.href = URL.createObjectURL(new Blob(sectors));
+		link.setAttribute("download", "oberon.dsk");
+		link.click();
+		link.removeAttribute("href");
+		link.removeAttribute("download");
 	};
 }
