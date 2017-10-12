@@ -1,8 +1,8 @@
 function RISCMachine() {
-	this.mainMemory = new Int32Array(this.MemSize/4);
-	this.reg_PC = new Int32Array(1);
-	this.reg_H = new Int32Array(1);
-	this.reg_R = new Int32Array(16);
+	this.registers = new Int32Array(
+		this.GPRegisterCount + -this.RegisterBounds
+	);
+	this.mainMemory = new Int32Array(this.MemWords);
 	this.flag_Z = false, this.flag_N = false;
 	this.flag_C = false, this.flag_V = false;
 }
@@ -15,6 +15,34 @@ function RISCMachine() {
 	RISCMachine.MemSize = $proto.MemSize = 0x100000;
 	RISCMachine.MemWords = $proto.MemWords = (RISCMachine.MemSize / 4);
 	RISCMachine.DisplayStart = $proto.DisplayStart = 0x0E7F00;
+
+	RISCMachine.RegisterBounds = $proto.RegisterBounds =
+	RISCMachine.HID = $proto.HID = -2;
+	RISCMachine.PCID = $proto.PCID = -1;
+	RISCMachine.GPRegisterCount = $proto.GPRegisterCount = 16;
+
+	$proto.registerSlot = function(id) {
+		if (this.RegisterBounds <= id && id < 0) {
+			return id + this.registers.length;
+		}
+		if (0 <= id && id < this.GPRegisterCount) {
+			return id;
+		}
+		throw new Error("Bad register: " + id);
+	}
+
+	$proto.getRegister = function(id) {
+		return this.registers[this.registerSlot(id)];
+	}
+
+	$proto.setRegister = function(id, value) {
+		value = value | 0;
+		if (id >= 0) {
+			this.flag_Z = value == 0;
+			this.flag_N = value < 0;
+		}
+		this.registers[this.registerSlot(id)] = value;
+	}
 
 	$proto.memReadWord = function(address, mapROM) {
 		if (mapROM && address >= this.ROMStart / 4) {
@@ -64,8 +92,8 @@ function RISCMachine() {
 	}
 
 	$proto.cpuReset = function(cold) {
-		this.reg_PC[0] = this.ROMStart / 4;
-		if (cold) this.reg_R[15] = 0;
+		this.setRegister(this.PCID, this.ROMStart / 4);
+		if (cold) this.setRegister(15, 0);
 	}
 
 	$proto.cpuSingleStep = function() {
@@ -74,8 +102,9 @@ function RISCMachine() {
 		var ubit = 0x20000000;
 		var vbit = 0x10000000;
 
-		var ir = this.memReadWord(this.reg_PC[0], true);
-		this.reg_PC[0]++;
+		var pc = this.getRegister(this.PCID);
+		var ir = this.memReadWord(this.getRegister(this.PCID), true);
+		this.setRegister(this.PCID, pc + 1);
 
 		if ((ir & pbit) == 0) {
 			var a = (ir & 0x0F000000) >> 24;
@@ -85,9 +114,9 @@ function RISCMachine() {
 			var c = ir & 0x0000000F;
 
 			var a_val, b_val, c_val;
-			b_val = this.reg_R[b];
+			b_val = this.getRegister(b);
 			if ((ir & qbit) == 0) {
-				c_val = this.reg_R[c];
+				c_val = this.getRegister(c);
 			} else if ((ir & vbit) == 0) {
 				c_val = im;
 			} else {
@@ -106,7 +135,7 @@ function RISCMachine() {
 							(this.flag_C ? 0x20000000 : 0) |
 							(this.flag_V ? 0x10000000 : 0);
 				} else {
-					a_val = this.reg_H[0];
+					a_val = this.getRegister(this.HID);
 				}
 				break;
 			}
@@ -164,20 +193,21 @@ function RISCMachine() {
 					tmp = (b_val >>>0) * (c_val >>>0);
 				}
 				a_val = tmp | 0;
-				this.reg_H[0] = (tmp / ((-1>>>0)+1)) | 0;
+				this.setRegister(this.HID, (tmp / ((-1>>>0) + 1)) | 0);
 				break;
 			}
 			case 11: {
 				if ((ir & ubit) == 0) {
+					var h_val = (b_val % c_val) | 0;
 					a_val = (b_val / c_val) | 0;
-					this.reg_H[0] = (b_val % c_val) | 0;
-					if (this.reg_H[0] < 0) {
+					if (h_val < 0) {
+						h_val += c_val;
 						a_val = (a_val - 1) | 0;
-						this.reg_H[0] += c_val;
 					}
+					this.setRegister(this.HID, h_val);
 				} else {
 					a_val = ((b_val>>>0) / (c_val>>>0)) | 0;
-					this.reg_H[0] = ((b_val>>>0) % (c_val>>>0)) | 0;
+					this.setRegister(this.HID, ((b_val>>>0) % (c_val>>>0)) | 0);
 				}
 				break;
 			}
@@ -199,7 +229,7 @@ function RISCMachine() {
 				a_val = _float2Int(_int2Float(b_val) / _int2Float(c_val));
 				break;
 			}
-			this.cpuSetRegister(a, a_val);
+			this.setRegister(a, a_val);
 		}
 		else if ((ir & qbit) == 0) {
 			var a = (ir & 0x0F000000) >> 24;
@@ -207,7 +237,7 @@ function RISCMachine() {
 			var off = ir & 0x000FFFFF;
 
 			var address =
-				(((this.reg_R[b] >>>0) + (off >>>0)) % this.MemSize) | 0;
+				(((this.getRegister(b) >>>0) + (off >>>0)) % this.MemSize) | 0;
 			if ((ir & ubit) == 0) {
 				var a_val;
 				if ((ir & vbit) == 0) {
@@ -215,12 +245,12 @@ function RISCMachine() {
 				} else {
 					a_val = this.cpuLoadByte(address) & 0xff;
 				}
-				this.cpuSetRegister(a, a_val);
+				this.setRegister(a, a_val);
 			} else {
 				if ((ir & vbit) == 0) {
-					this.cpuStoreWord(address, this.reg_R[a]);
+					this.cpuStoreWord(address, this.getRegister(a));
 				} else {
-					this.cpuStoreByte(address, this.reg_R[a] & 0xff);
+					this.cpuStoreByte(address, this.getRegister(a) & 0xff);
 				}
 			}
 		}
@@ -254,26 +284,17 @@ function RISCMachine() {
 			}
 			if (t ^ (((ir >>> 24) & 8) != 0)) {
 				if ((ir & vbit) != 0) {
-					this.cpuSetRegister(15, (this.reg_PC[0] * 4) | 0);
+					this.setRegister(15, (this.getRegister(this.PCID) * 4) | 0);
 				}
 				if ((ir & ubit) == 0) {
-					var c = ir & 0x0000000F;
-					this.reg_PC[0] =
-						(((this.reg_R[c] >>> 0) / 4) % this.MemWords) | 0;
+					var pos = (this.getRegister(ir & 0x0000000F) >>> 0) / 4
+					this.setRegister(this.PCID, pos % this.MemWords);
 				} else {
-					var off = ir & 0x00FFFFFF;
-					this.reg_PC[0] =
-						((this.reg_PC[0] + off) % this.MemWords) | 0;
+					var pos = this.getRegister(this.PCID) + (ir & 0x00FFFFFF);
+					this.setRegister(this.PCID, pos % this.MemWords);
 				}
 			}
 		}
-	}
-
-	$proto.cpuSetRegister = function(reg, value) {
-		value = value | 0;
-		this.reg_R[reg] = value;
-		this.flag_Z = value == 0;
-		this.flag_N = value < 0;
 	}
 
 	$proto.cpuLoadWord = function(address) {
