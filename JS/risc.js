@@ -10,11 +10,11 @@ function RISCMachine() {
 {
 	let $proto = RISCMachine.prototype;
 
+	RISCMachine.DisplayStart = $proto.DisplayStart = 0x0E7F00;
 	RISCMachine.ROMStart = $proto.ROMStart = 0x0FE000;
 	RISCMachine.IOStart = $proto.IOStart = 0x0FFFC0;
 	RISCMachine.MemSize = $proto.MemSize = 0x100000;
 	RISCMachine.MemWords = $proto.MemWords = (RISCMachine.MemSize / 4);
-	RISCMachine.DisplayStart = $proto.DisplayStart = 0x0E7F00;
 
 	RISCMachine.RegisterBounds = $proto.RegisterBounds =
 	RISCMachine.HID = $proto.HID = -2;
