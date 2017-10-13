@@ -44,28 +44,28 @@ function RISCMachine() {
 		this.registers[this.cpuRegisterSlot(id)] = value;
 	}
 
-	$proto.memReadWord = function(address, mapROM) {
-		if (mapROM && address >= this.ROMStart / 4) {
-			return emulator.disk[0][address - this.ROMStart / 4];
-		} else if (address >= this.IOStart / 4) {
-			return this.memReadIO(address);
+	$proto.memReadWord = function(wordIndex, mapROM) {
+		if (mapROM && wordIndex >= this.ROMStart / 4) {
+			return emulator.disk[0][wordIndex - this.ROMStart / 4];
+		} else if (wordIndex >= this.IOStart / 4) {
+			return this.memReadIO(wordIndex);
 		} else {
-			return this.mainMemory[address];
+			return this.mainMemory[wordIndex];
 		}
 	}
 
-	$proto.memWriteWord = function(address, value) {
-		if (address >= this.IOStart / 4) {
-			this.memWriteIO(address, value);
-		} else if (address >= this.DisplayStart / 4) {
-			this.memWriteVideo(address, value);
+	$proto.memWriteWord = function(wordIndex, value) {
+		if (wordIndex >= this.IOStart / 4) {
+			this.memWriteIO(wordIndex, value);
+		} else if (wordIndex >= this.DisplayStart / 4) {
+			this.memWriteVideo(wordIndex, value);
 		} else {
-			this.mainMemory[address] = value;
+			this.mainMemory[wordIndex] = value;
 		}
 	}
 
-	$proto.memReadIO = function(address) {
-		switch (address * 4 - this.IOStart) {
+	$proto.memReadIO = function(wordIndex) {
+		switch (wordIndex * 4 - this.IOStart) {
 			case  0: return emulator.tickCount | 0;
 			case 24: return emulator.getInputStatus();
 			case 28: return emulator.getKeyCode();
@@ -75,8 +75,8 @@ function RISCMachine() {
 		}
 	}
 
-	$proto.memWriteIO = function(address, val) {
-		switch (address * 4 - this.IOStart) {
+	$proto.memWriteIO = function(wordIndex, val) {
+		switch (wordIndex * 4 - this.IOStart) {
 			case  0: return void(emulator.wait(val));
 			case  4: return void(emulator.registerLEDs(val));
 			case 36: return void(emulator.storageRequest(val, this.mainMemory));
@@ -85,9 +85,9 @@ function RISCMachine() {
 		}
 	}
 
-	$proto.memWriteVideo = function(address, word) {
-		this.mainMemory[address] = word;
-		let offset = address - this.DisplayStart / 4;
+	$proto.memWriteVideo = function(wordIndex, word) {
+		this.mainMemory[wordIndex] = word;
+		let offset = wordIndex - this.DisplayStart / 4;
 		emulator.registerVideoChange(offset, word);
 	}
 
