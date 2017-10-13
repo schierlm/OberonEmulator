@@ -73,10 +73,10 @@ function WebDriver(imageName, width, height) {
 			this.machine.memWriteWord(base + 1, this.screen.width);
 			this.machine.memWriteWord(base + 2, this.screen.height);
 		}
-		this.resume();
+		this.reschedule();
 	};
 
-	$proto.resume = function() {
+	$proto.reschedule = function() {
 		if (this.cpuTimeout != null) window.clearTimeout(this.cpuTimeout);
 		this.cpuTimeout = window.setTimeout(this.$run, 1);
 	};
@@ -128,7 +128,7 @@ function WebDriver(imageName, width, height) {
 
 		this.mouse = after;
 		this.wait(-1);
-		this.resume();
+		this.reschedule();
 	};
 
 	$proto.registerMouseButton = function(button, down) {
@@ -142,7 +142,7 @@ function WebDriver(imageName, width, height) {
 			}
 		}
 		this.wait(-1);
-		this.resume();
+		this.reschedule();
 	};
 
 	$proto.registerLEDs = function(bitstring) {
@@ -179,7 +179,7 @@ function WebDriver(imageName, width, height) {
 	$proto.registerKey = function(keyCode) {
 		this.keyBuffer.push(keyCode << 24);
 		this.wait(-1);
-		this.resume();
+		this.reschedule();
 	};
 
 	$proto.hasInput = function() {
