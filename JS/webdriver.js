@@ -46,6 +46,7 @@ function WebDriver(imageName, width, height) {
 	$proto.clickMiddle = null;
 	$proto.clickRight = null;
 	$proto.clipboardInput = null;
+	$proto.fileInput = null;
 	$proto.leds = null;
 	$proto.saveLink = null;
 	$proto.screen = null;
@@ -213,6 +214,10 @@ function WebDriver(imageName, width, height) {
 		}
 	};
 
+	$proto.importDiskImage = function() {
+		this.sync.load(this.fileInput.files[0]);
+	};
+
 	$proto.exportDiskImage = function() {
 		this.sync.save(this.disk, this.saveLink);
 	};
@@ -229,6 +234,7 @@ function WebDriver(imageName, width, height) {
 		this.screen = $("screen");
 
 		this.saveLink = $("exportbutton").parentNode;
+		this.fileInput = $("fileinput");
 
 		this.screen.width = width;
 		this.screen.height = height;
@@ -255,7 +261,8 @@ function WebDriver(imageName, width, height) {
 
 	$proto.handleEvent = function(event) {
 		switch (event.type) {
-			case "load": return void(this._onImageLoad(event));
+			case "load":
+			case "loadend": return void(this._onImageReady(event));
 			case "mousemove": return void(this._onMouseMove(event));
 			case "mousedown": return void(this._onMouseButton(event));
 			case "mouseup": return void(this._onMouseButton(event));
@@ -264,7 +271,7 @@ function WebDriver(imageName, width, height) {
 		}
 	};
 
-	$proto._onImageLoad = function(event) {
+	$proto._onImageReady = function(event) {
 		this.disk = event.target.reader.contents;
 		this.reset(true);
 	};
@@ -544,16 +551,40 @@ function DiskSync(observer) {
 {
 	let $proto = DiskSync.prototype;
 
-	$proto.load = function(file) {
-		throw new Error("unimplemented"); // XXX
-		return this;
-	};
-
 	$proto.save = function(sectors, link) {
 		link.href = URL.createObjectURL(new Blob(sectors));
 		link.setAttribute("download", "oberon.dsk");
 		link.click();
 		link.removeAttribute("href");
 		link.removeAttribute("download");
+	};
+
+	$proto.load = function(file) {
+		let reader = new FileReader();
+		reader.addEventListener("loadend", this);
+		reader.readAsArrayBuffer(file);
+	};
+
+	$proto.handleEvent = function(event) {
+		if (event.type !== "loadend") throw new Error(
+			"Unexpected event: " + event.type
+		);
+
+		let reader = event.target;
+		let contents = [];
+		let sectorStart = 0;
+		var view = new DataView(reader.result);
+		while (sectorStart < view.byteLength) {
+			let sectorWords = new Int32Array(1024 / 4);
+			for (let i = 0; i < 1024 / 4; i++) {
+				sectorWords[i] = view.getInt32(sectorStart + i * 4, true);
+			}
+			contents.push(sectorWords);
+			sectorStart += 1024;
+		}
+
+		reader.contents = contents;
+		event.target.reader = reader;
+		this.observer.handleEvent(event);
 	};
 }
