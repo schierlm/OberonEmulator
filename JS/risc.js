@@ -10,16 +10,16 @@ function RISCMachine() {
 {
 	let $proto = RISCMachine.prototype;
 
+	RISCMachine.RegisterBounds = $proto.RegisterBounds =
+	RISCMachine.HID = $proto.HID = -2;
+	RISCMachine.PCID = $proto.PCID = -1;
+	RISCMachine.GPRegisterCount = $proto.GPRegisterCount = 16;
+
 	RISCMachine.DisplayStart = $proto.DisplayStart = 0x0E7F00;
 	RISCMachine.ROMStart = $proto.ROMStart = 0x0FE000;
 	RISCMachine.IOStart = $proto.IOStart = 0x0FFFC0;
 	RISCMachine.MemSize = $proto.MemSize = 0x100000;
 	RISCMachine.MemWords = $proto.MemWords = (RISCMachine.MemSize / 4);
-
-	RISCMachine.RegisterBounds = $proto.RegisterBounds =
-	RISCMachine.HID = $proto.HID = -2;
-	RISCMachine.PCID = $proto.PCID = -1;
-	RISCMachine.GPRegisterCount = $proto.GPRegisterCount = 16;
 
 	$proto.cpuRegisterSlot = function(id) {
 		if (this.RegisterBounds <= id && id < 0) {
