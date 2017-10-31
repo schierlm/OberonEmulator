@@ -71,6 +71,11 @@ function WebDriver(imageName, width, height) {
 		return Date.now() - this.startMillis;
 	});
 
+	$proto.bootFromSystemImage = function(contents) {
+		this.disk = contents;
+		this.reset(true);
+	};
+
 	$proto.reset = function(cold) {
 		this.machine.cpuReset(cold);
 		if (cold) {
@@ -261,19 +266,12 @@ function WebDriver(imageName, width, height) {
 
 	$proto.handleEvent = function(event) {
 		switch (event.type) {
-			case "load":
-			case "loadend": return void(this._onImageReady(event));
 			case "mousemove": return void(this._onMouseMove(event));
 			case "mousedown": return void(this._onMouseButton(event));
 			case "mouseup": return void(this._onMouseButton(event));
 			case "contextmenu": return void(event.preventDefault());
 			default: throw new Error("got event " + event.type);
 		}
-	};
-
-	$proto._onImageReady = function(event) {
-		this.disk = event.target.reader.contents;
-		this.reset(true);
 	};
 
 	$proto._onMouseMove = function(event) {
@@ -503,12 +501,21 @@ function VirtualKeyboard(screen, emulator) {
 	});
 }
 
-function ImageReader(imageName, observer) {
+function ImageReader(imageName, emulator) {
+	this.emulator = emulator;
 	this.container = new Image();
-	this.container.reader = this;
+	this.container.addEventListener("load", this);
+	this.container.src = imageName + ".png";
+}
 
-	this.contents = null;
-	this.handleEvent = function(event) {
+{
+	let $proto = ImageReader.prototype;
+
+	$proto.handleEvent = function(event) {
+		if (event.type !== "load") throw new Error(
+			"Unexpected event: " + event.type
+		);
+
 		let canvas = document.createElement("canvas");
 		let width = canvas.width = this.container.width;
 		let height = canvas.height = this.container.height;
@@ -516,36 +523,31 @@ function ImageReader(imageName, observer) {
 
 		context.drawImage(this.container, 0, 0);
 		let { data } = context.getImageData(0, 0, width, height);
-		this.contents = ImageReader.unpack(data, width, height);
+		this.emulator.bootFromSystemImage(this._unpack(data, width, height));
+	};
 
-		observer.handleEvent(event);
-	}
+	$proto._unpack = function(imageData, width, height) {
+		let contents = [];
+		for (let i = 0; i < height; i++) {
+			let sectorWords = new Int32Array(width / 4);
+			for (let j = 0; j < width / 4; j++) {
+				let b = i * 4096 + j * 16 + 2;
+				sectorWords[j] =
+					((imageData[b +  0] & 0xFF) <<  0) |
+					((imageData[b +  4] & 0xFF) <<  8) |
+					((imageData[b +  8] & 0xFF) << 16) |
+					((imageData[b + 12] & 0xFF) << 24) |
+					0;
+			}
+			contents[i] = sectorWords;
+		}
 
-	this.container.addEventListener("load", this);
-	this.container.src = imageName + ".png";
+		return contents;
+	};
 }
 
-ImageReader.unpack = function(imageData, width, height) {
-	let contents = [];
-	for (let i = 0; i < height; i++) {
-		let sectorWords = new Int32Array(width / 4);
-		for (let j = 0; j < width / 4; j++) {
-			let b = i * 4096 + j * 16 + 2;
-			sectorWords[j] =
-				((imageData[b +  0] & 0xFF) <<  0) |
-				((imageData[b +  4] & 0xFF) <<  8) |
-				((imageData[b +  8] & 0xFF) << 16) |
-				((imageData[b + 12] & 0xFF) << 24) |
-				0;
-		}
-		contents[i] = sectorWords;
-	}
-
-	return contents;
-};
-
-function DiskSync(observer) {
-	this.observer = observer;
+function DiskSync(emulator) {
+	this.emulator = emulator;
 }
 
 {
@@ -583,8 +585,6 @@ function DiskSync(observer) {
 			sectorStart += 1024;
 		}
 
-		reader.contents = contents;
-		event.target.reader = reader;
-		this.observer.handleEvent(event);
+		emulator.bootFromSystemImage(contents);
 	};
 }
