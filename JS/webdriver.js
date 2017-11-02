@@ -26,7 +26,6 @@ function WebDriver(imageName, width, height) {
 		this.screen.getContext("2d"), width, height
 	);
 
-	this.machine = new RISCMachine();
 	this.clipboard = new Clipboard(this.clipboardInput);
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
 	this.sync = new DiskSync(this);
@@ -72,6 +71,7 @@ function WebDriver(imageName, width, height) {
 	});
 
 	$proto.bootFromSystemImage = function(contents) {
+		this.machine = new RISCMachine();
 		this.disk = contents;
 		this.reset(true);
 	};
