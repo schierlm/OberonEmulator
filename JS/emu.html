@@ -1,0 +1,47 @@
+<style>
+body { font-family: Verdana, Arial, Helvetica, sans-serif; }
+.buttonbar {padding: 5px; }
+.mousebtn {width: 2em; height: 2em; background-color: #DDD; color:#FFF;
+text-shadow: -1px 0 #000, 0 -1px #000, 1px 0 #000, 0 1px #000, -1px -1px #000,
+-1px 1px #000, 1px -1px #000, 1px 1px #000; font-weight: bold;}
+.mousebtn, .led {padding: 2px 5px; border: 1px solid gray; cursor: default; }
+.mousebtn.active {background-color: #55E;}
+.mousebtn.interclick {background-color: #EE5;}
+.led {border:1px solid gray; background-color: black; color: white;
+border-radius: 50%; font-size: small;}
+.led.lit {background-color: #0f0; color: black; }
+#screen {cursor: none; outline: none;}
+</style>
+<script src="risc.js"></script>
+<script src="webdriver.js"></script>
+
+<div class="buttonbar">
+
+<span id="buttonbox">
+<input type="button" data-button="1" value="L" class="mousebtn active">
+<input type="button" data-button="2" value="M" class="mousebtn">
+<input type="button" data-button="3" value="R" class="mousebtn">
+</span>
+
+&mdash;
+
+<span id="led7" class="led">7</span>
+<span id="led6" class="led">6</span>
+<span id="led5" class="led">5</span>
+<span id="led4" class="led">4</span>
+<span id="led3" class="led">3</span>
+<span id="led2" class="led">2</span>
+<span id="led1" class="led">1</span>
+<span id="led0" class="led">0</span>
+
+<input type="button" id="clipboardToggle" value="Clipboard"
+	   onclick="emulator.toggleClipboard();">
+
+<input type="button" id="breakbutton" value="Break"
+	   onclick="emulator.reset(false);">
+<input type="button" id="resetbutton" value="Reset"
+	   onclick="emulator.reset(true);">
+
+</div>
+<textarea id="clipboardText" style="width:1024;"></textarea>
+<canvas id="screen" tabindex="1000"></canvas>
