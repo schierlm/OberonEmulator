@@ -1,6 +1,6 @@
 function RISCMachine() {
 	this.registers = new Int32Array(
-		this.GPRegisterCount + -this.RegisterBounds
+		this.GeneralRegisterCount + this.SpecialRegisterCount
 	);
 	this.mainMemory = new Int32Array(this.MemWords);
 	this.flag_Z = false, this.flag_N = false;
@@ -10,10 +10,10 @@ function RISCMachine() {
 {
 	let $proto = RISCMachine.prototype;
 
-	RISCMachine.RegisterBounds = $proto.RegisterBounds =
-	RISCMachine.HID = $proto.HID = -2;
+	RISCMachine.GeneralRegisterCount = $proto.GeneralRegisterCount = 16;
+	RISCMachine.SpecialRegisterCount = $proto.SpecialRegisterCount =  2;
 	RISCMachine.PCID = $proto.PCID = -1;
-	RISCMachine.GPRegisterCount = $proto.GPRegisterCount = 16;
+	RISCMachine.HID = $proto.HID =   -2;
 
 	RISCMachine.DisplayStart = $proto.DisplayStart = 0x0E7F00;
 	RISCMachine.ROMStart = $proto.ROMStart = 0x0FE000;
@@ -22,10 +22,10 @@ function RISCMachine() {
 	RISCMachine.MemWords = $proto.MemWords = (RISCMachine.MemSize / 4);
 
 	$proto.cpuRegisterSlot = function(id) {
-		if (this.RegisterBounds <= id && id < 0) {
+		if (id < 0 && -id <= this.SpecialRegisterCount) {
 			return id + this.registers.length;
 		}
-		if (0 <= id && id < this.GPRegisterCount) {
+		if (0 <= id && id < this.GeneralRegisterCount) {
 			return id;
 		}
 		throw new Error("Bad register: " + id);
