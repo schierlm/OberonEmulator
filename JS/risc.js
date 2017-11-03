@@ -1,10 +1,11 @@
-function RISCMachine() {
+function RISCMachine(romWords) {
 	this.registers = new Int32Array(
 		this.GeneralRegisterCount + this.SpecialRegisterCount
 	);
 	this.mainMemory = new Int32Array(this.MemWords);
 	this.flag_Z = false, this.flag_N = false;
 	this.flag_C = false, this.flag_V = false;
+	this.bootROM = romWords;
 }
 
 {
@@ -46,7 +47,7 @@ function RISCMachine() {
 
 	$proto.memReadWord = function(wordIndex, mapROM) {
 		if (mapROM && wordIndex >= this.ROMStart / 4) {
-			return emulator.disk[0][wordIndex - this.ROMStart / 4];
+			return this.bootROM[wordIndex - this.ROMStart / 4];
 		} else if (wordIndex >= this.IOStart / 4) {
 			return this.memReadIO(wordIndex);
 		} else {

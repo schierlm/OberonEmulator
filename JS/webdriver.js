@@ -26,10 +26,13 @@ function WebDriver(imageName, width, height) {
 		this.screen.getContext("2d"), width, height
 	);
 
-	this.machine = new RISCMachine();
 	this.clipboard = new Clipboard(this.clipboardInput);
-	this.diskLoader = new DiskLoader(imageName, this);
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
+	this.sync = new DiskSync(this);
+
+	// We save no reference because we don't need one; we just want to kick
+	// off the load, be notified when it's done, and then let this get GCed.
+	new ImageReader(imageName, this);
 }
 
 {
@@ -42,14 +45,15 @@ function WebDriver(imageName, width, height) {
 	$proto.clickMiddle = null;
 	$proto.clickRight = null;
 	$proto.clipboardInput = null;
+	$proto.fileInput = null;
 	$proto.leds = null;
+	$proto.saveLink = null;
 	$proto.screen = null;
 
 	$proto.activeButton = 1;
 	$proto.clipboard = null;
 	$proto.cpuTimeout = null;
 	$proto.disk = null;
-	$proto.diskLoader = null;
 	$proto.interclickButton = 0;
 	$proto.keyBuffer = null;
 	$proto.machine = null;
@@ -58,12 +62,30 @@ function WebDriver(imageName, width, height) {
 	$proto.paused = false;
 	$proto.screenUpdater = null;
 	$proto.startMillis = null;
+	$proto.sync = null;
 	$proto.virtualClipboard = null;
 	$proto.waitMillis = 0;
 
 	$proto.__defineGetter__("tickCount", function() {
 		return Date.now() - this.startMillis;
 	});
+
+	$proto.bootFromSystemImage = function(contents) {
+		if (this._hasDirMark(contents, 0)) {
+			this.machine = new RISCMachine(this.machine.bootROM);
+		} else if (this._hasDirMark(contents, 1)) {
+			this.machine = new RISCMachine(contents.shift());
+		} else {
+			throw new Error("Invalid system image");
+		}
+		this.disk = contents;
+		this.reset(true);
+	};
+
+	$proto._hasDirMark = function(contents, sectorNumber) {
+		let view = new DataView(contents[sectorNumber].buffer);
+		return view.getUint32(0) === 0x8DA31E9B;
+	};
 
 	$proto.reset = function(cold) {
 		this.machine.cpuReset(cold);
@@ -152,26 +174,29 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.storageRequest = function(value, memory) {
-		let address = this.paravirtPointer / 4;
 		if ((value & 0xC0000000) === 0) {
 			// set pointer
 			this.paravirtPointer = value | 0;
 			return;
 		}
+
+		// NB: The actual index for our disk will be off by one because the
+		// given sector number includes the phantom boot sector (reserved at
+		// sector 0) but which is not actually part of the disk.
+		let sectorNumber = value & 0x3FFFFFFF;
+		let address = this.paravirtPointer / 4;
 		if ((value & 0xC0000000) === (0x80000000 | 0)) {
 			// read
-			let sectorNumber = (value - 0x80000000) | 0;
-			let sector = this.disk[sectorNumber | 0];
+			let sector = this.disk[sectorNumber - 1];
 			if (!sector) sector = new Int32Array(256);
 			memory.set(sector, address);
 			return;
 		}
 		if ((value & 0xC0000000) === (0xC0000000 | 0)) {
 			// write
-			let sectorNumber = (value - 0xC0000000) | 0;
 			let sector = new Int32Array(256);
 			sector.set(memory.subarray(address, address + 256));
-			this.disk[sectorNumber | 0] = sector;
+			this.disk[sectorNumber - 1] = sector;
 			return;
 		}
 	};
@@ -208,6 +233,14 @@ function WebDriver(imageName, width, height) {
 		}
 	};
 
+	$proto.importDiskImage = function() {
+		this.sync.load(this.fileInput.files[0]);
+	};
+
+	$proto.exportDiskImage = function() {
+		this.sync.save(this.disk, this.saveLink);
+	};
+
 	$proto._initWidgets = function(width, height) {
 		let $ = document.getElementById.bind(document);
 		this.leds = [
@@ -218,6 +251,9 @@ function WebDriver(imageName, width, height) {
 		this.buttonBox = $("buttonbox");
 		this.clipboardInput = $("clipboardText");
 		this.screen = $("screen");
+
+		this.saveLink = $("exportbutton").parentNode;
+		this.fileInput = $("fileinput");
 
 		this.screen.width = width;
 		this.screen.height = height;
@@ -244,18 +280,12 @@ function WebDriver(imageName, width, height) {
 
 	$proto.handleEvent = function(event) {
 		switch (event.type) {
-			case "load": return void(this._onLoad(event));
 			case "mousemove": return void(this._onMouseMove(event));
 			case "mousedown": return void(this._onMouseButton(event));
 			case "mouseup": return void(this._onMouseButton(event));
 			case "contextmenu": return void(event.preventDefault());
 			default: throw new Error("got event " + event.type);
 		}
-	};
-
-	$proto._onLoad = function(event) {
-		this.disk = this.diskLoader.contents;
-		this.reset(true);
 	};
 
 	$proto._onMouseMove = function(event) {
@@ -485,11 +515,21 @@ function VirtualKeyboard(screen, emulator) {
 	});
 }
 
-function DiskLoader(imageName, observer) {
-	this.contents = null;
+function ImageReader(imageName, emulator) {
+	this.emulator = emulator;
 	this.container = new Image();
+	this.container.addEventListener("load", this);
+	this.container.src = imageName + ".png";
+}
 
-	this.handleEvent = function(event) {
+{
+	let $proto = ImageReader.prototype;
+
+	$proto.handleEvent = function(event) {
+		if (event.type !== "load") throw new Error(
+			"Unexpected event: " + event.type
+		);
+
 		let canvas = document.createElement("canvas");
 		let width = canvas.width = this.container.width;
 		let height = canvas.height = this.container.height;
@@ -497,30 +537,68 @@ function DiskLoader(imageName, observer) {
 
 		context.drawImage(this.container, 0, 0);
 		let { data } = context.getImageData(0, 0, width, height);
-		this.contents = DiskLoader.read(data, width, height);
+		this.emulator.bootFromSystemImage(this._unpack(data, width, height));
+	};
 
-		observer.handleEvent(event);
-	}
+	$proto._unpack = function(imageData, width, height) {
+		let contents = [];
+		for (let i = 0; i < height; i++) {
+			let sectorWords = new Int32Array(width / 4);
+			for (let j = 0; j < width / 4; j++) {
+				let b = i * 4096 + j * 16 + 2;
+				sectorWords[j] =
+					((imageData[b +  0] & 0xFF) <<  0) |
+					((imageData[b +  4] & 0xFF) <<  8) |
+					((imageData[b +  8] & 0xFF) << 16) |
+					((imageData[b + 12] & 0xFF) << 24) |
+					0;
+			}
+			contents[i] = sectorWords;
+		}
 
-	this.container.addEventListener("load", this);
-	this.container.src = imageName + ".png";
+		return contents;
+	};
 }
 
-DiskLoader.read = function(imageData, width, height) {
-	let contents = [];
-	for (let i = 0; i < height; i++) {
-		let sectorWords = new Int32Array(width / 4);
-		for (let j = 0; j < width / 4; j++) {
-			let b = i * 4096 + j * 16 + 2;
-			sectorWords[j] =
-				((imageData[b +  0] & 0xFF) <<  0) |
-				((imageData[b +  4] & 0xFF) <<  8) |
-				((imageData[b +  8] & 0xFF) << 16) |
-				((imageData[b + 12] & 0xFF) << 24) |
-				0;
-		}
-		contents[i] = sectorWords;
-	}
+function DiskSync(emulator) {
+	this.emulator = emulator;
+}
 
-	return contents;
-};
+{
+	let $proto = DiskSync.prototype;
+
+	$proto.save = function(sectors, link) {
+		link.href = URL.createObjectURL(new Blob(sectors));
+		link.setAttribute("download", "oberon.dsk");
+		link.click();
+		link.removeAttribute("href");
+		link.removeAttribute("download");
+	};
+
+	$proto.load = function(file) {
+		let reader = new FileReader();
+		reader.addEventListener("loadend", this);
+		reader.readAsArrayBuffer(file);
+	};
+
+	$proto.handleEvent = function(event) {
+		if (event.type !== "loadend") throw new Error(
+			"Unexpected event: " + event.type
+		);
+
+		let reader = event.target;
+		let contents = [];
+		let sectorStart = 0;
+		var view = new DataView(reader.result);
+		while (sectorStart < view.byteLength) {
+			let sectorWords = new Int32Array(1024 / 4);
+			for (let i = 0; i < 1024 / 4; i++) {
+				sectorWords[i] = view.getInt32(sectorStart + i * 4, true);
+			}
+			contents.push(sectorWords);
+			sectorStart += 1024;
+		}
+
+		emulator.bootFromSystemImage(contents);
+	};
+}

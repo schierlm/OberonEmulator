@@ -34,6 +34,20 @@ border-radius: 50%; font-size: small;}
 <span id="led1" class="led">1</span>
 <span id="led0" class="led">0</span>
 
+<input type="file" id="fileinput"
+	   onchange="emulator.importDiskImage();"
+	   style="display: none;" accept=".dsk">
+
+<input type="button" id="importbutton" value="Load"
+	   onclick="emulator.fileInput.click()"
+	   title="Import disk image">
+
+<a>
+<input type="button" id="exportbutton" value="Save"
+	   onclick="emulator.exportDiskImage();"
+	   title="Export disk image">
+</a>
+
 <input type="button" id="clipboardToggle" value="Clipboard"
 	   onclick="emulator.toggleClipboard();">
 
