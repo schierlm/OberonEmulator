@@ -71,6 +71,10 @@ function WebDriver(imageName, width, height) {
 	});
 
 	$proto.bootFromSystemImage = function(contents) {
+		// Two system image formats are supported: one with 1024-byte sectors
+		// in the format used for Peter De Wachter's RISC emulator, and
+		// another in the same form except, except with the first disk sector
+		// preceded by another "sector" dedicated to the preferred ROM image.
 		if (this._hasDirMark(contents, 0)) {
 			this.machine = new RISCMachine(this.machine.bootROM);
 		} else if (this._hasDirMark(contents, 1)) {
