@@ -174,15 +174,19 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.storageRequest = function(value, memory) {
-		let address = this.paravirtPointer / 4;
 		if ((value & 0xC0000000) === 0) {
 			// set pointer
 			this.paravirtPointer = value | 0;
 			return;
 		}
+
+		// NB: The actual index for our disk will be off by one because the
+		// given sector number includes the phantom boot sector (reserved at
+		// sector 0) but which is not actually part of the disk.
+		let sectorNumber = value & 0x3FFFFFFF;
+		let address = this.paravirtPointer / 4;
 		if ((value & 0xC0000000) === (0x80000000 | 0)) {
 			// read
-			let sectorNumber = (value - 0x80000000) | 0;
 			let sector = this.disk[sectorNumber - 1];
 			if (!sector) sector = new Int32Array(256);
 			memory.set(sector, address);
@@ -190,7 +194,6 @@ function WebDriver(imageName, width, height) {
 		}
 		if ((value & 0xC0000000) === (0xC0000000 | 0)) {
 			// write
-			let sectorNumber = (value - 0xC0000000) | 0;
 			let sector = new Int32Array(256);
 			sector.set(memory.subarray(address, address + 256));
 			this.disk[sectorNumber - 1] = sector;
