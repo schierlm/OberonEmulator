@@ -71,9 +71,20 @@ function WebDriver(imageName, width, height) {
 	});
 
 	$proto.bootFromSystemImage = function(contents) {
-		this.machine = new RISCMachine();
+		if (this._hasDirMark(contents, 0)) {
+			this.machine = new RISCMachine(this.machine.bootROM);
+		} else if (this._hasDirMark(contents, 1)) {
+			this.machine = new RISCMachine(contents.shift());
+		} else {
+			throw new Error("Invalid system image");
+		}
 		this.disk = contents;
 		this.reset(true);
+	};
+
+	$proto._hasDirMark = function(contents, sectorNumber) {
+		let view = new DataView(contents[sectorNumber].buffer);
+		return view.getUint32(0) === 0x8DA31E9B;
 	};
 
 	$proto.reset = function(cold) {
@@ -172,7 +183,7 @@ function WebDriver(imageName, width, height) {
 		if ((value & 0xC0000000) === (0x80000000 | 0)) {
 			// read
 			let sectorNumber = (value - 0x80000000) | 0;
-			let sector = this.disk[sectorNumber | 0];
+			let sector = this.disk[sectorNumber - 1];
 			if (!sector) sector = new Int32Array(256);
 			memory.set(sector, address);
 			return;
@@ -182,7 +193,7 @@ function WebDriver(imageName, width, height) {
 			let sectorNumber = (value - 0xC0000000) | 0;
 			let sector = new Int32Array(256);
 			sector.set(memory.subarray(address, address + 256));
-			this.disk[sectorNumber | 0] = sector;
+			this.disk[sectorNumber - 1] = sector;
 			return;
 		}
 	};
