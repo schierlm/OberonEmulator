@@ -45,9 +45,9 @@ function WebDriver(imageName, width, height) {
 	$proto.clickMiddle = null;
 	$proto.clickRight = null;
 	$proto.clipboardInput = null;
-	$proto.fileInput = null;
+	$proto.diskFileInput = null;
+	$proto.diskSaveAnchor = null;
 	$proto.leds = null;
-	$proto.saveLink = null;
 	$proto.screen = null;
 
 	$proto.activeButton = 1;
@@ -238,11 +238,11 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.importDiskImage = function() {
-		this.sync.load(this.fileInput.files[0]);
+		this.sync.load(this.diskFileInput.files[0]);
 	};
 
 	$proto.exportDiskImage = function() {
-		this.sync.save(this.disk, this.saveLink);
+		this.sync.save(this.disk, this.diskSaveAnchor);
 	};
 
 	$proto._initWidgets = function(width, height) {
@@ -256,8 +256,8 @@ function WebDriver(imageName, width, height) {
 		this.clipboardInput = $("clipboardText");
 		this.screen = $("screen");
 
-		this.saveLink = $("exportbutton").parentNode;
-		this.fileInput = $("fileinput");
+		this.diskSaveAnchor = $("diskexportbutton").parentNode;
+		this.diskFileInput = $("diskfileinput");
 
 		this.screen.width = width;
 		this.screen.height = height;
