@@ -576,11 +576,17 @@ function FileLink(emulator) {
 	$proto.getStatus = function() {
 		let result = this.RX_READY;
 		if (this.transfer) {
-			if (this.transfer.readyState === 0) {
-				this._emulator.transferHistory.push(this.transfer);
-				// TODO: Add UI to retransmit files from the transfer history.
+			let { transfer } = this;
+			if (transfer.readyState === 0) {
 				delete this.transfer;
-			} else if (this.transfer.readyState !== 1) {
+
+				// TODO: Add UI to retransmit files from the transfer history.
+				this._emulator.transferHistory.push(transfer);
+
+				if (transfer.type === this.DEMAND_TRANSFER) {
+					transfer.save(this._emulator.linkSaveAnchor);
+				}
+			} else if (transfer.readyState !== 1) {
 				result |= this.TX_READY;
 			}
 		}
@@ -676,7 +682,7 @@ function SupplyTransfer(file) {
 	 *   -2: Expect 2 ACKs after current packet, then die
 	 *   -1: Expect 1 ACK after current packet, then die
 	 *    0: Dead
-	 *    1: Start state
+	 *    1: Start state/receive-only
 	 *   >1: Ready to transmit
 	 *
 	 * NB: Technically readyState < 0 is also treated as "ready to transmit",
@@ -690,23 +696,71 @@ function SupplyTransfer(file) {
 }
 
 function DemandTransfer(name) {
-	this.type = FileLink.DEMAND_TRANSFER;
+	this.blocks = [];
+	this.offset = 0;
 	this.count = 0;
+	this.type = FileLink.DEMAND_TRANSFER;
 	this.fileName = name;
-	this.fileBytes = [];
+	this.readyState = 2;
 }
 
 {
 	let $proto = DemandTransfer.prototype;
 
-	$proto.readyState = 0;
-
-	$proto.getPacketByte = function() {
-		throw new Error("Unimplemented"); // XXX
+	/**
+	 * readyState-based flow control:
+	 *   -1: Expect 1 (final) ACK is needed from us, then die
+	 *    0: Dead
+	 *    1: Start state/receive-only (unused)
+	 *    2: Ready for ACK
+	 *    3: Ready for block size
+	 *    4: Ready for block byte
+	 */
+	$proto.acceptLinkByte = function(val) {
+		switch (this.readyState) {
+			case 2:
+				if (val !== FileLink.ACK) throw new Error("Expected ACK");
+				this.readyState = 3;
+			break;
+			case 3:
+				this.blocks.push(new Uint8Array(val));
+				this.readyState = 4;
+			break;
+			case 4:
+				topBlock = this.blocks[this.blocks.length - 1];
+				topBlock[this.offset] = val;
+				++this.offset;
+				if (this.offset === topBlock.byteLength) {
+					if (this.offset < 255) {
+						this.readyState = -1;
+					} else {
+						this.readyState = 3;
+					}
+					this.offset = 0;
+				}
+			break;
+			default: throw new Error("Unexpected state: " + this.readyState);
+		}
 	};
 
-	$proto.acceptLinkByte = function(val) {
-		throw new Error("Unimplemented"); // XXX
+	$proto.getPacketByte = function() {
+		if (this.readyState < 0 || this.readyState >= 2) {
+			result = FileLink.ACK;
+			if (this.readyState < 0) {
+				++this.readyState;
+			}
+		} else {
+			throw new Error("Unexpected byte request");
+		}
+		return result;
+	};
+
+	$proto.save = function(anchor) {
+		anchor.setAttribute("download", this.fileName);
+		anchor.href = URL.createObjectURL(new Blob(this.blocks));
+		anchor.click();
+		anchor.removeAttribute("href");
+		anchor.removeAttribute("download");
 	};
 }
 
