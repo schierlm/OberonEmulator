@@ -570,6 +570,7 @@ function FileLink(emulator) {
 	FileLink.RX_READY = $proto.RX_READY = 0x02;
 
 	FileLink.ACK = $proto.ACK = 0x10;
+	FileLink.NAK = $proto.NAK = 0x11;
 
 	$proto.transfer = null;
 
@@ -583,7 +584,10 @@ function FileLink(emulator) {
 				// TODO: Add UI to retransmit files from the transfer history.
 				this._emulator.transferHistory.push(transfer);
 
-				if (transfer.type === this.DEMAND_TRANSFER) {
+				if (transfer.success === this.NAK) {
+					alert("Unable to transfer file with name " +
+						transfer.fileName);
+				} else if (transfer.type === this.DEMAND_TRANSFER) {
 					transfer.save(this._emulator.linkSaveAnchor);
 				}
 			} else if (transfer.readyState !== 1) {
@@ -646,6 +650,8 @@ function SupplyTransfer(file) {
 {
 	let $proto = SupplyTransfer.prototype;
 
+	$proto.success = 0;
+
 	$proto.handleEvent = function(event) {
 		if (event.type !== "loadend") throw new Error(
 			"Unexpected event: " + event.type
@@ -690,8 +696,13 @@ function SupplyTransfer(file) {
 	 * only that we know how many ACKs are coming; this packet will contain EOF.
 	 */
 	$proto.acceptLinkByte = function(val) {
-		if (val !== FileLink.ACK) throw new Error("Expected ACK");
-		if (this.readyState < 0) ++this.readyState;
+		if (val === FileLink.NAK) {
+			this.success = FileLink.NAK;
+			this.readyState = 0;
+		} else {
+			if (val !== FileLink.ACK) throw new Error("Expected ACK");
+			if (this.readyState < 0) ++this.readyState;
+		}
 	};
 }
 
@@ -707,6 +718,8 @@ function DemandTransfer(name) {
 {
 	let $proto = DemandTransfer.prototype;
 
+	$proto.success = 0;
+
 	/**
 	 * readyState-based flow control:
 	 *   -1: Expect 1 (final) ACK is needed from us, then die
@@ -719,8 +732,14 @@ function DemandTransfer(name) {
 	$proto.acceptLinkByte = function(val) {
 		switch (this.readyState) {
 			case 2:
-				if (val !== FileLink.ACK) throw new Error("Expected ACK");
-				this.readyState = 3;
+				if (val === FileLink.NAK) {
+					this.success = FileLink.NAK;
+					this.readyState = 0;
+				} else if (val === FileLink.ACK) {
+					this.readyState = 3;
+				} else {
+					throw new Error("Expected ACK");
+				}
 			break;
 			case 3:
 				this.blocks.push(new Uint8Array(val));
