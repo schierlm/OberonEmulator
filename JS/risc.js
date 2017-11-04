@@ -68,6 +68,8 @@ function RISCMachine(romWords) {
 	$proto.memReadIO = function(wordIndex) {
 		switch (wordIndex * 4 - this.IOStart) {
 			case  0: return emulator.tickCount | 0;
+			case  8: return emulator.link.getData();
+			case 12: return emulator.link.getStatus();
 			case 24: return emulator.getInputStatus();
 			case 28: return emulator.getKeyCode();
 			case 40: return emulator.clipboard.size;
@@ -80,6 +82,7 @@ function RISCMachine(romWords) {
 		switch (wordIndex * 4 - this.IOStart) {
 			case  0: return void(emulator.wait(val));
 			case  4: return void(emulator.registerLEDs(val));
+			case  8: return void(emulator.link.setData(val));
 			case 36: return void(emulator.storageRequest(val, this.mainMemory));
 			case 40: return void(emulator.clipboard.expect(val));
 			case 44: return void(emulator.clipboard.put(val));

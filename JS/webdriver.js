@@ -28,6 +28,7 @@ function WebDriver(imageName, width, height) {
 
 	this.clipboard = new Clipboard(this.clipboardInput);
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
+	this.link = new FileLink(this);
 	this.sync = new DiskSync(this);
 
 	// We save no reference because we don't need one; we just want to kick
@@ -47,6 +48,8 @@ function WebDriver(imageName, width, height) {
 	$proto.clipboardInput = null;
 	$proto.diskFileInput = null;
 	$proto.diskSaveAnchor = null;
+	$proto.linkFileInput = null;
+	$proto.linkSaveAnchor = null;
 	$proto.leds = null;
 	$proto.screen = null;
 
@@ -245,6 +248,30 @@ function WebDriver(imageName, width, height) {
 		this.sync.save(this.disk, this.diskSaveAnchor);
 	};
 
+	$proto.importFile = function() {
+		this.link.supplyFile(this.linkFileInput.files[0]);
+	};
+
+	$proto.exportFile = function() {
+		let name = this.toggleLinkName();
+		if (name) this.link.demandFile(name);
+	};
+
+	$proto.toggleLinkName = function() {
+		let style = this.linkNameInput.style;
+		let value = this.linkNameInput.value;
+		if (style.display === "none") {
+			style.display = "inline";
+			this.linkExportButton.value = "Copy";
+			this.linkNameInput.focus();
+		} else {
+			style.display = "none";
+			this.linkNameInput.value = "";
+			this.linkExportButton.value = "Transfer out";
+		}
+		return value;
+	};
+
 	$proto._initWidgets = function(width, height) {
 		let $ = document.getElementById.bind(document);
 		this.leds = [
@@ -258,6 +285,11 @@ function WebDriver(imageName, width, height) {
 
 		this.diskSaveAnchor = $("diskexportbutton").parentNode;
 		this.diskFileInput = $("diskfileinput");
+
+		this.linkExportButton = $("fileexportbutton");
+		this.linkSaveAnchor = this.linkExportButton.parentNode;
+		this.linkFileInput = $("linkfileinput");
+		this.linkNameInput = $("linknameinput");
 
 		this.screen.width = width;
 		this.screen.height = height;
@@ -277,6 +309,8 @@ function WebDriver(imageName, width, height) {
 		this.buttonBox.addEventListener("mousedown", this, false);
 		this.buttonBox.addEventListener("mouseup", this, false);
 
+		this.linkExportButton.style.width = this.linkExportButton.offsetWidth;
+		this.toggleLinkName();
 		this.toggleClipboard();
 	};
 
@@ -517,6 +551,132 @@ function VirtualKeyboard(screen, emulator) {
 			return;
 		}
 	});
+}
+
+function FileLink(emulator) {
+	this._emulator = emulator;
+}
+
+{
+	let $proto = FileLink.prototype;
+
+	FileLink.SUPPLY_TRANSFER = $proto.SUPPLY_TRANSFER = 0x21;
+	FileLink.DEMAND_TRANSFER = $proto.DEMAND_TRANSFER = 0x22;
+
+	FileLink.TX_READY = $proto.TX_READY = 0x01;
+	FileLink.RX_READY = $proto.RX_READY = 0x02;
+
+	FileLink.ACK = $proto.ACK = 0x10;
+
+	$proto.transfer = null;
+
+	$proto.getStatus = function() {
+		let result = this.RX_READY;
+		if (this.transfer) {
+			if (this.transfer.readyState > 0) {
+				result |= this.TX_READY;
+			} else if (this.transfer.readyState < 0) {
+				delete this.transfer;
+			}
+		}
+		return result;
+	};
+
+	$proto.getData = function() {
+		let result = 0;
+		let { count, fileName } = this.transfer;
+		if (count === 0) {
+			result = this.transfer.type;
+		} else if (count - 1 < fileName.length) {
+			result = fileName.charCodeAt(count - 1);
+		} else if (count - 1 === fileName.length) {
+			result = 0; // ASCII NUL
+		} else {
+			result = this.transfer.getPayloadByte();
+		}
+
+		++this.transfer.count;
+		return result;
+	};
+
+	$proto.setData = function(val) {
+		this.transfer.acceptLinkByte(val);
+	};
+
+	$proto.demandFile = function(name) {
+		if (this.transfer) throw new Error(
+			"Existing file transfer is ongoing; type: " + this.transfer.type
+		);
+		this.transfer = new DemandTransfer(this, name);
+	};
+
+	$proto.supplyFile = function(file) {
+		if (this.transfer) throw new Error(
+			"Existing file transfer is ongoing; type: " + this.transfer.type
+		);
+		this.transfer = new SupplyTransfer(this, file);
+	};
+
+}
+
+function SupplyTransfer(link, file) {
+	this.type = FileLink.SUPPLY_TRANSFER;
+	this.count = 0;
+	this.link = link;
+	this.fileName = file.name;
+	this.fileBytes = null;
+
+	let reader = new FileReader();
+	reader.addEventListener("loadend", this);
+	reader.readAsArrayBuffer(file);
+}
+
+{
+	let $proto = SupplyTransfer.prototype;
+
+	$proto.readyState = 0;
+
+	$proto.handleEvent = function(event) {
+		if (event.type !== "loadend") throw new Error(
+			"Unexpected event: " + event.type
+		);
+
+		this.fileBytes = event.target.result;
+		this.readyState = 1;
+	};
+
+	$proto.getPayloadByte = function() {
+		this.readyState = 0;
+		this.count = 0;
+		return 0;
+	};
+
+	$proto.acceptLinkByte = function(val) {
+		if (val !== FileLink.ACK) throw new Error("Expected ACK");
+		if (this.readyState === 0) --this.count;
+		if (this.count === -2) this.readyState = -1;
+	};
+}
+
+function DemandTransfer(name) {
+	this.type = FileLink.DEMAND_TRANSFER;
+	this.count = 0;
+	this.fileName = name;
+	this.fileBytes = [];
+}
+
+{
+	let $proto = DemandTransfer.prototype;
+
+	$proto.readyState = 0;
+
+	$proto.getPayloadByte = function() {
+		throw new Error("Unimplemented"); // XXX
+	};
+
+	$proto.acceptLinkByte = function(val) {
+		throw new Error("Unimplemented"); // XXX
+	};
 }
 
 function ImageReader(imageName, emulator) {
