@@ -49,10 +49,9 @@ function WebDriver(imageName, width, height) {
 	$proto.clickRight = null;
 	$proto.clipboardInput = null;
 	$proto.diskFileInput = null;
-	$proto.diskSaveAnchor = null;
 	$proto.linkFileInput = null;
-	$proto.linkSaveAnchor = null;
 	$proto.leds = null;
+	$proto.localSaveAnchor = null;
 	$proto.screen = null;
 
 	$proto.activeButton = 1;
@@ -248,7 +247,15 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.exportDiskImage = function() {
-		this.sync.save(this.disk, this.diskSaveAnchor);
+		this.save("oberon.dsk", this.disk);
+	};
+
+	$proto.save = function(name, content) {
+		this.localSaveAnchor.setAttribute("download", name);
+		this.localSaveAnchor.href = URL.createObjectURL(new Blob(content));
+		this.localSaveAnchor.click();
+		this.localSaveAnchor.removeAttribute("href");
+		this.localSaveAnchor.removeAttribute("download");
 	};
 
 	$proto.importFile = function() {
@@ -284,13 +291,12 @@ function WebDriver(imageName, width, height) {
 
 		this.buttonBox = $("buttonbox");
 		this.clipboardInput = $("clipboardText");
+		this.localSaveAnchor = $("localsaveanchor");
 		this.screen = $("screen");
 
-		this.diskSaveAnchor = $("diskexportbutton").parentNode;
 		this.diskFileInput = $("diskfileinput");
 
 		this.linkExportButton = $("fileexportbutton");
-		this.linkSaveAnchor = this.linkExportButton.parentNode;
 		this.linkFileInput = $("linkfileinput");
 		this.linkNameInput = $("linknameinput");
 
@@ -588,7 +594,7 @@ function FileLink(emulator) {
 					alert("Unable to transfer file with name " +
 						transfer.fileName);
 				} else if (transfer.type === this.DEMAND_TRANSFER) {
-					transfer.save(this._emulator.linkSaveAnchor);
+					this._emulator.save(transfer.fileName, transfer.blocks);
 				}
 			} else if (transfer.readyState !== 1) {
 				result |= this.TX_READY;
@@ -773,14 +779,6 @@ function DemandTransfer(name) {
 		}
 		return result;
 	};
-
-	$proto.save = function(anchor) {
-		anchor.setAttribute("download", this.fileName);
-		anchor.href = URL.createObjectURL(new Blob(this.blocks));
-		anchor.click();
-		anchor.removeAttribute("href");
-		anchor.removeAttribute("download");
-	};
 }
 
 function ImageReader(imageName, emulator) {
@@ -834,14 +832,6 @@ function DiskSync(emulator) {
 
 {
 	let $proto = DiskSync.prototype;
-
-	$proto.save = function(sectors, link) {
-		link.href = URL.createObjectURL(new Blob(sectors));
-		link.setAttribute("download", "oberon.dsk");
-		link.click();
-		link.removeAttribute("href");
-		link.removeAttribute("download");
-	};
 
 	$proto.load = function(file) {
 		let reader = new FileReader();
