@@ -28,8 +28,10 @@ function WebDriver(imageName, width, height) {
 
 	this.clipboard = new Clipboard(this.clipboardInput);
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
-	this.link = new FileLink(this);
 	this.sync = new DiskSync(this);
+
+	this.transferHistory = [];
+	this.link = new FileLink(this);
 
 	// We save no reference because we don't need one; we just want to kick
 	// off the load, be notified when it's done, and then let this get GCed.
@@ -66,6 +68,7 @@ function WebDriver(imageName, width, height) {
 	$proto.screenUpdater = null;
 	$proto.startMillis = null;
 	$proto.sync = null;
+	$proto.transferHistory = null;
 	$proto.virtualClipboard = null;
 	$proto.waitMillis = 0;
 
@@ -573,10 +576,12 @@ function FileLink(emulator) {
 	$proto.getStatus = function() {
 		let result = this.RX_READY;
 		if (this.transfer) {
-			if (this.transfer.readyState > 0) {
-				result |= this.TX_READY;
-			} else if (this.transfer.readyState < 0) {
+			if (this.transfer.readyState === 0) {
+				this._emulator.transferHistory.push(this.transfer);
+				// TODO: Add UI to retransmit files from the transfer history.
 				delete this.transfer;
+			} else if (this.transfer.readyState !== 1) {
+				result |= this.TX_READY;
 			}
 		}
 		return result;
@@ -592,7 +597,7 @@ function FileLink(emulator) {
 		} else if (count - 1 === fileName.length) {
 			result = 0; // ASCII NUL
 		} else {
-			result = this.transfer.getPayloadByte();
+			result = this.transfer.getPacketByte();
 		}
 
 		++this.transfer.count;
@@ -607,24 +612,25 @@ function FileLink(emulator) {
 		if (this.transfer) throw new Error(
 			"Existing file transfer is ongoing; type: " + this.transfer.type
 		);
-		this.transfer = new DemandTransfer(this, name);
+		this.transfer = new DemandTransfer(name);
 	};
 
 	$proto.supplyFile = function(file) {
 		if (this.transfer) throw new Error(
 			"Existing file transfer is ongoing; type: " + this.transfer.type
 		);
-		this.transfer = new SupplyTransfer(this, file);
+		this.transfer = new SupplyTransfer(file);
 	};
 
 }
 
-function SupplyTransfer(link, file) {
-	this.type = FileLink.SUPPLY_TRANSFER;
+function SupplyTransfer(file) {
+	// See `acceptLinkByte` for the significance of `readyState` transitions.
+	this.readyState = 1;
+	this.offset = 0;
 	this.count = 0;
-	this.link = link;
+	this.type = FileLink.SUPPLY_TRANSFER;
 	this.fileName = file.name;
-	this.fileBytes = null;
 
 	let reader = new FileReader();
 	reader.addEventListener("loadend", this);
@@ -634,27 +640,52 @@ function SupplyTransfer(link, file) {
 {
 	let $proto = SupplyTransfer.prototype;
 
-	$proto.readyState = 0;
-
 	$proto.handleEvent = function(event) {
 		if (event.type !== "loadend") throw new Error(
 			"Unexpected event: " + event.type
 		);
 
-		this.fileBytes = event.target.result;
-		this.readyState = 1;
+		this.fileBytes = new DataView(event.target.result);
+		this.readyState = 2;
 	};
 
-	$proto.getPayloadByte = function() {
-		this.readyState = 0;
-		this.count = 0;
-		return 0;
+	$proto.getPacketByte = function() {
+		let sent = this.count - 1 - (this.fileName.length + 1);
+		if ((sent % 256) === 0) {
+			let remaining = this.fileBytes.byteLength - this.offset;
+			if (remaining >= 255) {
+				result = 255;
+			} else {
+				result = remaining;
+				// How many ACKs should we expect after we finish this packet?
+				if (remaining === 0) {
+					this.readyState = -1;
+				} else {
+					this.readyState = -2;
+				}
+			}
+		} else {
+			result = this.fileBytes.getUint8(this.offset);
+			++this.offset;
+		}
+		return result;
 	};
 
+	/**
+	 * readyState-based flow control:
+	 *   -2: Expect 2 ACKs after current packet, then die
+	 *   -1: Expect 1 ACK after current packet, then die
+	 *    0: Dead
+	 *    1: Start state
+	 *   >1: Ready to transmit
+	 *
+	 * NB: Technically readyState < 0 is also treated as "ready to transmit",
+	 * because it doesn't necessarily mean that an ACK is eminently expected,
+	 * only that we know how many ACKs are coming; this packet will contain EOF.
+	 */
 	$proto.acceptLinkByte = function(val) {
 		if (val !== FileLink.ACK) throw new Error("Expected ACK");
-		if (this.readyState === 0) --this.count;
-		if (this.count === -2) this.readyState = -1;
+		if (this.readyState < 0) ++this.readyState;
 	};
 }
 
@@ -670,7 +701,7 @@ function DemandTransfer(name) {
 
 	$proto.readyState = 0;
 
-	$proto.getPayloadByte = function() {
+	$proto.getPacketByte = function() {
 		throw new Error("Unimplemented"); // XXX
 	};
 
