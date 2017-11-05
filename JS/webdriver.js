@@ -675,12 +675,7 @@ function SupplyTransfer(file) {
 				result = 255;
 			} else {
 				result = remaining;
-				// How many ACKs should we expect after we finish this packet?
-				if (remaining === 0) {
-					this.readyState = -1;
-				} else {
-					this.readyState = -2;
-				}
+				this.readyState = -2;
 			}
 		} else {
 			result = this.fileBytes.getUint8(this.offset);
@@ -692,7 +687,7 @@ function SupplyTransfer(file) {
 	/**
 	 * readyState-based flow control:
 	 *   -2: Expect 2 ACKs after current packet, then die
-	 *   -1: Expect 1 ACK after current packet, then die
+	 *   -1: Expect 1 more ACK, then die
 	 *    0: Dead
 	 *    1: Start state/receive-only
 	 *   >1: Ready to transmit
