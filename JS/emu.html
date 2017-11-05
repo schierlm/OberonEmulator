@@ -50,8 +50,8 @@ border-radius: 50%; font-size: small;}
 <input type="button" id="fileimportbutton" value="Transfer in"
 	   onclick="emulator.linkFileInput.click();"
 	   title="Transfer local file into the emulated system">
-<input type="file" id="linkfileinput"
-	   onchange="emulator.importFile();"
+<input type="file" id="linkfileinput" multiple
+	   onchange="emulator.importFiles();"
 	   style="display: none;">
 
 <input type="text" id="linknameinput"

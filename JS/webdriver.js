@@ -258,8 +258,11 @@ function WebDriver(imageName, width, height) {
 		this.localSaveAnchor.removeAttribute("download");
 	};
 
-	$proto.importFile = function() {
-		this.link.supplyFile(this.linkFileInput.files[0]);
+	$proto.importFiles = function() {
+		let { files } = this.linkFileInput;
+		for (let i = 0; i < files.length; ++i) {
+			this.link.supplyFile(files[i]);
+		}
 	};
 
 	$proto.exportFile = function() {
@@ -564,6 +567,7 @@ function VirtualKeyboard(screen, emulator) {
 
 function FileLink(emulator) {
 	this._emulator = emulator;
+	this.intakeQueue = [];
 }
 
 {
@@ -595,6 +599,10 @@ function FileLink(emulator) {
 						transfer.fileName);
 				} else if (transfer.type === this.DEMAND_TRANSFER) {
 					this._emulator.save(transfer.fileName, transfer.blocks);
+				}
+
+				if (this.intakeQueue.length) {
+					this.supplyFile(this.intakeQueue.shift());
 				}
 			} else if (transfer.readyState !== 1) {
 				result |= this.TX_READY;
@@ -632,10 +640,11 @@ function FileLink(emulator) {
 	};
 
 	$proto.supplyFile = function(file) {
-		if (this.transfer) throw new Error(
-			"Existing file transfer is ongoing; type: " + this.transfer.type
-		);
-		this.transfer = new SupplyTransfer(file);
+		if (this.transfer) {
+			this.intakeQueue.push(file);
+		} else {
+			this.transfer = new SupplyTransfer(file);
+		}
 	};
 
 }
