@@ -30,6 +30,9 @@ function WebDriver(imageName, width, height) {
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
 	this.sync = new DiskSync(this);
 
+	this.transferHistory = [];
+	this.link = new FileLink(this);
+
 	// We save no reference because we don't need one; we just want to kick
 	// off the load, be notified when it's done, and then let this get GCed.
 	new ImageReader(imageName, this);
@@ -45,9 +48,10 @@ function WebDriver(imageName, width, height) {
 	$proto.clickMiddle = null;
 	$proto.clickRight = null;
 	$proto.clipboardInput = null;
-	$proto.fileInput = null;
+	$proto.diskFileInput = null;
+	$proto.linkFileInput = null;
 	$proto.leds = null;
-	$proto.saveLink = null;
+	$proto.localSaveAnchor = null;
 	$proto.screen = null;
 
 	$proto.activeButton = 1;
@@ -63,6 +67,7 @@ function WebDriver(imageName, width, height) {
 	$proto.screenUpdater = null;
 	$proto.startMillis = null;
 	$proto.sync = null;
+	$proto.transferHistory = null;
 	$proto.virtualClipboard = null;
 	$proto.waitMillis = 0;
 
@@ -238,11 +243,46 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.importDiskImage = function() {
-		this.sync.load(this.fileInput.files[0]);
+		this.sync.load(this.diskFileInput.files[0]);
 	};
 
 	$proto.exportDiskImage = function() {
-		this.sync.save(this.disk, this.saveLink);
+		this.save("oberon.dsk", this.disk);
+	};
+
+	$proto.save = function(name, content) {
+		this.localSaveAnchor.setAttribute("download", name);
+		this.localSaveAnchor.href = URL.createObjectURL(new Blob(content));
+		this.localSaveAnchor.click();
+		this.localSaveAnchor.removeAttribute("href");
+		this.localSaveAnchor.removeAttribute("download");
+	};
+
+	$proto.importFiles = function() {
+		let { files } = this.linkFileInput;
+		for (let i = 0; i < files.length; ++i) {
+			this.link.supplyFile(files[i]);
+		}
+	};
+
+	$proto.exportFile = function() {
+		let name = this.toggleLinkName();
+		if (name) this.link.demandFile(name);
+	};
+
+	$proto.toggleLinkName = function() {
+		let style = this.linkNameInput.style;
+		let value = this.linkNameInput.value;
+		if (style.display === "none") {
+			style.display = "inline";
+			this.linkExportButton.value = "Copy";
+			this.linkNameInput.focus();
+		} else {
+			style.display = "none";
+			this.linkNameInput.value = "";
+			this.linkExportButton.value = "Transfer out";
+		}
+		return value;
 	};
 
 	$proto._initWidgets = function(width, height) {
@@ -254,10 +294,14 @@ function WebDriver(imageName, width, height) {
 
 		this.buttonBox = $("buttonbox");
 		this.clipboardInput = $("clipboardText");
+		this.localSaveAnchor = $("localsaveanchor");
 		this.screen = $("screen");
 
-		this.saveLink = $("exportbutton").parentNode;
-		this.fileInput = $("fileinput");
+		this.diskFileInput = $("diskfileinput");
+
+		this.linkExportButton = $("fileexportbutton");
+		this.linkFileInput = $("linkfileinput");
+		this.linkNameInput = $("linknameinput");
 
 		this.screen.width = width;
 		this.screen.height = height;
@@ -277,6 +321,8 @@ function WebDriver(imageName, width, height) {
 		this.buttonBox.addEventListener("mousedown", this, false);
 		this.buttonBox.addEventListener("mouseup", this, false);
 
+		this.linkExportButton.style.width = this.linkExportButton.offsetWidth;
+		this.toggleLinkName();
 		this.toggleClipboard();
 	};
 
@@ -519,6 +565,226 @@ function VirtualKeyboard(screen, emulator) {
 	});
 }
 
+function FileLink(emulator) {
+	this._emulator = emulator;
+	this.intakeQueue = [];
+}
+
+{
+	let $proto = FileLink.prototype;
+
+	FileLink.SUPPLY_TRANSFER = $proto.SUPPLY_TRANSFER = 0x21;
+	FileLink.DEMAND_TRANSFER = $proto.DEMAND_TRANSFER = 0x22;
+
+	FileLink.TX_READY = $proto.TX_READY = 0x01;
+	FileLink.RX_READY = $proto.RX_READY = 0x02;
+
+	FileLink.ACK = $proto.ACK = 0x10;
+	FileLink.NAK = $proto.NAK = 0x11;
+
+	$proto.transfer = null;
+
+	$proto.getStatus = function() {
+		let result = this.RX_READY;
+		if (this.transfer) {
+			let { transfer } = this;
+			if (transfer.readyState === 0) {
+				delete this.transfer;
+
+				// TODO: Add UI to retransmit files from the transfer history.
+				this._emulator.transferHistory.push(transfer);
+
+				if (transfer.success === this.NAK) {
+					alert("Unable to transfer file with name " +
+						transfer.fileName);
+				} else if (transfer.type === this.DEMAND_TRANSFER) {
+					this._emulator.save(transfer.fileName, transfer.blocks);
+				}
+
+				if (this.intakeQueue.length) {
+					this.supplyFile(this.intakeQueue.shift());
+				}
+			} else if (transfer.readyState !== 1) {
+				result |= this.TX_READY;
+			}
+		}
+		return result;
+	};
+
+	$proto.getData = function() {
+		let result = 0;
+		let { count, fileName } = this.transfer;
+		if (count === 0) {
+			result = this.transfer.type;
+		} else if (count - 1 < fileName.length) {
+			result = fileName.charCodeAt(count - 1);
+		} else if (count - 1 === fileName.length) {
+			result = 0; // ASCII NUL
+		} else {
+			result = this.transfer.getPacketByte();
+		}
+
+		++this.transfer.count;
+		return result;
+	};
+
+	$proto.setData = function(val) {
+		this.transfer.acceptLinkByte(val);
+	};
+
+	$proto.demandFile = function(name) {
+		if (this.transfer) throw new Error(
+			"Existing file transfer is ongoing; type: " + this.transfer.type
+		);
+		this.transfer = new DemandTransfer(name);
+	};
+
+	$proto.supplyFile = function(file) {
+		if (this.transfer) {
+			this.intakeQueue.push(file);
+		} else {
+			this.transfer = new SupplyTransfer(file);
+		}
+	};
+
+}
+
+function SupplyTransfer(file) {
+	// See `acceptLinkByte` for the significance of `readyState` transitions.
+	this.readyState = 1;
+	this.offset = 0;
+	this.count = 0;
+	this.type = FileLink.SUPPLY_TRANSFER;
+	this.fileName = file.name;
+
+	let reader = new FileReader();
+	reader.addEventListener("loadend", this);
+	reader.readAsArrayBuffer(file);
+}
+
+{
+	let $proto = SupplyTransfer.prototype;
+
+	$proto.success = 0;
+
+	$proto.handleEvent = function(event) {
+		if (event.type !== "loadend") throw new Error(
+			"Unexpected event: " + event.type
+		);
+
+		this.fileBytes = new DataView(event.target.result);
+		this.readyState = 2;
+	};
+
+	$proto.getPacketByte = function() {
+		let sent = this.count - 1 - (this.fileName.length + 1);
+		if ((sent % 256) === 0) {
+			let remaining = this.fileBytes.byteLength - this.offset;
+			if (remaining >= 255) {
+				result = 255;
+			} else {
+				result = remaining;
+				this.readyState = -2;
+			}
+		} else {
+			result = this.fileBytes.getUint8(this.offset);
+			++this.offset;
+		}
+		return result;
+	};
+
+	/**
+	 * readyState-based flow control:
+	 *   -2: Expect 2 ACKs after current packet, then die
+	 *   -1: Expect 1 more ACK, then die
+	 *    0: Dead
+	 *    1: Start state/receive-only
+	 *   >1: Ready to transmit
+	 *
+	 * NB: Technically readyState < 0 is also treated as "ready to transmit",
+	 * because it doesn't necessarily mean that an ACK is eminently expected,
+	 * only that we know how many ACKs are coming; this packet will contain EOF.
+	 */
+	$proto.acceptLinkByte = function(val) {
+		if (val === FileLink.NAK) {
+			this.success = FileLink.NAK;
+			this.readyState = 0;
+		} else {
+			if (val !== FileLink.ACK) throw new Error("Expected ACK");
+			if (this.readyState < 0) ++this.readyState;
+		}
+	};
+}
+
+function DemandTransfer(name) {
+	this.blocks = [];
+	this.offset = 0;
+	this.count = 0;
+	this.type = FileLink.DEMAND_TRANSFER;
+	this.fileName = name;
+	this.readyState = 2;
+}
+
+{
+	let $proto = DemandTransfer.prototype;
+
+	$proto.success = 0;
+
+	/**
+	 * readyState-based flow control:
+	 *   -1: Expect 1 (final) ACK is needed from us, then die
+	 *    0: Dead
+	 *    1: Start state/receive-only (unused)
+	 *    2: Ready for ACK
+	 *    3: Ready for block size
+	 *    4: Ready for block byte
+	 */
+	$proto.acceptLinkByte = function(val) {
+		switch (this.readyState) {
+			case 2:
+				if (val === FileLink.NAK) {
+					this.success = FileLink.NAK;
+					this.readyState = 0;
+				} else if (val === FileLink.ACK) {
+					this.readyState = 3;
+				} else {
+					throw new Error("Expected ACK");
+				}
+			break;
+			case 3:
+				this.blocks.push(new Uint8Array(val));
+				this.readyState = 4;
+			break;
+			case 4:
+				topBlock = this.blocks[this.blocks.length - 1];
+				topBlock[this.offset] = val;
+				++this.offset;
+				if (this.offset === topBlock.byteLength) {
+					if (this.offset < 255) {
+						this.readyState = -1;
+					} else {
+						this.readyState = 3;
+					}
+					this.offset = 0;
+				}
+			break;
+			default: throw new Error("Unexpected state: " + this.readyState);
+		}
+	};
+
+	$proto.getPacketByte = function() {
+		if (this.readyState < 0 || this.readyState >= 2) {
+			result = FileLink.ACK;
+			if (this.readyState < 0) {
+				++this.readyState;
+			}
+		} else {
+			throw new Error("Unexpected byte request");
+		}
+		return result;
+	};
+}
+
 function ImageReader(imageName, emulator) {
 	this.emulator = emulator;
 	this.container = new Image();
@@ -570,14 +836,6 @@ function DiskSync(emulator) {
 
 {
 	let $proto = DiskSync.prototype;
-
-	$proto.save = function(sectors, link) {
-		link.href = URL.createObjectURL(new Blob(sectors));
-		link.setAttribute("download", "oberon.dsk");
-		link.click();
-		link.removeAttribute("href");
-		link.removeAttribute("download");
-	};
 
 	$proto.load = function(file) {
 		let reader = new FileReader();

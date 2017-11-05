@@ -34,19 +34,31 @@ border-radius: 50%; font-size: small;}
 <span id="led1" class="led">1</span>
 <span id="led0" class="led">0</span>
 
-<input type="file" id="fileinput"
+<a id="localsaveanchor"></a>
+
+<input type="button" id="diskimportbutton" value="Load"
+	   onclick="emulator.diskFileInput.click()"
+	   title="Import disk image">
+<input type="file" id="diskfileinput"
 	   onchange="emulator.importDiskImage();"
 	   style="display: none;" accept=".dsk">
 
-<input type="button" id="importbutton" value="Load"
-	   onclick="emulator.fileInput.click()"
-	   title="Import disk image">
-
-<a>
-<input type="button" id="exportbutton" value="Save"
+<input type="button" id="diskexportbutton" value="Save"
 	   onclick="emulator.exportDiskImage();"
 	   title="Export disk image">
-</a>
+
+<input type="button" id="fileimportbutton" value="Transfer in"
+	   onclick="emulator.linkFileInput.click();"
+	   title="Transfer local file into the emulated system">
+<input type="file" id="linkfileinput" multiple
+	   onchange="emulator.importFiles();"
+	   style="display: none;">
+
+<input type="text" id="linknameinput"
+	   placeholder="System.Tool">
+<input type="button" id="fileexportbutton" value="Transfer out"
+	   onclick="emulator.exportFile()"
+	   title="Copy file out of the emulated system">
 
 <input type="button" id="clipboardToggle" value="Clipboard"
 	   onclick="emulator.toggleClipboard();">
