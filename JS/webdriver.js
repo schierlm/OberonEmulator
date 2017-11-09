@@ -266,28 +266,29 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.exportFile = function() {
-		let name = this.toggleLinkName();
+		let name = this.linkNameInput.value;
 		if (name) this.link.demandFile(name);
-	};
-
-	$proto.toggleLinkName = function() {
-		let style = this.linkNameInput.style;
-		let value = this.linkNameInput.value;
-		if (style.display === "none") {
-			style.display = "inline";
-			this.linkExportButton.value = "Copy";
-			this.linkNameInput.focus();
-		} else {
-			style.display = "none";
-			this.linkNameInput.value = "";
-			this.linkExportButton.value = "Transfer out";
-		}
-		return value;
 	};
 
     $proto.togglePopup = function(menuButton) {
         let popup = menuButton.parentNode.querySelector(".popup");
         popup.classList.toggle("open");
+        if (popup.classList.contains("open")) {
+            let items = popup.querySelectorAll(".menuitem");
+            let width = 0;
+            for (let i = 0; i < items.length; ++i) {
+                let itemWidth = 0;
+                let kids = items[i].childNodes;
+                for (let j = 0; j < kids.length; ++j) {
+                    if (kids[j].offsetWidth !== undefined) {
+                        itemWidth += kids[j].offsetWidth;
+                    }
+                }
+                width = Math.max(width, itemWidth);
+            }
+            // XXX Assumes no margins.
+            popup.style.width = width;
+        }
     };
 
 	$proto._initWidgets = function(width, height) {
@@ -327,7 +328,6 @@ function WebDriver(imageName, width, height) {
 		this.buttonBox.addEventListener("mouseup", this, false);
 
 		this.linkExportButton.style.width = this.linkExportButton.offsetWidth;
-		this.toggleLinkName();
 		this.toggleClipboard();
 	};
 
