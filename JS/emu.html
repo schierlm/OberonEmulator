@@ -1,29 +1,30 @@
 <style>
 body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 .buttonbar {padding: 5px; }
-.mousebtn {width: 2em; height: 2em; background-color: #DDD; color:#FFF;
-text-shadow: -1px 0 #000, 0 -1px #000, 1px 0 #000, 0 1px #000, -1px -1px #000,
--1px 1px #000, 1px -1px #000, 1px 1px #000; font-weight: bold;}
-.mousebtn, .led {padding: 2px 5px; border: 1px solid gray; cursor: default; }
-.mousebtn.active {background-color: #55E;}
-.mousebtn.interclick {background-color: #EE5;}
+.led {padding: 2px 5px; border: 1px solid gray; cursor: default; }
 .led {border:1px solid gray; background-color: black; color: white;
 border-radius: 50%; font-size: small;}
 .led.lit {background-color: #0f0; color: black; }
 #screen {cursor: none; outline: none;}
+
+#emulatorface { border: 1px solid grey; }
+#controlbar { border: 1px solid grey; height: 2em; }
+#buttonbox { float: right; display: inline; font-size: 0; }
+.mousebtn.active { background-color: #55E; }
+.mousebtn.interclick { background-color: #EE5; }
+.mousebtn {
+  width: 1em; height: 100%; background-color: #DDD; color:#FFF;
+  border: 0px; border-left: 1px solid grey; margin: 0; padding: 0;
+  font-size: small;
+  text-shadow:
+    -1px 0 #000, 0 -1px #000, 1px 0 #000, 0 1px #000,
+    -1px -1px #000, -1px 1px #000, 1px -1px #000, 1px 1px #000;
+}
 </style>
 <script src="risc.js"></script>
 <script src="webdriver.js"></script>
 
 <div class="buttonbar">
-
-<span id="buttonbox">
-<input type="button" data-button="1" value="L" class="mousebtn active">
-<input type="button" data-button="2" value="M" class="mousebtn">
-<input type="button" data-button="3" value="R" class="mousebtn">
-</span>
-
-&mdash;
 
 <span id="led7" class="led">7</span>
 <span id="led6" class="led">6</span>
@@ -70,4 +71,13 @@ border-radius: 50%; font-size: small;}
 
 </div>
 <textarea id="clipboardText" style="width:1024;"></textarea>
+<div id="emulatorface">
 <canvas id="screen" tabindex="1000"></canvas>
+<div id="controlbar">Project Oberon 2013
+    <div id="buttonbox">
+        <input type="button" data-button="1" value="L" class="mousebtn active">
+        <input type="button" data-button="2" value="M" class="mousebtn">
+        <input type="button" data-button="3" value="R" class="mousebtn">
+    </div>
+</div>
+</div>
