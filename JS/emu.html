@@ -8,6 +8,11 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 #controlbar > * { display: inline; }
 #endcontrols > * { display: inline; }
 #endcontrols { float: right; }
+#fileimportbutton {
+  height: 100%;
+  background-color: inherit; color: grey;
+  border: 0px; border-left: 1px solid grey; border-right: 1px solid grey;
+}
 #ledbox { right; font-size: 0; }
 .led {
   display: inline; padding: 2px 6px; cursor: default; 
@@ -47,13 +52,6 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 	   onclick="emulator.exportDiskImage();"
 	   title="Export disk image">
 
-<input type="button" id="fileimportbutton" value="Transfer in"
-	   onclick="emulator.linkFileInput.click();"
-	   title="Transfer local file into the emulated system">
-<input type="file" id="linkfileinput" multiple
-	   onchange="emulator.importFiles();"
-	   style="display: none;">
-
 <input type="text" id="linknameinput"
 	   placeholder="System.Tool">
 <input type="button" id="fileexportbutton" value="Transfer out"
@@ -75,6 +73,12 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 <div id="controlbar">
   <div>Project Oberon 2013</div>
   <div id="endcontrols">
+    <input type="button" id="fileimportbutton" value="Transfer"
+           onclick="emulator.linkFileInput.click();"
+           title="Transfer local file into the emulated system">
+    <input type="file" id="linkfileinput" multiple
+           onchange="emulator.importFiles();"
+           style="display: none;">
     <div id="ledbox">
       <div id="led7" class="led">7</div>
       <div id="led6" class="led">6</div>
