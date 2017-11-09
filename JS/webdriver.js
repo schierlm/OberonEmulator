@@ -285,6 +285,11 @@ function WebDriver(imageName, width, height) {
 		return value;
 	};
 
+    $proto.togglePopup = function(menuButton) {
+        let popup = menuButton.parentNode.querySelector(".popup");
+        popup.classList.toggle("open");
+    };
+
 	$proto._initWidgets = function(width, height) {
 		let $ = document.getElementById.bind(document);
 		this.leds = [

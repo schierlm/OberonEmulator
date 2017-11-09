@@ -6,13 +6,8 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 #screen { cursor: none; outline: none; }
 #controlbar { border: 1px solid grey; height: 2em; }
 #controlbar > * { display: inline; }
-#endcontrols > * { display: inline; }
+#endcontrols > * { display: inline-block; }
 #endcontrols { float: right; }
-#fileimportbutton {
-  height: 100%;
-  background-color: inherit; color: grey;
-  border: 0px; border-left: 1px solid grey; border-right: 1px solid grey;
-}
 #ledbox { right; font-size: 0; }
 .led {
   display: inline; padding: 2px 6px; cursor: default; 
@@ -32,6 +27,30 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   text-shadow:
     -1px 0 #000, 0 -1px #000, 1px 0 #000, 0 1px #000,
     -1px -1px #000, -1px 1px #000, 1px -1px #000, 1px 1px #000;
+}
+.menu {
+  position: relative;
+}
+.menu button[type="menu"] {
+  height: 100%;
+  background-color: inherit; color: grey;
+  border: 0px; border-left: 1px solid grey; border-right: 1px solid grey;
+}
+.menu .popup {
+  visibility: hidden;
+  position: absolute;
+  z-index: 1;
+  border: 1px solid grey;
+}
+.menu .popup.open {
+  visibility: visible;
+  top: 100%;
+}
+.menu .popup.left {
+  left: 0%;
+}
+.menu .popup.right {
+  right: 0%;
 }
 </style>
 <script src="risc.js"></script>
@@ -73,12 +92,19 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 <div id="controlbar">
   <div>Project Oberon 2013</div>
   <div id="endcontrols">
-    <input type="button" id="fileimportbutton" value="Transfer"
-           onclick="emulator.linkFileInput.click();"
-           title="Transfer local file into the emulated system">
-    <input type="file" id="linkfileinput" multiple
-           onchange="emulator.importFiles();"
-           style="display: none;">
+    <div class="menu">
+      <button type="menu"
+              onclick="emulator.togglePopup(this);"
+              title="Transfer data between the emulated system and your computer">Transfer</button>
+      <div class="popup right">
+        <input type="button" id="fileimportbutton" value="Import File"
+               onclick="emulator.linkFileInput.click();"
+               title="Transfer local file into the emulated system">
+        <input type="file" id="linkfileinput" multiple
+               onchange="emulator.importFiles();"
+               style="display: none;">
+      </div>
+    </div>
     <div id="ledbox">
       <div id="led7" class="led">7</div>
       <div id="led6" class="led">6</div>
