@@ -1,15 +1,23 @@
 <style>
 body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 .buttonbar {padding: 5px; }
-.led {padding: 2px 5px; border: 1px solid gray; cursor: default; }
-.led {border:1px solid gray; background-color: black; color: white;
-border-radius: 50%; font-size: small;}
-.led.lit {background-color: #0f0; color: black; }
-#screen {cursor: none; outline: none;}
 
 #emulatorface { border: 1px solid grey; }
 #controlbar { border: 1px solid grey; height: 2em; }
-#buttonbox { float: right; display: inline; font-size: 0; }
+#controlbar > * { display: inline; }
+#endcontrols > * { display: inline; }
+#endcontrols { float: right; }
+#ledbox { right; font-size: 0; }
+.led {
+  display: inline; padding: 2px 6px; cursor: default; 
+  border:1px solid grey; border-radius: 50%;
+  font-size: small; color: grey;
+}
+.led.lit {
+  background-color: #0f0;
+}
+#screen {cursor: none; outline: none;}
+#buttonbox { right; font-size: 0; }
 .mousebtn.active { background-color: #55E; }
 .mousebtn.interclick { background-color: #EE5; }
 .mousebtn {
@@ -25,15 +33,6 @@ border-radius: 50%; font-size: small;}
 <script src="webdriver.js"></script>
 
 <div class="buttonbar">
-
-<span id="led7" class="led">7</span>
-<span id="led6" class="led">6</span>
-<span id="led5" class="led">5</span>
-<span id="led4" class="led">4</span>
-<span id="led3" class="led">3</span>
-<span id="led2" class="led">2</span>
-<span id="led1" class="led">1</span>
-<span id="led0" class="led">0</span>
 
 <a id="localsaveanchor"></a>
 
@@ -73,11 +72,24 @@ border-radius: 50%; font-size: small;}
 <textarea id="clipboardText" style="width:1024;"></textarea>
 <div id="emulatorface">
 <canvas id="screen" tabindex="1000"></canvas>
-<div id="controlbar">Project Oberon 2013
-    <div id="buttonbox">
-        <input type="button" data-button="1" value="L" class="mousebtn active">
-        <input type="button" data-button="2" value="M" class="mousebtn">
-        <input type="button" data-button="3" value="R" class="mousebtn">
+<div id="controlbar">
+  <div>Project Oberon 2013</div>
+  <div id="endcontrols">
+    <div id="ledbox">
+      <div id="led7" class="led">7</div>
+      <div id="led6" class="led">6</div>
+      <div id="led5" class="led">5</div>
+      <div id="led4" class="led">4</div>
+      <div id="led3" class="led">3</div>
+      <div id="led2" class="led">2</div>
+      <div id="led1" class="led">1</div>
+      <div id="led0" class="led">0</div>
     </div>
+    <div id="buttonbox">
+      <input type="button" data-button="1" value="L" class="mousebtn active">
+      <input type="button" data-button="2" value="M" class="mousebtn">
+      <input type="button" data-button="3" value="R" class="mousebtn">
+    </div>
+  </div>
 </div>
 </div>
