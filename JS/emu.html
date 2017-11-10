@@ -2,9 +2,9 @@
 <style>
 body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 #emulatorface > * { box-sizing: content-box; border: 1px solid #e6dfe6; }
-#screen { cursor: none; outline: none; border-bottom: 0; }
+#screen { cursor: none; outline: none; }
 #controlbar {
-  height: 2em;
+  height: 2em; margin-bottom: 0.5em;
   border-radius: 0 0 4px 4px;
   background-color: #f7f5f0;
   color: #807380;
@@ -76,7 +76,6 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 <script src="webdriver.js"></script>
 
 <div id="emulatorface">
-<canvas id="screen" tabindex="1000"><a id="localsaveanchor"></a></canvas>
 <div id="controlbar">
   <div id="systemcontrol" class="menu">
     <button type="menu" onclick="emulator.togglePopup(this);">
@@ -146,5 +145,6 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
     </div>
   </div>
 </div>
+<canvas id="screen" tabindex="1000"><a id="localsaveanchor"></a></canvas>
 <textarea id="clipboardText" style="width:1024;"></textarea>
 </div>
