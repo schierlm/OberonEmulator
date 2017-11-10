@@ -1,26 +1,31 @@
 <style>
 body { font-family: Verdana, Arial, Helvetica, sans-serif; }
-#emulatorface > * { box-sizing: content-box; border: 1px solid grey; }
+#emulatorface > * { box-sizing: content-box; border: 1px solid #e6dfe6; }
 #screen { cursor: none; outline: none; border-bottom: 0; }
-#controlbar { height: 2em; border-radius: 0 0 4px 4px; }
+#controlbar {
+  height: 2em;
+  border-radius: 0 0 4px 4px;
+  background-color: #f7f5f0;
+  color: #807380;
+}
 #controlbar > *, #endcontrols > * { display: inline-block; }
 #systemcontrol { line-height: 2em; }
 #endcontrols { float: right; }
 #ledbox { right; font-size: 0; }
 .led {
   display: inline; padding: 2px 6px; cursor: default; 
-  border:1px solid grey; border-radius: 50%;
-  font-size: small; color: grey;
+  border:1px solid #e6dfe6; border-radius: 50%;
+  font-size: small;
 }
 .led.lit {
-  background-color: #0f0;
+  background-color: #BBFFBB;
 }
 #buttonbox { right; font-size: 0; }
-.mousebtn.active { background-color: #55E; }
-.mousebtn.interclick { background-color: #EE5; }
+.mousebtn.active { background-color: #807d73; }
+.mousebtn.interclick { background-color: #ccb4cc; }
 .mousebtn {
-  width: 1em; height: 100%; background-color: #DDD; color:#FFF;
-  border: 0px; border-left: 1px solid grey; margin: 0; padding: 0;
+  width: 1em; height: 100%; background-color: #e6e4df; color:#FFF;
+  border: 0px; border-left: 1px solid #e6dfe6; margin: 0; padding: 0;
   font-size: small;
   text-shadow:
     -1px 0 #000, 0 -1px #000, 1px 0 #000, 0 1px #000,
@@ -31,17 +36,17 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 }
 .menu button[type="menu"] {
   height: 100%;
-  background-color: inherit; color: grey;
+  background-color: inherit; color: inherit;
   border: 0;
 }
 .menu button[type="menu"].bordered {
-  border-left: 1px solid grey; border-right: 1px solid grey;
+  border-left: 1px solid #e6dfe6; border-right: 1px solid #e6dfe6;
 }
 .menu .popup {
   visibility: hidden;
   position: absolute;
   z-index: 1;
-  border: 1px solid grey;
+  border: 1px solid #e6dfe6;
 }
 .menu .popup.open {
   visibility: visible;
@@ -61,7 +66,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   height: 100%;
 }
 .menuitem > input[type="button"], button.menuitem {
-  border: 0px; background-color: inherit; color: grey;
+  border: 0px; background-color: inherit; color: inherit;
 }
 </style>
 <script src="risc.js"></script>
