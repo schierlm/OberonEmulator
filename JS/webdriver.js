@@ -300,6 +300,7 @@ function WebDriver(imageName, width, height) {
 
 		this.buttonBox = $("buttonbox");
 		this.clipboardInput = $("clipboardText");
+		this.controlBar = $("controlbar");
 		this.localSaveAnchor = $("localsaveanchor");
 		this.screen = $("screen");
 
@@ -308,6 +309,8 @@ function WebDriver(imageName, width, height) {
 		this.linkExportButton = $("fileexportbutton");
 		this.linkFileInput = $("linkfileinput");
 		this.linkNameInput = $("linknameinput");
+
+		this.controlBar.style.width = width;
 
 		this.screen.width = width;
 		this.screen.height = height;
