@@ -32,7 +32,10 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 .menu button[type="menu"] {
   height: 100%;
   background-color: inherit; color: grey;
-  border: 0px; border-left: 1px solid grey; border-right: 1px solid grey;
+  border: 0;
+}
+.menu button[type="menu"].bordered {
+  border-left: 1px solid grey; border-right: 1px solid grey;
 }
 .menu .popup {
   visibility: hidden;
@@ -43,12 +46,13 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 .menu .popup.open {
   visibility: visible;
   top: 100%;
-}
-.menu .popup.left {
-  left: 0%;
+  width: 100%;
 }
 .menu .popup.right {
   right: 0%;
+}
+.menuitem {
+  display: block;
 }
 .menuitem > * {
   display: inline;
@@ -61,34 +65,37 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 <script src="risc.js"></script>
 <script src="webdriver.js"></script>
 
-<div class="buttonbar">
-
-<a id="localsaveanchor"></a>
-
-<input type="button" id="diskimportbutton" value="Load"
-	   onclick="emulator.diskFileInput.click()"
-	   title="Import disk image">
-<input type="file" id="diskfileinput"
-	   onchange="emulator.importDiskImage();"
-	   style="display: none;" accept=".dsk">
-
-<input type="button" id="diskexportbutton" value="Save"
-	   onclick="emulator.exportDiskImage();"
-	   title="Export disk image">
-
-<input type="button" id="breakbutton" value="Break"
-	   onclick="emulator.reset(false);">
-<input type="button" id="resetbutton" value="Reset"
-	   onclick="emulator.reset(true);">
-
-</div>
 <div id="emulatorface">
-<canvas id="screen" tabindex="1000"></canvas>
+<canvas id="screen" tabindex="1000"><a id="localsaveanchor"></a></canvas>
 <div id="controlbar">
-  <div id="systemcontrol">Project Oberon 2013</div>
+  <div id="systemcontrol" class="menu">
+    <button type="menu" onclick="emulator.togglePopup(this);">
+      Project Oberon 2013
+    </button>
+    <div class="popup">
+      <div class="menuitem">
+        <input type="file" id="diskfileinput"
+               onchange="emulator.importDiskImage();"
+               style="display: none;" accept=".dsk">
+        <input type="button" id="diskimportbutton" value="Load"
+               onclick="emulator.diskFileInput.click()"
+               title="Import disk image">
+      </div>
+
+      <button id="diskexportbutton" class="menuitem"
+              onclick="emulator.exportDiskImage();"
+              title="Export disk image">Save</button>
+
+      <button id="breakbutton" class="menuitem"
+              onclick="emulator.reset(false);">Break</button>
+
+      <button id="resetbutton" class="menuitem"
+              onclick="emulator.reset(true);">Reset</button>
+    </div>
+  </div>
   <div id="endcontrols">
     <div class="menu">
-      <button type="menu"
+      <button type="menu" class="bordered"
               onclick="emulator.togglePopup(this);"
               title="Transfer data between the emulated system and your computer">Transfer</button>
       <div class="popup right">
