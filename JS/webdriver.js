@@ -275,7 +275,7 @@ function WebDriver(imageName, width, height) {
         popup.classList.toggle("open");
         if (popup.classList.contains("open")) {
             let items = popup.querySelectorAll(".menuitem");
-            let width = 0;
+            let width = menuButton.offsetWidth;
             for (let i = 0; i < items.length; ++i) {
                 let itemWidth = 0;
                 let kids = items[i].childNodes;
