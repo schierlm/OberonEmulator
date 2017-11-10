@@ -5,8 +5,8 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 #emulatorface > * { box-sizing: content-box; border: 1px solid grey; }
 #screen { cursor: none; outline: none; border-bottom: 0; }
 #controlbar { height: 2em; }
-#controlbar > * { display: inline; }
-#endcontrols > * { display: inline-block; }
+#controlbar > *, #endcontrols > * { display: inline-block; }
+#systemcontrol { line-height: 2em; }
 #endcontrols { float: right; }
 #ledbox { right; font-size: 0; }
 .led {
@@ -87,7 +87,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 <div id="emulatorface">
 <canvas id="screen" tabindex="1000"></canvas>
 <div id="controlbar">
-  <div>Project Oberon 2013</div>
+  <div id="systemcontrol">Project Oberon 2013</div>
   <div id="endcontrols">
     <div class="menu">
       <button type="menu"
