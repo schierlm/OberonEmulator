@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <style>
 body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 #emulatorface > * { box-sizing: content-box; border: 1px solid #e6dfe6; }
@@ -104,7 +105,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
     <div class="menu">
       <button type="menu" class="bordered"
               onclick="emulator.togglePopup(this);"
-              title="Transfer data between the emulated system and your computer">Transfer</button>
+              title="Transfer data between the emulated system and your computer">Transfer…</button>
       <div class="popup right">
         <div class="menuitem">
           <input type="text" id="linknameinput" placeholder="System.Tool"><!--
@@ -117,7 +118,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
                 onclick="emulator.toggleClipboard();">Clipboard</button>
 
         <div class="menuitem">
-          <input type="button" id="fileimportbutton" value="Import File"
+          <input type="button" id="fileimportbutton" value="Import File…"
                  onclick="emulator.linkFileInput.click();"
                  title="Transfer local file into the emulated system">
           <input type="file" id="linkfileinput" multiple
