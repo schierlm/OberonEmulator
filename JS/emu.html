@@ -102,12 +102,14 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
                  title="Copy file out of the emulated system">
         </div>
 
-        <input type="button" id="fileimportbutton" value="Import File"
-               onclick="emulator.linkFileInput.click();"
-               title="Transfer local file into the emulated system">
-        <input type="file" id="linkfileinput" multiple
-               onchange="emulator.importFiles();"
-               style="display: none;">
+        <div class="menuitem">
+          <input type="button" id="fileimportbutton" value="Import File"
+                 onclick="emulator.linkFileInput.click();"
+                 title="Transfer local file into the emulated system">
+          <input type="file" id="linkfileinput" multiple
+                 onchange="emulator.importFiles();"
+                 style="display: none;">
+        </div>
       </div>
     </div>
     <div id="ledbox">
