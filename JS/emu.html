@@ -2,8 +2,7 @@
 body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 .buttonbar {padding: 5px; }
 
-#emulatorface { border: 1px solid grey; }
-#screen { cursor: none; outline: none; }
+#screen { cursor: none; outline: none; border 1px solid grey; }
 #controlbar { border: 1px solid grey; height: 2em; }
 #controlbar > * { display: inline; }
 #endcontrols > * { display: inline-block; }
@@ -56,6 +55,9 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   display: inline;
   margin: 0;
 }
+.menuitem > input[type="button"], button.menuitem {
+  border: 0px; background-color: inherit; color: grey;
+}
 </style>
 <script src="risc.js"></script>
 <script src="webdriver.js"></script>
@@ -75,16 +77,12 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 	   onclick="emulator.exportDiskImage();"
 	   title="Export disk image">
 
-<input type="button" id="clipboardToggle" value="Clipboard"
-	   onclick="emulator.toggleClipboard();">
-
 <input type="button" id="breakbutton" value="Break"
 	   onclick="emulator.reset(false);">
 <input type="button" id="resetbutton" value="Reset"
 	   onclick="emulator.reset(true);">
 
 </div>
-<textarea id="clipboardText" style="width:1024;"></textarea>
 <div id="emulatorface">
 <canvas id="screen" tabindex="1000"></canvas>
 <div id="controlbar">
@@ -101,6 +99,9 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
                  onclick="emulator.exportFile()"
                  title="Copy file out of the emulated system">
         </div>
+
+        <button id="clipboardToggle" class="menuitem"
+                onclick="emulator.toggleClipboard();">Clipboard</button>
 
         <div class="menuitem">
           <input type="button" id="fileimportbutton" value="Import File"
@@ -129,4 +130,5 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
     </div>
   </div>
 </div>
+<textarea id="clipboardText" style="width:1024;"></textarea>
 </div>
