@@ -333,6 +333,15 @@ function WebDriver(imageName, width, height) {
 
 		this.linkExportButton.style.width = this.linkExportButton.offsetWidth;
 		this.toggleClipboard();
+
+		// Hack to reposition elements.  Gecko and WebKit/Blink can't seem to
+		// agree on how to lay things out based on our CSS.
+        let boxes = $(".endcontrols").children;
+		for (let i = 0; i < boxes.length; ++i) {
+			let adjustment = boxes[i].offsetTop - this.controlBar.offsetTop;
+			boxes[i].style.position = "relative";
+			boxes[i].style.top = "-" + adjustment + "px";
+		}
 	};
 
 	// DOM Event handling

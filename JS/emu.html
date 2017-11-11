@@ -9,9 +9,9 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   background-color: #f7f5f0;
   color: #5c6466;
 }
-#controlbar > *, #endcontrols > * { display: inline-block; }
+#controlbar > *, .endcontrols > * { display: inline-block; }
 #systemcontrol { line-height: 2em; }
-#endcontrols { float: right; }
+.endcontrols { float: right; }
 #settingsbutton {
   width: 2em;
   height: 100%;
@@ -23,6 +23,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   font-size: small;
 }
 #ledbox { font-size: 0; }
+#ledbox > table { height: 100%; }
 .led {
   display: inline; padding: 2px 6px; cursor: default; 
   border:1px solid #dfe4e6; border-radius: 50%;
@@ -118,7 +119,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
               title="Export disk image">Save…</button>
     </div>
   </div>
-  <div id="endcontrols">
+  <div class="endcontrols">
     <div class="menu">
       <input type="button" id="settingsbutton" class="iconlabel"
              onclick="emulator.togglePopup(this);"
@@ -157,14 +158,18 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
       </div>
     </div>
     <div id="ledbox">
-      <div id="led7" class="led">7</div>
-      <div id="led6" class="led">6</div>
-      <div id="led5" class="led">5</div>
-      <div id="led4" class="led">4</div>
-      <div id="led3" class="led">3</div>
-      <div id="led2" class="led">2</div>
-      <div id="led1" class="led">1</div>
-      <div id="led0" class="led">0</div>
+      <table>
+        <tr>
+          <td><div id="led7" class="led">7</div></td>
+          <td><div id="led6" class="led">6</div></td>
+          <td><div id="led5" class="led">5</div></td>
+          <td><div id="led4" class="led">4</div></td>
+          <td><div id="led3" class="led">3</div></td>
+          <td><div id="led2" class="led">2</div></td>
+          <td><div id="led1" class="led">1</div></td>
+          <td><div id="led0" class="led">0</div></td>
+        </tr>
+      </table>
     </div>
     <div id="buttonbox">
       <input type="button" data-button="1" value="L" class="mousebtn active">
