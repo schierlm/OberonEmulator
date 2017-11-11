@@ -75,7 +75,7 @@ function WebDriver(imageName, width, height) {
 		return Date.now() - this.startMillis;
 	});
 
-	$proto.bootFromSystemImage = function(contents) {
+	$proto.bootFromSystemImage = function(contents, name) {
 		// Two system image formats are supported: one with 1024-byte sectors
 		// in the format used for Peter De Wachter's RISC emulator, and
 		// another in the same form except, except with the first disk sector
@@ -89,6 +89,7 @@ function WebDriver(imageName, width, height) {
 		}
 		this.disk = contents;
 		this.reset(true);
+		this.systemButton.textContent = name;
 	};
 
 	$proto._hasDirMark = function(contents, sectorNumber) {
@@ -304,6 +305,7 @@ function WebDriver(imageName, width, height) {
 		this.controlBar = $("controlbar");
 		this.localSaveAnchor = $("localsaveanchor");
 		this.screen = $("screen");
+		this.systemButton = $("systembutton");
 
 		this.diskFileInput = $("diskfileinput");
 
@@ -804,6 +806,7 @@ function DemandTransfer(name) {
 }
 
 function ImageReader(imageName, emulator) {
+	this.imageName = imageName;
 	this.emulator = emulator;
 	this.container = new Image();
 	this.container.addEventListener("load", this);
@@ -825,7 +828,8 @@ function ImageReader(imageName, emulator) {
 
 		context.drawImage(this.container, 0, 0);
 		let { data } = context.getImageData(0, 0, width, height);
-		this.emulator.bootFromSystemImage(this._unpack(data, width, height));
+		let sectors = this._unpack(data, width, height);
+		this.emulator.bootFromSystemImage(sectors, this.imageName);
 	};
 
 	$proto._unpack = function(imageData, width, height) {
@@ -857,6 +861,7 @@ function DiskSync(emulator) {
 
 	$proto.load = function(file) {
 		let reader = new FileReader();
+		reader.fileName = file.name;
 		reader.addEventListener("loadend", this);
 		reader.readAsArrayBuffer(file);
 	};
@@ -879,6 +884,6 @@ function DiskSync(emulator) {
 			sectorStart += 1024;
 		}
 
-		emulator.bootFromSystemImage(contents);
+		emulator.bootFromSystemImage(contents, reader.fileName);
 	};
 }
