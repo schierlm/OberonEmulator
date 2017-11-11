@@ -270,27 +270,27 @@ function WebDriver(imageName, width, height) {
 		if (name) this.link.demandFile(name);
 	};
 
-    $proto.togglePopup = function(menuButton) {
-        let popup = menuButton.parentNode.querySelector(".popup");
-        popup.classList.toggle("open");
-        if (popup.classList.contains("open")) {
-            let items = popup.querySelectorAll(".menuitem");
-            let baselineWidth = parseInt(this.controlBar.style.width) / 5;
-            let width = Math.max(menuButton.offsetWidth, baselineWidth | 0);
-            for (let i = 0; i < items.length; ++i) {
-                let itemWidth = 0;
-                let kids = items[i].childNodes;
-                for (let j = 0; j < kids.length; ++j) {
-                    if (kids[j].offsetWidth !== undefined) {
-                        itemWidth += kids[j].offsetWidth;
-                    }
-                }
-                width = Math.max(width, itemWidth);
-            }
-            // XXX Assumes no margins.
-            popup.style.width = width;
-        }
-    };
+	$proto.togglePopup = function(menuButton) {
+		let popup = menuButton.parentNode.querySelector(".popup");
+		popup.classList.toggle("open");
+		if (popup.classList.contains("open")) {
+			let items = popup.querySelectorAll(".menuitem");
+			let baselineWidth = parseInt(this.controlBar.style.width) / 5;
+			let width = Math.max(menuButton.offsetWidth, baselineWidth | 0);
+			for (let i = 0; i < items.length; ++i) {
+				let itemWidth = 0;
+				let kids = items[i].childNodes;
+				for (let j = 0; j < kids.length; ++j) {
+					if (kids[j].offsetWidth !== undefined) {
+						itemWidth += kids[j].offsetWidth;
+					}
+				}
+				width = Math.max(width, itemWidth);
+			}
+			// XXX Assumes no margins.
+			popup.style.width = width;
+		}
+	};
 
 	$proto._initWidgets = function(width, height) {
 		let $ = document.getElementById.bind(document);
