@@ -323,7 +323,6 @@ function WebDriver(imageName, width, height) {
 		this.linkNameInput = $("linknameinput");
 
 		this.controlBar.style.width = width;
-		this.screen.parentNode.style.width = width;
 		this.screen.width = width;
 		this.screen.height = height;
 

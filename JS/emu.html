@@ -1,10 +1,14 @@
 <meta charset="utf-8">
 <style>
 body { font-family: Verdana, Arial, Helvetica, sans-serif; }
-#emulatorface > * { box-sizing: content-box; border: 1px solid #dfe4e6; }
-#screen { cursor: none; outline: none; }
+#emulatorface > * { box-sizing: content-box; }
+#screen {
+  cursor: none; outline: none;
+  margin: 1px; /* NB: match #controlbar border thickness */
+}
 #controlbar {
   height: 2em; margin-bottom: 0.5em;
+  border: 1px solid #dfe4e6; /* NB: match #screen margin thickness */
   border-radius: 0 0 4px 4px;
   background-color: #f7f5f0;
   color: #677073;
@@ -177,9 +181,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
     </div>
   </div>
 </div>
-<div>
-  <canvas id="screen" tabindex="1000"><a id="localsaveanchor"></a></canvas>
-</div>
+<canvas id="screen" tabindex="1000"></canvas>
 <textarea id="clipboardText" style="width:1024;"></textarea>
 </div>
 
