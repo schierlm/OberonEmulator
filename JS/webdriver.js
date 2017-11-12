@@ -48,11 +48,15 @@ function WebDriver(imageName, width, height) {
 	$proto.clickMiddle = null;
 	$proto.clickRight = null;
 	$proto.clipboardInput = null;
+	$proto.controlBar = null;
 	$proto.diskFileInput = null;
+	$proto.linkExportButton = null;
 	$proto.linkFileInput = null;
+	$proto.linkNameInput = null;
 	$proto.leds = null;
 	$proto.localSaveAnchor = null;
 	$proto.screen = null;
+	$proto.systemButton = null;
 
 	$proto.activeButton = 1;
 	$proto.clipboard = null;
@@ -68,7 +72,6 @@ function WebDriver(imageName, width, height) {
 	$proto.startMillis = null;
 	$proto.sync = null;
 	$proto.transferHistory = null;
-	$proto.virtualClipboard = null;
 	$proto.waitMillis = 0;
 
 	$proto.__defineGetter__("tickCount", function() {
