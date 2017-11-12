@@ -321,9 +321,9 @@ function WebDriver(imageName, width, height) {
 
 		this.diskFileInput = $("diskfileinput");
 
-		this.linkExportButton = $("fileexportbutton");
 		this.linkFileInput = $("linkfileinput");
 		this.linkNameInput = $("linknameinput");
+		this.linkExportButton = $("linkexportbutton");
 
 		this.controlBar.style.width = width;
 		this.screen.width = width;
