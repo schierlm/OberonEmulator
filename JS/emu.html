@@ -47,12 +47,12 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 .menu {
   position: relative;
 }
-.menu button[type="menu"] {
+.menu input[type="button"] {
   height: 100%;
   background-color: inherit; color: inherit;
   border: 0;
 }
-.menu button[type="menu"].bordered {
+.menu input[type="button"].bordered {
   border-left: 1px solid #dfe4e6; border-right: 1px solid #dfe4e6;
 }
 .menu .popup {
@@ -101,10 +101,8 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 <div id="emulatorface">
 <div id="controlbar">
   <div id="systemcontrol" class="menu">
-    <button type="menu" id="systembutton"
-            onclick="emulator.togglePopup(this);">
-      Project Oberon 2013
-    </button>
+    <input type="button" id="systembutton" class="menubutton"
+           onclick="emulator.togglePopup(this);">
     <div class="popup">
       <div class="menuitem">
         <input type="file" id="diskfileinput"
@@ -122,7 +120,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   </div>
   <div class="endcontrols">
     <div class="menu">
-      <input type="button" id="settingsbutton" class="iconlabel"
+      <input type="button" id="settingsbutton" class="iconlabel menubutton"
              onclick="emulator.togglePopup(this);"
              title="Settings">
       <div class="popup right">
@@ -134,9 +132,9 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
       </div>
     </div>
     <div class="menu">
-      <button type="menu" class="bordered"
-              onclick="emulator.togglePopup(this);"
-              title="Transfer data between the emulated system and your computer">Transfer…</button>
+      <input type="button" class="bordered menubutton" value="Transfer…"
+             onclick="emulator.togglePopup(this);"
+             title="Transfer data between the emulated system and your computer">
       <div class="popup right">
         <div class="menuitem">
           <input type="text" id="linknameinput" placeholder="System.Tool"><!--

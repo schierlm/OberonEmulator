@@ -89,7 +89,7 @@ function WebDriver(imageName, width, height) {
 		}
 		this.disk = contents;
 		this.reset(true);
-		this.systemButton.textContent = name;
+		this.systemButton.value = name;
 	};
 
 	$proto._hasDirMark = function(contents, sectorNumber) {
@@ -273,8 +273,8 @@ function WebDriver(imageName, width, height) {
 
 	$proto.togglePopup = function(menuButton) {
 		let popup = menuButton.parentNode.querySelector(".popup");
-		popup.classList.toggle("open");
-		if (popup.classList.contains("open")) {
+		if (!popup.classList.contains("open")) {
+			this._closeOpenPopups();
 			let items = popup.querySelectorAll(".menuitem");
 			let baselineWidth = parseInt(this.controlBar.style.width) / 5;
 			let width = Math.max(menuButton.offsetWidth, baselineWidth | 0);
@@ -290,6 +290,15 @@ function WebDriver(imageName, width, height) {
 			}
 			// XXX Assumes no margins.
 			popup.style.width = width;
+		}
+		popup.classList.toggle("open");
+	};
+
+	$proto._closeOpenPopups = function() {
+		let openPopups = this.controlBar.querySelectorAll(".menu .popup.open");
+		for (let i = 0; i < openPopups.length; ++i) {
+			let menu = openPopups[i].parentNode;
+			this.togglePopup(menu.querySelector(".menubutton"));
 		}
 	};
 
@@ -370,6 +379,7 @@ function WebDriver(imageName, width, height) {
 	$proto._onMouseButton = function(event) {
 		if (event.target !== this.screen) return this._onButtonSelect(event);
 
+		this._closeOpenPopups();
 		let button = event.button + 1;
 		if (event.type === "mousedown") {
 			if (button === 1) button = this.activeButton;
@@ -388,6 +398,7 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto._onButtonSelect = function(event) {
+		this._closeOpenPopups();
 		let clickButton = event.target;
 		if (event.type === "mousedown") {
 			event.preventDefault();
