@@ -20,6 +20,8 @@ function WebDriver(imageName, width, height) {
 	this.keyBuffer = [];
 	this.startMillis = Date.now();
 
+	this.localSaveAnchor = document.getElementById("localsaveanchor");
+
 	this.ui = new ControlBarUI(this, width, height);
 
 	this.screen = document.getElementById("screen");
@@ -377,8 +379,6 @@ function ControlBarUI(emulator, width, height) {
 			$("led0"), $("led1"), $("led2"), $("led3"),
 			$("led4"), $("led5"), $("led6"), $("led7")
 		];
-
-		this.emulator.localSaveAnchor = $("localsaveanchor");
 
 		this.buttonBox = $("buttonbox");
 		this.clipboardInput = $("clipboardText");
