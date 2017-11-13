@@ -98,6 +98,14 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   border: 1px solid #b3aab3;
   width: auto;
 }
+#clipboardinput {
+  visibility: hidden;
+  height: 0px;
+}
+#clipboardinput.open {
+  visibility: visible;
+  height: 200px;
+}
 </style>
 <script src="risc.js"></script>
 <script src="webdriver.js"></script>
@@ -154,7 +162,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
         </div>
 
         <button id="clipboardToggle" class="menuitem"
-                onclick="emulator.toggleClipboard();">Toggle Clipboard</button>
+                onclick="emulator.ui.toggleClipboard();">Toggle Clipboard</button>
 
         <div class="menuitem">
           <input type="button" id="fileimportbutton" value="Import File…"
@@ -192,7 +200,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   </div>
 </div>
 <canvas id="screen" tabindex="1000"></canvas>
-<textarea id="clipboardText" style="width:1024;"></textarea>
+<textarea id="clipboardinput"></textarea>
 </div>
 <a id="localsaveanchor" style="display: none;"></a>
 

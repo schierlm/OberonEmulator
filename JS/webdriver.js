@@ -36,8 +36,6 @@ function WebDriver(imageName, width, height) {
 		this.screen.getContext("2d"), width, height
 	);
 
-	this.toggleClipboard(); // XXX Use CSS "open" class, like with popups
-
 	this.clipboard = new Clipboard(this.ui.clipboardInput);
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
 	this.sync = new DiskSync(this);
@@ -234,17 +232,6 @@ function WebDriver(imageName, width, height) {
 		return this.keyBuffer.shift();
 	};
 
-	$proto.toggleClipboard = function() {
-		if (this.ui.clipboardInput.style.visibility == "hidden") {
-			this.ui.clipboardInput.style.visibility = "visible";
-			this.ui.clipboardInput.style.height = 200;
-		}
-		else {
-			this.ui.clipboardInput.style.visibility = "hidden";
-			this.ui.clipboardInput.style.height = 0;
-		}
-	};
-
 	$proto.importDiskImage = function() {
 		this.sync.load(this.ui.diskFileInput.files[0]);
 	};
@@ -381,7 +368,7 @@ function ControlBarUI(emulator, width, height) {
 		];
 
 		this.buttonBox = $("buttonbox");
-		this.clipboardInput = $("clipboardText");
+		this.clipboardInput = $("clipboardinput");
 		this.controlBarBox = $("controlbar");
 		this.systemButton = $("systembutton");
 
@@ -447,6 +434,10 @@ function ControlBarUI(emulator, width, height) {
 
 	$proto.setLEDState = function(ledNumber, isOn) {
 		this.leds[ledNumber].classList.toggle("lit", isOn);
+	};
+
+	$proto.toggleClipboard = function() {
+		this.clipboardInput.classList.toggle("open");
 	};
 }
 
