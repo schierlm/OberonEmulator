@@ -138,6 +138,8 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
     <div class="menu">
       <input type="button" class="bordered menubutton" value="Transfer…"
              onclick="emulator.togglePopup(this);"
+             ondragover="emulator.cancelEvent(event);"
+             ondrop="emulator.importFilesFromEvent(event);"
              title="Transfer data between the emulated system and your computer">
       <div class="popup right">
         <div class="menuitem">
@@ -153,6 +155,8 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
         <div class="menuitem">
           <input type="button" id="fileimportbutton" value="Import File…"
                  onclick="emulator.linkFileInput.click();"
+                 ondragover="emulator.cancelEvent(event);"
+                 ondrop="emulator.importFilesFromEvent(event);"
                  title="Copy local file into the emulated system">
           <input type="file" id="linkfileinput" multiple
                  onchange="emulator.importFiles();"

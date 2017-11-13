@@ -262,11 +262,16 @@ function WebDriver(imageName, width, height) {
 		this.localSaveAnchor.removeAttribute("download");
 	};
 
-	$proto.importFiles = function() {
-		let { files } = this.linkFileInput;
+	$proto.importFiles = function(files) {
+		if (files === undefined) files = this.linkFileInput;
 		for (let i = 0; i < files.length; ++i) {
 			this.link.supplyFile(files[i]);
 		}
+	};
+
+	$proto.importFilesFromEvent = function(event) {
+		this.cancelEvent(event);
+		this.importFiles(event.dataTransfer.files);
 	};
 
 	$proto.exportFile = function() {
@@ -367,6 +372,11 @@ function WebDriver(imageName, width, height) {
 			case "contextmenu": return void(event.preventDefault());
 			default: throw new Error("got event " + event.type);
 		}
+	};
+
+	$proto.cancelEvent = function(event) {
+		event.stopPropagation();
+		event.preventDefault();
 	};
 
 	$proto._onMouseMove = function(event) {
