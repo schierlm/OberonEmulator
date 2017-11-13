@@ -16,17 +16,27 @@ function WebDriver(imageName, width, height) {
 	// in order for `this` to resolve correctly within the method body.
 	this.$run = this.run.bind(this);
 
-	this._initWidgets(width, height);
-
 	this.disk = [];
 	this.keyBuffer = [];
 	this.startMillis = Date.now();
 
+	this.localSaveAnchor = document.getElementById("localsaveanchor");
+
+	this.ui = new ControlBarUI(this, width, height);
+
+	this.screen = document.getElementById("screen");
+	this.screen.focus();
+	this.screen.width = width;
+	this.screen.height = height;
+	this.screen.addEventListener("mousemove", this, false);
+	this.screen.addEventListener("mousedown", this, false);
+	this.screen.addEventListener("mouseup", this, false);
+	this.screen.addEventListener("contextmenu", this, false);
 	this.screenUpdater = new ScreenUpdater(
 		this.screen.getContext("2d"), width, height
 	);
 
-	this.clipboard = new Clipboard(this.clipboardInput);
+	this.clipboard = new Clipboard(this.ui.clipboardInput);
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
 	this.sync = new DiskSync(this);
 
@@ -43,20 +53,8 @@ function WebDriver(imageName, width, height) {
 
 	$proto.$run = null;
 
-	$proto.buttonBox = null;
-	$proto.clickLeft = null;
-	$proto.clickMiddle = null;
-	$proto.clickRight = null;
-	$proto.clipboardInput = null;
-	$proto.controlBar = null;
-	$proto.diskFileInput = null;
-	$proto.linkExportButton = null;
-	$proto.linkFileInput = null;
-	$proto.linkNameInput = null;
-	$proto.leds = null;
 	$proto.localSaveAnchor = null;
 	$proto.screen = null;
-	$proto.systemButton = null;
 
 	$proto.activeButton = 1;
 	$proto.clipboard = null;
@@ -92,7 +90,7 @@ function WebDriver(imageName, width, height) {
 		}
 		this.disk = contents;
 		this.reset(true);
-		this.systemButton.value = name;
+		this.ui.systemButton.value = name;
 	};
 
 	$proto._hasDirMark = function(contents, sectorNumber) {
@@ -182,7 +180,7 @@ function WebDriver(imageName, width, height) {
 
 	$proto.registerLEDs = function(bitstring) {
 		for (let i = 0; i < 8; i++) {
-			this.leds[i].classList.toggle("lit", (bitstring & (1 << i)));
+			this.ui.setLEDState(i, (bitstring & (1 << i)));
 		}
 	};
 
@@ -234,20 +232,8 @@ function WebDriver(imageName, width, height) {
 		return this.keyBuffer.shift();
 	};
 
-	$proto.toggleClipboard = function() {
-		this.clipboardInput.style.width = this.screen.width;
-		if (this.clipboardInput.style.visibility == "hidden") {
-			this.clipboardInput.style.visibility = "visible";
-			this.clipboardInput.style.height = 200;
-		}
-		else {
-			this.clipboardInput.style.visibility = "hidden";
-			this.clipboardInput.style.height = 0;
-		}
-	};
-
 	$proto.importDiskImage = function() {
-		this.sync.load(this.diskFileInput.files[0]);
+		this.sync.load(this.ui.diskFileInput.files[0]);
 	};
 
 	$proto.importDiskImageFromEvent = function(event) {
@@ -268,7 +254,7 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.importFiles = function(files) {
-		if (files === undefined) files = this.linkFileInput;
+		if (files === undefined) files = this.ui.linkFileInput;
 		for (let i = 0; i < files.length; ++i) {
 			this.link.supplyFile(files[i]);
 		}
@@ -280,91 +266,8 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.exportFile = function() {
-		let name = this.linkNameInput.value;
+		let name = this.ui.linkNameInput.value;
 		if (name) this.link.demandFile(name);
-	};
-
-	$proto.togglePopup = function(menuButton) {
-		let popup = menuButton.parentNode.querySelector(".popup");
-		if (!popup.classList.contains("open")) {
-			this._closeOpenPopups();
-			let items = popup.querySelectorAll(".menuitem");
-			let baselineWidth = parseInt(this.controlBar.style.width) / 5;
-			let width = Math.max(menuButton.offsetWidth, baselineWidth | 0);
-			for (let i = 0; i < items.length; ++i) {
-				let itemWidth = 0;
-				let kids = items[i].childNodes;
-				for (let j = 0; j < kids.length; ++j) {
-					if (kids[j].offsetWidth !== undefined) {
-						itemWidth += kids[j].offsetWidth;
-					}
-				}
-				width = Math.max(width, itemWidth);
-			}
-			// XXX Assumes no margins.
-			popup.style.width = width;
-		}
-		popup.classList.toggle("open");
-	};
-
-	$proto._closeOpenPopups = function() {
-		let openPopups = this.controlBar.querySelectorAll(".menu .popup.open");
-		for (let i = 0; i < openPopups.length; ++i) {
-			let menu = openPopups[i].parentNode;
-			this.togglePopup(menu.querySelector(".menubutton"));
-		}
-	};
-
-	$proto._initWidgets = function(width, height) {
-		let $ = document.getElementById.bind(document);
-		this.leds = [
-			$("led0"), $("led1"), $("led2"), $("led3"),
-			$("led4"), $("led5"), $("led6"), $("led7")
-		];
-
-		this.buttonBox = $("buttonbox");
-		this.clipboardInput = $("clipboardText");
-		this.controlBar = $("controlbar");
-		this.localSaveAnchor = $("localsaveanchor");
-		this.screen = $("screen");
-		this.systemButton = $("systembutton");
-
-		this.diskFileInput = $("diskfileinput");
-
-		this.linkFileInput = $("linkfileinput");
-		this.linkNameInput = $("linknameinput");
-		this.linkExportButton = $("linkexportbutton");
-
-		this.controlBar.style.width = width;
-		this.screen.width = width;
-		this.screen.height = height;
-
-		this.screen.addEventListener("mousemove", this, false);
-		this.screen.addEventListener("mousedown", this, false);
-		this.screen.addEventListener("mouseup", this, false);
-		this.screen.addEventListener("contextmenu", this, false);
-
-		this.screen.focus();
-
-		$ = document.querySelector.bind(document);
-		this.clickLeft = $(".mousebtn[data-button='1']");
-		this.clickMiddle = $(".mousebtn[data-button='2']");
-		this.clickRight = $(".mousebtn[data-button='3']");
-
-		this.buttonBox.addEventListener("mousedown", this, false);
-		this.buttonBox.addEventListener("mouseup", this, false);
-
-		this.linkExportButton.style.width = this.linkExportButton.offsetWidth;
-		this.toggleClipboard();
-
-		// Hack to reposition elements.  Gecko and WebKit/Blink can't seem to
-		// agree on how to lay things out based on our CSS.
-		let boxes = $(".endcontrols").children;
-		for (let i = 0; i < boxes.length; ++i) {
-			let adjustment = boxes[i].offsetTop - this.controlBar.offsetTop;
-			boxes[i].style.position = "relative";
-			boxes[i].style.top = "-" + adjustment + "px";
-		}
 	};
 
 	// DOM Event handling
@@ -394,9 +297,7 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto._onMouseButton = function(event) {
-		if (event.target !== this.screen) return this._onButtonSelect(event);
-
-		this._closeOpenPopups();
+		this.ui.closeOpenPopups();
 		let button = event.button + 1;
 		if (event.type === "mousedown") {
 			if (button === 1) button = this.activeButton;
@@ -413,26 +314,130 @@ function WebDriver(imageName, width, height) {
 			this.registerMouseButton(button, false);
 		}
 	};
+}
 
-	$proto._onButtonSelect = function(event) {
-		this._closeOpenPopups();
-		let clickButton = event.target;
+function ControlBarUI(emulator, width, height) {
+	this.emulator = emulator;
+	this._initWidgets(width, height);
+}
+
+{
+	let $proto = ControlBarUI.prototype;
+
+	$proto.buttonBox = null;
+	$proto.clickLeft = null;
+	$proto.clickMiddle = null;
+	$proto.clickRight = null;
+	$proto.clipboardInput = null;
+	$proto.controlBarBox = null;
+	$proto.diskFileInput = null;
+	$proto.leds = null;
+	$proto.linkExportButton = null;
+	$proto.linkFileInput = null;
+	$proto.linkNameInput = null;
+	$proto.systemButton = null;
+
+	$proto._initWidgets = function(width, height) {
+		let $ = document.getElementById.bind(document);
+		this.leds = [
+			$("led0"), $("led1"), $("led2"), $("led3"),
+			$("led4"), $("led5"), $("led6"), $("led7")
+		];
+
+		this.buttonBox = $("buttonbox");
+		this.clipboardInput = $("clipboardinput");
+		this.controlBarBox = $("controlbar");
+		this.systemButton = $("systembutton");
+
+		this.diskFileInput = $("diskfileinput");
+
+		this.linkFileInput = $("linkfileinput");
+		this.linkNameInput = $("linknameinput");
+		this.linkExportButton = $("linkexportbutton");
+
+		$ = document.querySelector.bind(document);
+		this.clickLeft = $(".mousebtn[data-button='1']");
+		this.clickMiddle = $(".mousebtn[data-button='2']");
+		this.clickRight = $(".mousebtn[data-button='3']");
+
+		this.buttonBox.addEventListener("mousedown", this.emulator, false);
+		this.buttonBox.addEventListener("mouseup", this.emulator, false);
+
+		this.controlBarBox.style.width = width;
+		this.clipboardInput.style.width = width;
+
+		this.linkExportButton.style.width = this.linkExportButton.offsetWidth;
+
+		// Hack to reposition elements.  Gecko and WebKit/Blink can't seem to
+		// agree on how to lay things out based on our CSS.
+		let boxes = $(".endcontrols").children;
+		for (let i = 0; i < boxes.length; ++i) {
+			let adjustment = boxes[i].offsetTop -
+				this.controlBarBox.offsetTop;
+			boxes[i].style.position = "relative";
+			boxes[i].style.top = "-" + adjustment + "px";
+		}
+	};
+
+	$proto.togglePopup = function(menuButton) {
+		let popup = menuButton.parentNode.querySelector(".popup");
+		if (!popup.classList.contains("open")) {
+			this.closeOpenPopups();
+			let items = popup.querySelectorAll(".menuitem");
+			let baselineWidth = parseInt(this.controlBarBox.style.width) / 5;
+			let width = Math.max(menuButton.offsetWidth, baselineWidth | 0);
+			for (let i = 0; i < items.length; ++i) {
+				let itemWidth = 0;
+				let kids = items[i].childNodes;
+				for (let j = 0; j < kids.length; ++j) {
+					if (kids[j].offsetWidth !== undefined) {
+						itemWidth += kids[j].offsetWidth;
+					}
+				}
+				width = Math.max(width, itemWidth);
+			}
+			// XXX Assumes no margins.
+			popup.style.width = width;
+		}
+		popup.classList.toggle("open");
+	};
+
+	$proto.closeOpenPopups = function() {
+		let openPopups =
+			this.controlBarBox.querySelectorAll(".menu .popup.open");
+		for (let i = 0; i < openPopups.length; ++i) {
+			let menu = openPopups[i].parentNode;
+			this.togglePopup(menu.querySelector(".menubutton"));
+		}
+	};
+
+	$proto.selectMouseButton = function(event) {
+		this.closeOpenPopups();
+		let clicked = event.target;
 		if (event.type === "mousedown") {
 			event.preventDefault();
 			this.clickLeft.className = "mousebtn";
 			this.clickMiddle.className = "mousebtn";
 			this.clickRight.className = "mousebtn";
 
-			clickButton.classList.add("active");
+			clicked.classList.add("active");
 
-			this.activeButton = clickButton.dataset.button;
-			this.interclickButton = 0;
+			this.emulator.activeButton = clicked.dataset.button;
+			this.emulator.interclickButton = 0;
 		}
 		else {
-			if (clickButton.dataset.button === this.activeButton) return;
-			this.interclickButton = clickButton.dataset.button;
-			clickButton.classList.add("interclick");
+			if (clicked.dataset.button === this.emulator.activeButton) return;
+			this.emulator.interclickButton = clicked.dataset.button;
+			clicked.classList.add("interclick");
 		}
+	};
+
+	$proto.setLEDState = function(ledNumber, isOn) {
+		this.leds[ledNumber].classList.toggle("lit", isOn);
+	};
+
+	$proto.toggleClipboard = function() {
+		this.clipboardInput.classList.toggle("open");
 	};
 }
 

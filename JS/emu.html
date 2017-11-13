@@ -98,6 +98,14 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   border: 1px solid #b3aab3;
   width: auto;
 }
+#clipboardinput {
+  visibility: hidden;
+  height: 0px;
+}
+#clipboardinput.open {
+  visibility: visible;
+  height: 200px;
+}
 </style>
 <script src="risc.js"></script>
 <script src="webdriver.js"></script>
@@ -106,7 +114,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 <div id="controlbar">
   <div id="systemcontrol" class="menu">
     <input type="button" id="systembutton" class="menubutton"
-           onclick="emulator.togglePopup(this);"
+           onclick="emulator.ui.togglePopup(this);"
            ondragover="emulator.cancelEvent(event);"
            ondrop="emulator.importDiskImageFromEvent(event);">
     <div class="popup">
@@ -115,7 +123,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
                onchange="emulator.importDiskImage();"
                style="display: none;" accept=".dsk">
         <input type="button" id="diskimportbutton" value="Load…"
-               onclick="emulator.diskFileInput.click()"
+               onclick="emulator.ui.diskFileInput.click()"
                ondragover="emulator.cancelEvent(event);"
                ondrop="emulator.importDiskImageFromEvent(event);"
                title="Import disk image">
@@ -129,7 +137,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   <div class="endcontrols">
     <div class="menu">
       <input type="button" id="settingsbutton" class="iconlabel menubutton"
-             onclick="emulator.togglePopup(this);"
+             onclick="emulator.ui.togglePopup(this);"
              title="Settings">
       <div class="popup right">
         <button id="breakbutton" class="menuitem"
@@ -141,7 +149,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
     </div>
     <div class="menu">
       <input type="button" class="bordered menubutton" value="Transfer…"
-             onclick="emulator.togglePopup(this);"
+             onclick="emulator.ui.togglePopup(this);"
              ondragover="emulator.cancelEvent(event);"
              ondrop="emulator.importFilesFromEvent(event);"
              title="Transfer data between the emulated system and your computer">
@@ -154,11 +162,11 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
         </div>
 
         <button id="clipboardToggle" class="menuitem"
-                onclick="emulator.toggleClipboard();">Toggle Clipboard</button>
+                onclick="emulator.ui.toggleClipboard();">Toggle Clipboard</button>
 
         <div class="menuitem">
           <input type="button" id="fileimportbutton" value="Import File…"
-                 onclick="emulator.linkFileInput.click();"
+                 onclick="emulator.ui.linkFileInput.click();"
                  ondragover="emulator.cancelEvent(event);"
                  ondrop="emulator.importFilesFromEvent(event);"
                  title="Copy local file into the emulated system">
@@ -182,7 +190,9 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
         </tr>
       </table>
     </div>
-    <div id="buttonbox">
+    <div id="buttonbox"
+         onmouseup="emulator.ui.selectMouseButton(event);"
+         onmousedown="emulator.ui.selectMouseButton(event);">
       <input type="button" data-button="1" value="L" class="mousebtn active">
       <input type="button" data-button="2" value="M" class="mousebtn">
       <input type="button" data-button="3" value="R" class="mousebtn">
@@ -190,7 +200,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   </div>
 </div>
 <canvas id="screen" tabindex="1000"></canvas>
-<textarea id="clipboardText" style="width:1024;"></textarea>
+<textarea id="clipboardinput"></textarea>
 </div>
 <a id="localsaveanchor" style="display: none;"></a>
 
