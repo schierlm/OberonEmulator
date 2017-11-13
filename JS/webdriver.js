@@ -294,7 +294,7 @@ function WebDriver(imageName, width, height) {
 	$proto.togglePopup = function(menuButton) {
 		let popup = menuButton.parentNode.querySelector(".popup");
 		if (!popup.classList.contains("open")) {
-			this._closeOpenPopups();
+			this.ui.closeOpenPopups();
 			let items = popup.querySelectorAll(".menuitem");
 			let baselineWidth = parseInt(this.controlBarBox.style.width) / 5;
 			let width = Math.max(menuButton.offsetWidth, baselineWidth | 0);
@@ -312,15 +312,6 @@ function WebDriver(imageName, width, height) {
 			popup.style.width = width;
 		}
 		popup.classList.toggle("open");
-	};
-
-	$proto._closeOpenPopups = function() {
-		let openPopups =
-			this.controlBarBox.querySelectorAll(".menu .popup.open");
-		for (let i = 0; i < openPopups.length; ++i) {
-			let menu = openPopups[i].parentNode;
-			this.togglePopup(menu.querySelector(".menubutton"));
-		}
 	};
 
 	// DOM Event handling
@@ -350,7 +341,7 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto._onMouseButton = function(event) {
-		this._closeOpenPopups();
+		this.ui.closeOpenPopups();
 		let button = event.button + 1;
 		if (event.type === "mousedown") {
 			if (button === 1) button = this.activeButton;
@@ -423,8 +414,17 @@ function ControlBarUI(emulator, width, height) {
 		}
 	};
 
+	$proto.closeOpenPopups = function() {
+		let openPopups =
+			this.emulator.controlBarBox.querySelectorAll(".menu .popup.open");
+		for (let i = 0; i < openPopups.length; ++i) {
+			let menu = openPopups[i].parentNode;
+			this.emulator.togglePopup(menu.querySelector(".menubutton"));
+		}
+	};
+
 	$proto.selectMouseButton = function(event) {
-		this.emulator._closeOpenPopups();
+		this.closeOpenPopups();
 		let clicked = event.target;
 		if (event.type === "mousedown") {
 			event.preventDefault();
