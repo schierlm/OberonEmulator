@@ -250,6 +250,11 @@ function WebDriver(imageName, width, height) {
 		this.sync.load(this.diskFileInput.files[0]);
 	};
 
+	$proto.importDiskImageFromEvent = function(event) {
+		this.cancelEvent(event);
+		this.sync.load(event.dataTransfer.files[0]);
+	};
+
 	$proto.exportDiskImage = function() {
 		this.save("oberon.dsk", this.disk);
 	};

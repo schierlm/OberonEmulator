@@ -106,7 +106,9 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 <div id="controlbar">
   <div id="systemcontrol" class="menu">
     <input type="button" id="systembutton" class="menubutton"
-           onclick="emulator.togglePopup(this);">
+           onclick="emulator.togglePopup(this);"
+           ondragover="emulator.cancelEvent(event);"
+           ondrop="emulator.importDiskImageFromEvent(event);">
     <div class="popup">
       <div class="menuitem">
         <input type="file" id="diskfileinput"
@@ -114,6 +116,8 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
                style="display: none;" accept=".dsk">
         <input type="button" id="diskimportbutton" value="Load…"
                onclick="emulator.diskFileInput.click()"
+               ondragover="emulator.cancelEvent(event);"
+               ondrop="emulator.importDiskImageFromEvent(event);"
                title="Import disk image">
       </div>
 
