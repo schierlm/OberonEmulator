@@ -114,7 +114,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 <div id="controlbar">
   <div id="systemcontrol" class="menu">
     <input type="button" id="systembutton" class="menubutton"
-           onclick="emulator.togglePopup(this);"
+           onclick="emulator.ui.togglePopup(this);"
            ondragover="emulator.cancelEvent(event);"
            ondrop="emulator.importDiskImageFromEvent(event);">
     <div class="popup">
@@ -137,7 +137,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   <div class="endcontrols">
     <div class="menu">
       <input type="button" id="settingsbutton" class="iconlabel menubutton"
-             onclick="emulator.togglePopup(this);"
+             onclick="emulator.ui.togglePopup(this);"
              title="Settings">
       <div class="popup right">
         <button id="breakbutton" class="menuitem"
@@ -149,7 +149,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
     </div>
     <div class="menu">
       <input type="button" class="bordered menubutton" value="Transfer…"
-             onclick="emulator.togglePopup(this);"
+             onclick="emulator.ui.togglePopup(this);"
              ondragover="emulator.cancelEvent(event);"
              ondrop="emulator.importFilesFromEvent(event);"
              title="Transfer data between the emulated system and your computer">
