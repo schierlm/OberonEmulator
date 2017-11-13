@@ -1,73 +1,193 @@
+<meta charset="utf-8">
 <style>
 body { font-family: Verdana, Arial, Helvetica, sans-serif; }
-.buttonbar {padding: 5px; }
-.mousebtn {width: 2em; height: 2em; background-color: #DDD; color:#FFF;
-text-shadow: -1px 0 #000, 0 -1px #000, 1px 0 #000, 0 1px #000, -1px -1px #000,
--1px 1px #000, 1px -1px #000, 1px 1px #000; font-weight: bold;}
-.mousebtn, .led {padding: 2px 5px; border: 1px solid gray; cursor: default; }
-.mousebtn.active {background-color: #55E;}
-.mousebtn.interclick {background-color: #EE5;}
-.led {border:1px solid gray; background-color: black; color: white;
-border-radius: 50%; font-size: small;}
-.led.lit {background-color: #0f0; color: black; }
-#screen {cursor: none; outline: none;}
+#emulatorface > * { box-sizing: content-box; }
+#screen {
+  cursor: none; outline: none;
+  margin: 1px; /* NB: match #controlbar border thickness */
+}
+#controlbar {
+  height: 2em; margin-bottom: 0.5em;
+  border: 1px solid #dfe4e6; /* NB: match #screen margin thickness */
+  border-radius: 0 0 4px 4px;
+  background-color: #f7f5f0;
+  color: #677073;
+}
+#controlbar > *, .endcontrols > * { display: inline-block; }
+#systemcontrol { line-height: 2em; }
+.endcontrols { float: right; }
+#settingsbutton {
+  width: 2em;
+  height: 100%;
+  border: 0;
+  background-color: inherit;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* XXX No idea why the following works, but it's necessary. --crussell */
+  font-size: small;
+}
+#ledbox { font-size: 0; }
+#ledbox > table { height: 100%; }
+.led {
+  display: inline; padding: 2px 6px; cursor: default; 
+  border:1px solid #dfe4e6; border-radius: 50%;
+  font-size: small; color: #677073;
+}
+.led.lit {
+  background-color: #bbedff;
+}
+#buttonbox { font-size: 0; background-color: #dfe4e6; }
+.mousebtn.active { background-color: #677073; }
+.mousebtn.interclick { background-color: #b4c6cc; }
+.mousebtn {
+  width: 1.25em; height: 100%; background-color: inherit; color:#FFF;
+  border: 0px; border-radius: 0 0 4px 4px;
+  margin: 0; padding: 0;
+  font-size: small;
+  text-shadow:
+    -1px 0 #000, 0 -1px #000, 1px 0 #000, 0 1px #000,
+    -1px -1px #000, -1px 1px #000, 1px -1px #000, 1px 1px #000;
+}
+.menu {
+  position: relative;
+}
+.menu input[type="button"] {
+  height: 100%;
+  background-color: inherit; color: inherit;
+  border: 0;
+}
+.menu input[type="button"].bordered {
+  border-left: 1px solid #dfe4e6; border-right: 1px solid #dfe4e6;
+}
+.menu .popup {
+  visibility: hidden;
+  position: absolute;
+  z-index: 1;
+  border: 1px solid #aab1b3;
+  background-color: #454b4d;
+  color: #dcdfe0;
+}
+.menu .popup.open {
+  visibility: visible;
+  top: 100%;
+  width: 100%;
+}
+.menu .popup.right {
+  right: 0%;
+}
+.menuitem {
+  display: block;
+  height: 2em;
+}
+.menuitem > * {
+  display: inline;
+  margin: 0;
+  height: 100%;
+}
+.menuitem > input[type="button"], button.menuitem {
+  border: 0px; background-color: inherit; color: inherit;
+  text-align: left;
+  width: 100%;
+}
+.menuitem > input[type="text"] {
+  background-color: #fff;
+  color: #4d4b45;
+  border: 1px solid #b3aab3;
+}
+.menuitem > input[type="button"].cap {
+  border: 1px solid #b3aab3;
+  width: auto;
+}
 </style>
 <script src="risc.js"></script>
 <script src="webdriver.js"></script>
 
-<div class="buttonbar">
+<div id="emulatorface">
+<div id="controlbar">
+  <div id="systemcontrol" class="menu">
+    <input type="button" id="systembutton" class="menubutton"
+           onclick="emulator.togglePopup(this);">
+    <div class="popup">
+      <div class="menuitem">
+        <input type="file" id="diskfileinput"
+               onchange="emulator.importDiskImage();"
+               style="display: none;" accept=".dsk">
+        <input type="button" id="diskimportbutton" value="Load…"
+               onclick="emulator.diskFileInput.click()"
+               title="Import disk image">
+      </div>
 
-<span id="buttonbox">
-<input type="button" data-button="1" value="L" class="mousebtn active">
-<input type="button" data-button="2" value="M" class="mousebtn">
-<input type="button" data-button="3" value="R" class="mousebtn">
-</span>
+      <button id="diskexportbutton" class="menuitem"
+              onclick="emulator.exportDiskImage();"
+              title="Export disk image">Save…</button>
+    </div>
+  </div>
+  <div class="endcontrols">
+    <div class="menu">
+      <input type="button" id="settingsbutton" class="iconlabel menubutton"
+             onclick="emulator.togglePopup(this);"
+             title="Settings">
+      <div class="popup right">
+        <button id="breakbutton" class="menuitem"
+                onclick="emulator.reset(false);">Break</button>
 
-&mdash;
+        <button id="resetbutton" class="menuitem"
+                onclick="emulator.reset(true);">Reset</button>
+      </div>
+    </div>
+    <div class="menu">
+      <input type="button" class="bordered menubutton" value="Transfer…"
+             onclick="emulator.togglePopup(this);"
+             title="Transfer data between the emulated system and your computer">
+      <div class="popup right">
+        <div class="menuitem">
+          <input type="text" id="linknameinput" placeholder="System.Tool"><!--
+       --><input type="button" id="linkexportbutton" class="cap" value="Copy"
+                 onclick="emulator.exportFile()"
+                 title="Copy file out of the emulated system">
+        </div>
 
-<span id="led7" class="led">7</span>
-<span id="led6" class="led">6</span>
-<span id="led5" class="led">5</span>
-<span id="led4" class="led">4</span>
-<span id="led3" class="led">3</span>
-<span id="led2" class="led">2</span>
-<span id="led1" class="led">1</span>
-<span id="led0" class="led">0</span>
+        <button id="clipboardToggle" class="menuitem"
+                onclick="emulator.toggleClipboard();">Toggle Clipboard</button>
 
-<a id="localsaveanchor"></a>
-
-<input type="button" id="diskimportbutton" value="Load"
-	   onclick="emulator.diskFileInput.click()"
-	   title="Import disk image">
-<input type="file" id="diskfileinput"
-	   onchange="emulator.importDiskImage();"
-	   style="display: none;" accept=".dsk">
-
-<input type="button" id="diskexportbutton" value="Save"
-	   onclick="emulator.exportDiskImage();"
-	   title="Export disk image">
-
-<input type="button" id="fileimportbutton" value="Transfer in"
-	   onclick="emulator.linkFileInput.click();"
-	   title="Transfer local file into the emulated system">
-<input type="file" id="linkfileinput" multiple
-	   onchange="emulator.importFiles();"
-	   style="display: none;">
-
-<input type="text" id="linknameinput"
-	   placeholder="System.Tool">
-<input type="button" id="fileexportbutton" value="Transfer out"
-	   onclick="emulator.exportFile()"
-	   title="Copy file out of the emulated system">
-
-<input type="button" id="clipboardToggle" value="Clipboard"
-	   onclick="emulator.toggleClipboard();">
-
-<input type="button" id="breakbutton" value="Break"
-	   onclick="emulator.reset(false);">
-<input type="button" id="resetbutton" value="Reset"
-	   onclick="emulator.reset(true);">
-
+        <div class="menuitem">
+          <input type="button" id="fileimportbutton" value="Import File…"
+                 onclick="emulator.linkFileInput.click();"
+                 title="Copy local file into the emulated system">
+          <input type="file" id="linkfileinput" multiple
+                 onchange="emulator.importFiles();"
+                 style="display: none;">
+        </div>
+      </div>
+    </div>
+    <div id="ledbox">
+      <table>
+        <tr>
+          <td><div id="led7" class="led">7</div></td>
+          <td><div id="led6" class="led">6</div></td>
+          <td><div id="led5" class="led">5</div></td>
+          <td><div id="led4" class="led">4</div></td>
+          <td><div id="led3" class="led">3</div></td>
+          <td><div id="led2" class="led">2</div></td>
+          <td><div id="led1" class="led">1</div></td>
+          <td><div id="led0" class="led">0</div></td>
+        </tr>
+      </table>
+    </div>
+    <div id="buttonbox">
+      <input type="button" data-button="1" value="L" class="mousebtn active">
+      <input type="button" data-button="2" value="M" class="mousebtn">
+      <input type="button" data-button="3" value="R" class="mousebtn">
+    </div>
+  </div>
 </div>
-<textarea id="clipboardText" style="width:1024;"></textarea>
 <canvas id="screen" tabindex="1000"></canvas>
+<textarea id="clipboardText" style="width:1024;"></textarea>
+</div>
+<a id="localsaveanchor" style="display: none;"></a>
+
+<style>
+.iconlabel#settingsbutton {
+  background-image: url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D"http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg"%20version%3D"1.1"%0D%0A%20width%3D"1em"%20height%3D"1em"%20viewBox%3D"0%200%201536%201536"%3E%0D%0A%20%3Cpath%20fill%3D"%23677073"%20d%3D"m%201024%2C768%20q%200%2C106%20-75%2C181%20-75%2C75%20-181%2C75%20-106%2C0%20-181%2C-75%20-75%2C-75%20-75%2C-181%200%2C-106%2075%2C-181%2075%2C-75%20181%2C-75%20106%2C0%20181%2C75%2075%2C75%2075%2C181%20z%20m%20512%2C109%200%2C-222%20q%200%2C-12%20-8%2C-23%20-8%2C-11%20-20%2C-13%20l%20-185%2C-28%20q%20-19%2C-54%20-39%2C-91%2035%2C-50%20107%2C-138%2010%2C-12%2010%2C-25%200%2C-13%20-9%2C-23%20-27%2C-37%20-99%2C-108%20-72%2C-71%20-94%2C-71%20-12%2C0%20-26%2C9%20L%201035%2C252%20Q%20991%2C229%20944%2C214%20928%2C78%20915%2C28%20908%2C0%20879%2C0%20L%20657%2C0%20Q%20643%2C0%20632.5%2C8.5%20622%2C17%20621%2C30%20l%20-28%2C184%20q%20-49%2C16%20-90%2C37%20L%20362%2C144%20q%20-10%2C-9%20-25%2C-9%20-14%2C0%20-25%2C11%20-126%2C114%20-165%2C168%20-7%2C10%20-7%2C23%200%2C12%208%2C23%2015%2C21%2051%2C66.5%2036%2C45.5%2054%2C70.5%20-27%2C50%20-41%2C99%20L%2029%2C623%20Q%2016%2C625%208%2C635.5%200%2C646%200%2C659%20l%200%2C222%20q%200%2C12%208%2C23%208%2C11%2019%2C13%20l%20186%2C28%20q%2014%2C46%2039%2C92%20-40%2C57%20-107%2C138%20-10%2C12%20-10%2C24%200%2C10%209%2C23%2026%2C36%2098.5%2C107.5%2072.5%2C71.5%2094.5%2C71.5%2013%2C0%2026%2C-10%20l%20138%2C-107%20q%2044%2C23%2091%2C38%2016%2C136%2029%2C186%207%2C28%2036%2C28%20l%20222%2C0%20q%2014%2C0%2024.5%2C-8.5%20Q%20914%2C1519%20915%2C1506%20l%2028%2C-184%20q%2049%2C-16%2090%2C-37%20l%20142%2C107%20q%209%2C9%2024%2C9%2013%2C0%2025%2C-10%20129%2C-119%20165%2C-170%207%2C-8%207%2C-22%200%2C-12%20-8%2C-23%20-15%2C-21%20-51%2C-66.5%20-36%2C-45.5%20-54%2C-70.5%2026%2C-50%2041%2C-98%20l%20183%2C-28%20q%2013%2C-2%2021%2C-12.5%208%2C-10.5%208%2C-23.5%20z"%2F%3E%0D%0A%3C%2Fsvg%3E');
+}
+</style>

@@ -48,11 +48,15 @@ function WebDriver(imageName, width, height) {
 	$proto.clickMiddle = null;
 	$proto.clickRight = null;
 	$proto.clipboardInput = null;
+	$proto.controlBar = null;
 	$proto.diskFileInput = null;
+	$proto.linkExportButton = null;
 	$proto.linkFileInput = null;
+	$proto.linkNameInput = null;
 	$proto.leds = null;
 	$proto.localSaveAnchor = null;
 	$proto.screen = null;
+	$proto.systemButton = null;
 
 	$proto.activeButton = 1;
 	$proto.clipboard = null;
@@ -68,14 +72,13 @@ function WebDriver(imageName, width, height) {
 	$proto.startMillis = null;
 	$proto.sync = null;
 	$proto.transferHistory = null;
-	$proto.virtualClipboard = null;
 	$proto.waitMillis = 0;
 
 	$proto.__defineGetter__("tickCount", function() {
 		return Date.now() - this.startMillis;
 	});
 
-	$proto.bootFromSystemImage = function(contents) {
+	$proto.bootFromSystemImage = function(contents, name) {
 		// Two system image formats are supported: one with 1024-byte sectors
 		// in the format used for Peter De Wachter's RISC emulator, and
 		// another in the same form except, except with the first disk sector
@@ -89,6 +92,7 @@ function WebDriver(imageName, width, height) {
 		}
 		this.disk = contents;
 		this.reset(true);
+		this.systemButton.value = name;
 	};
 
 	$proto._hasDirMark = function(contents, sectorNumber) {
@@ -266,23 +270,39 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.exportFile = function() {
-		let name = this.toggleLinkName();
+		let name = this.linkNameInput.value;
 		if (name) this.link.demandFile(name);
 	};
 
-	$proto.toggleLinkName = function() {
-		let style = this.linkNameInput.style;
-		let value = this.linkNameInput.value;
-		if (style.display === "none") {
-			style.display = "inline";
-			this.linkExportButton.value = "Copy";
-			this.linkNameInput.focus();
-		} else {
-			style.display = "none";
-			this.linkNameInput.value = "";
-			this.linkExportButton.value = "Transfer out";
+	$proto.togglePopup = function(menuButton) {
+		let popup = menuButton.parentNode.querySelector(".popup");
+		if (!popup.classList.contains("open")) {
+			this._closeOpenPopups();
+			let items = popup.querySelectorAll(".menuitem");
+			let baselineWidth = parseInt(this.controlBar.style.width) / 5;
+			let width = Math.max(menuButton.offsetWidth, baselineWidth | 0);
+			for (let i = 0; i < items.length; ++i) {
+				let itemWidth = 0;
+				let kids = items[i].childNodes;
+				for (let j = 0; j < kids.length; ++j) {
+					if (kids[j].offsetWidth !== undefined) {
+						itemWidth += kids[j].offsetWidth;
+					}
+				}
+				width = Math.max(width, itemWidth);
+			}
+			// XXX Assumes no margins.
+			popup.style.width = width;
 		}
-		return value;
+		popup.classList.toggle("open");
+	};
+
+	$proto._closeOpenPopups = function() {
+		let openPopups = this.controlBar.querySelectorAll(".menu .popup.open");
+		for (let i = 0; i < openPopups.length; ++i) {
+			let menu = openPopups[i].parentNode;
+			this.togglePopup(menu.querySelector(".menubutton"));
+		}
 	};
 
 	$proto._initWidgets = function(width, height) {
@@ -294,15 +314,18 @@ function WebDriver(imageName, width, height) {
 
 		this.buttonBox = $("buttonbox");
 		this.clipboardInput = $("clipboardText");
+		this.controlBar = $("controlbar");
 		this.localSaveAnchor = $("localsaveanchor");
 		this.screen = $("screen");
+		this.systemButton = $("systembutton");
 
 		this.diskFileInput = $("diskfileinput");
 
-		this.linkExportButton = $("fileexportbutton");
 		this.linkFileInput = $("linkfileinput");
 		this.linkNameInput = $("linknameinput");
+		this.linkExportButton = $("linkexportbutton");
 
+		this.controlBar.style.width = width;
 		this.screen.width = width;
 		this.screen.height = height;
 
@@ -322,8 +345,16 @@ function WebDriver(imageName, width, height) {
 		this.buttonBox.addEventListener("mouseup", this, false);
 
 		this.linkExportButton.style.width = this.linkExportButton.offsetWidth;
-		this.toggleLinkName();
 		this.toggleClipboard();
+
+		// Hack to reposition elements.  Gecko and WebKit/Blink can't seem to
+		// agree on how to lay things out based on our CSS.
+		let boxes = $(".endcontrols").children;
+		for (let i = 0; i < boxes.length; ++i) {
+			let adjustment = boxes[i].offsetTop - this.controlBar.offsetTop;
+			boxes[i].style.position = "relative";
+			boxes[i].style.top = "-" + adjustment + "px";
+		}
 	};
 
 	// DOM Event handling
@@ -350,6 +381,7 @@ function WebDriver(imageName, width, height) {
 	$proto._onMouseButton = function(event) {
 		if (event.target !== this.screen) return this._onButtonSelect(event);
 
+		this._closeOpenPopups();
 		let button = event.button + 1;
 		if (event.type === "mousedown") {
 			if (button === 1) button = this.activeButton;
@@ -368,6 +400,7 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto._onButtonSelect = function(event) {
+		this._closeOpenPopups();
 		let clickButton = event.target;
 		if (event.type === "mousedown") {
 			event.preventDefault();
@@ -786,6 +819,7 @@ function DemandTransfer(name) {
 }
 
 function ImageReader(imageName, emulator) {
+	this.imageName = imageName;
 	this.emulator = emulator;
 	this.container = new Image();
 	this.container.addEventListener("load", this);
@@ -807,7 +841,8 @@ function ImageReader(imageName, emulator) {
 
 		context.drawImage(this.container, 0, 0);
 		let { data } = context.getImageData(0, 0, width, height);
-		this.emulator.bootFromSystemImage(this._unpack(data, width, height));
+		let sectors = this._unpack(data, width, height);
+		this.emulator.bootFromSystemImage(sectors, this.imageName);
 	};
 
 	$proto._unpack = function(imageData, width, height) {
@@ -839,6 +874,7 @@ function DiskSync(emulator) {
 
 	$proto.load = function(file) {
 		let reader = new FileReader();
+		reader.fileName = file.name;
 		reader.addEventListener("loadend", this);
 		reader.readAsArrayBuffer(file);
 	};
@@ -861,6 +897,6 @@ function DiskSync(emulator) {
 			sectorStart += 1024;
 		}
 
-		emulator.bootFromSystemImage(contents);
+		emulator.bootFromSystemImage(contents, reader.fileName);
 	};
 }
