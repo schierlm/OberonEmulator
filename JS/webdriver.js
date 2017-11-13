@@ -254,7 +254,7 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.importFiles = function(files) {
-		if (files === undefined) files = this.ui.linkFileInput;
+		if (files === undefined) files = this.ui.linkFileInput.files;
 		for (let i = 0; i < files.length; ++i) {
 			this.link.supplyFile(files[i]);
 		}
