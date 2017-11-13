@@ -350,8 +350,6 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto._onMouseButton = function(event) {
-		if (event.target !== this.screen) return this._onButtonSelect(event);
-
 		this._closeOpenPopups();
 		let button = event.button + 1;
 		if (event.type === "mousedown") {
@@ -367,27 +365,6 @@ function WebDriver(imageName, width, height) {
 				button = this.activeButton;
 			}
 			this.registerMouseButton(button, false);
-		}
-	};
-
-	$proto._onButtonSelect = function(event) {
-		this._closeOpenPopups();
-		let clickButton = event.target;
-		if (event.type === "mousedown") {
-			event.preventDefault();
-			this.clickLeft.className = "mousebtn";
-			this.clickMiddle.className = "mousebtn";
-			this.clickRight.className = "mousebtn";
-
-			clickButton.classList.add("active");
-
-			this.activeButton = clickButton.dataset.button;
-			this.interclickButton = 0;
-		}
-		else {
-			if (clickButton.dataset.button === this.activeButton) return;
-			this.interclickButton = clickButton.dataset.button;
-			clickButton.classList.add("interclick");
 		}
 	};
 }
@@ -443,6 +420,27 @@ function ControlBarUI(emulator, width, height) {
 				this.emulator.controlBarBox.offsetTop;
 			boxes[i].style.position = "relative";
 			boxes[i].style.top = "-" + adjustment + "px";
+		}
+	};
+
+	$proto.selectMouseButton = function(event) {
+		this.emulator._closeOpenPopups();
+		let clicked = event.target;
+		if (event.type === "mousedown") {
+			event.preventDefault();
+			this.emulator.clickLeft.className = "mousebtn";
+			this.emulator.clickMiddle.className = "mousebtn";
+			this.emulator.clickRight.className = "mousebtn";
+
+			clicked.classList.add("active");
+
+			this.emulator.activeButton = clicked.dataset.button;
+			this.emulator.interclickButton = 0;
+		}
+		else {
+			if (clicked.dataset.button === this.emulator.activeButton) return;
+			this.emulator.interclickButton = clicked.dataset.button;
+			clicked.classList.add("interclick");
 		}
 	};
 }
