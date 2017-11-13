@@ -115,7 +115,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
                onchange="emulator.importDiskImage();"
                style="display: none;" accept=".dsk">
         <input type="button" id="diskimportbutton" value="Load…"
-               onclick="emulator.diskFileInput.click()"
+               onclick="emulator.ui.diskFileInput.click()"
                ondragover="emulator.cancelEvent(event);"
                ondrop="emulator.importDiskImageFromEvent(event);"
                title="Import disk image">
@@ -158,7 +158,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 
         <div class="menuitem">
           <input type="button" id="fileimportbutton" value="Import File…"
-                 onclick="emulator.linkFileInput.click();"
+                 onclick="emulator.ui.linkFileInput.click();"
                  ondragover="emulator.cancelEvent(event);"
                  ondrop="emulator.importFilesFromEvent(event);"
                  title="Copy local file into the emulated system">
