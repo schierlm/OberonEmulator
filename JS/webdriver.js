@@ -360,9 +360,6 @@ function ControlBarUI(emulator, width, height) {
 		this.clickMiddle = $(".mousebtn[data-button='2']");
 		this.clickRight = $(".mousebtn[data-button='3']");
 
-		this.buttonBox.addEventListener("mousedown", this.emulator, false);
-		this.buttonBox.addEventListener("mouseup", this.emulator, false);
-
 		this.controlBarBox.style.width = width;
 		this.clipboardInput.style.width = width;
 
