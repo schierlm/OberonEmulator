@@ -362,10 +362,13 @@ function ControlBarUI(emulator, width, height) {
 		this.clickMiddle = $(".mousebtn[data-button='2']");
 		this.clickRight = $(".mousebtn[data-button='3']");
 
-		this.controlBarBox.style.width = width;
-		this.clipboardInput.style.width = width;
+		this.controlBarBox.style.width = width + "px";
+		this.clipboardInput.style.width = width + "px";
 
-		this.linkExportButton.style.width = this.linkExportButton.offsetWidth;
+		this.linkExportButton.style.height =
+			this.linkNameInput.offsetHeight + "px";
+		this.linkExportButton.style.width =
+			this.linkExportButton.offsetWidth + "px";
 
 		// Hack to reposition elements.  Gecko and WebKit/Blink can't seem to
 		// agree on how to lay things out based on our CSS.
@@ -395,8 +398,8 @@ function ControlBarUI(emulator, width, height) {
 				}
 				width = Math.max(width, itemWidth);
 			}
-			// XXX Assumes no margins.
-			popup.style.width = width;
+			// NB: Assumes no margins.
+			popup.style.width = width + "px";
 		}
 		popup.classList.toggle("open");
 	};
