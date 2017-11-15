@@ -44,10 +44,10 @@ try {
 }
 
 function startEmu() {
-	var image = document.forms.emuform.image.value;
-	var [ width, height ] = document.forms.emuform.size.value.split("×");
-	document.location.href =
-		"emu.html?image=" + image + "&width=" + width + "&height=" + height;
+	var imageName = document.forms.emuform.image.value;
+	var size = document.forms.emuform.size.value.split("×");
+	document.location.href = "emu.html?image=" + imageName +
+		"&width=" + size[0] + "&height=" + size[1];
 }
 </script>
 <noscript>

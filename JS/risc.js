@@ -8,8 +8,8 @@ function RISCMachine(romWords) {
 	this.bootROM = romWords;
 }
 
-{
-	let $proto = RISCMachine.prototype;
+(function($proto) {
+	var $proto = RISCMachine.prototype;
 
 	RISCMachine.GeneralRegisterCount = $proto.GeneralRegisterCount = 16;
 	RISCMachine.SpecialRegisterCount = $proto.SpecialRegisterCount =  2;
@@ -91,7 +91,7 @@ function RISCMachine(romWords) {
 
 	$proto.memWriteVideo = function(wordIndex, word) {
 		this.mainMemory[wordIndex] = word;
-		let offset = wordIndex - this.DisplayStart / 4;
+		var offset = wordIndex - this.DisplayStart / 4;
 		emulator.registerVideoChange(offset, word);
 	}
 
@@ -331,7 +331,7 @@ function RISCMachine(romWords) {
 			this.memWriteWord(address / 4|0, value & 0xFF);
 		}
 	}
-}
+})();
 
 var _ieeeBuffer = new ArrayBuffer(4);
 var _floatBuffer = new Float32Array(_ieeeBuffer);

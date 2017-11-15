@@ -1,13 +1,13 @@
 var emulator;
 
 window.onload = function() {
-	let params = Object.create(null);
-	let pairs = window.location.search.substr(1).split("&");
-	for (let i = 0, n = pairs.length; i < n; ++i) {
-		let [ name, value ] = pairs[i].split("=");
+	var params = Object.create(null);
+	var pairs = window.location.search.substr(1).split("&");
+	for (var i = 0, n = pairs.length; i < n; ++i) {
+		var [ name, value ] = pairs[i].split("=");
 		params[name] = value;
 	}
-	let { image, width, height } = params;
+	var { image, width, height } = params;
 	emulator = new WebDriver(image, width | 0, height | 0);
 }
 
@@ -44,8 +44,8 @@ function WebDriver(imageName, width, height) {
 	new ImageReader(imageName, this);
 }
 
-{
-	let $proto = WebDriver.prototype;
+(function(){
+	var $proto = WebDriver.prototype;
 
 	// This is a callback suitable for use with `setTimeout` so that `this`
 	// will resolve correctly within the `run` method body.  We would use
@@ -95,14 +95,14 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto._hasDirMark = function(contents, sectorNumber) {
-		let view = new DataView(contents[sectorNumber].buffer);
+		var view = new DataView(contents[sectorNumber].buffer);
 		return view.getUint32(0) === 0x8DA31E9B;
 	};
 
 	$proto.reset = function(cold) {
 		this.machine.cpuReset(cold);
 		if (cold) {
-			let base = this.machine.DisplayStart / 4;
+			var base = this.machine.DisplayStart / 4;
 			this.machine.memWriteWord(base, 0x53697A65); // magic value 'Size'
 			this.machine.memWriteWord(base + 1, this.screen.width);
 			this.machine.memWriteWord(base + 2, this.screen.height);
@@ -117,7 +117,7 @@ function WebDriver(imageName, width, height) {
 
 	$proto.run = function() {
 		if (this.paused) return;
-		let now = Date.now();
+		var now = Date.now();
 		for (var i = 0; i < 200000 && this.waitMillis < now; ++i) {
 			this.machine.cpuSingleStep();
 		}
@@ -136,13 +136,13 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.registerVideoChange = function(offset, value) {
-		let x = (offset % 32) * 32;
-		let y = this.screen.height - 1 - (offset / 32 | 0);
+		var x = (offset % 32) * 32;
+		var y = this.screen.height - 1 - (offset / 32 | 0);
 		if (y < 0 || x >= this.screen.width) return;
-		let base = (y * this.screen.width + x) * 4;
-		let { data } = this.screenUpdater.backBuffer;
-		for (let i = 0; i < 32; i++) {
-			let lit = ((value & (1 << i)) != 0);
+		var base = (y * this.screen.width + x) * 4;
+		var { data } = this.screenUpdater.backBuffer;
+		for (var i = 0; i < 32; i++) {
+			var lit = ((value & (1 << i)) != 0);
 			data[base++] = lit ? 0xfd : 0x65;
 			data[base++] = lit ? 0xf6 : 0x7b;
 			data[base++] = lit ? 0xe3 : 0x83;
@@ -152,9 +152,9 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.registerMousePosition = function(x, y) {
-		let before = this.mouse;
+		var before = this.mouse;
 
-		let after = this.mouse;
+		var after = this.mouse;
 		if (0 <= x && x < 4096) after = (after & ~0x00000FFF) | x;
 		if (0 <= y && y < 4096) after = (after & ~0x00FFF000) | (y << 12);
 
@@ -167,7 +167,7 @@ function WebDriver(imageName, width, height) {
 
 	$proto.registerMouseButton = function(button, down) {
 		if (1 <= button && button <= 3) {
-			let bit = 1 << (27 - button);
+			var bit = 1 << (27 - button);
 			if (down) {
 				this.mouse |= bit;
 			}
@@ -180,7 +180,7 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.registerLEDs = function(bitstring) {
-		for (let i = 0; i < 8; i++) {
+		for (var i = 0; i < 8; i++) {
 			this.ui.setLEDState(i, (bitstring & (1 << i)));
 		}
 	};
@@ -195,18 +195,18 @@ function WebDriver(imageName, width, height) {
 		// NB: The actual index for our disk will be off by one because the
 		// given sector number includes the phantom boot sector (reserved at
 		// sector 0) but which is not actually part of the disk.
-		let sectorNumber = value & 0x3FFFFFFF;
-		let address = this.paravirtPointer / 4;
+		var sectorNumber = value & 0x3FFFFFFF;
+		var address = this.paravirtPointer / 4;
 		if ((value & 0xC0000000) === (0x80000000 | 0)) {
 			// read
-			let sector = this.disk[sectorNumber - 1];
+			var sector = this.disk[sectorNumber - 1];
 			if (!sector) sector = new Int32Array(256);
 			memory.set(sector, address);
 			return;
 		}
 		if ((value & 0xC0000000) === (0xC0000000 | 0)) {
 			// write
-			let sector = new Int32Array(256);
+			var sector = new Int32Array(256);
 			sector.set(memory.subarray(address, address + 256));
 			this.disk[sectorNumber - 1] = sector;
 			return;
@@ -256,7 +256,7 @@ function WebDriver(imageName, width, height) {
 
 	$proto.importFiles = function(files) {
 		if (files === undefined) files = this.ui.linkFileInput.files;
-		for (let i = 0; i < files.length; ++i) {
+		for (var i = 0; i < files.length; ++i) {
 			this.link.supplyFile(files[i]);
 		}
 	};
@@ -267,7 +267,7 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.exportFile = function() {
-		let name = this.ui.linkNameInput.value;
+		var name = this.ui.linkNameInput.value;
 		if (name) this.link.demandFile(name);
 	};
 
@@ -289,17 +289,17 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto._onMouseMove = function(event) {
-		let { offsetLeft, offsetTop } = this.screen;
-		let scrollX = document.body.scrollLeft;
-		let scrollY = document.body.scrollTop;
-		let x = event.clientX - offsetLeft + scrollX;
-		let y = -(event.clientY - offsetTop + scrollY) + this.screen.height - 1;
+		var { offsetLeft, offsetTop } = this.screen;
+		var scrollX = document.body.scrollLeft;
+		var scrollY = document.body.scrollTop;
+		var x = event.clientX - offsetLeft + scrollX;
+		var y = -(event.clientY - offsetTop + scrollY) + this.screen.height - 1;
 		this.registerMousePosition(x, y);
 	};
 
 	$proto._onMouseButton = function(event) {
 		this.ui.closeOpenPopups();
-		let button = event.button + 1;
+		var button = event.button + 1;
 		if (event.type === "mousedown") {
 			if (button === 1) button = this.activeButton;
 			this.registerMouseButton(button, true);
@@ -315,15 +315,15 @@ function WebDriver(imageName, width, height) {
 			this.registerMouseButton(button, false);
 		}
 	};
-}
+})();
 
 function ControlBarUI(emulator, width, height) {
 	this.emulator = emulator;
 	this._initWidgets(width, height);
 }
 
-{
-	let $proto = ControlBarUI.prototype;
+(function(){
+	var $proto = ControlBarUI.prototype;
 
 	$proto.buttonBox = null;
 	$proto.clickLeft = null;
@@ -339,7 +339,7 @@ function ControlBarUI(emulator, width, height) {
 	$proto.systemButton = null;
 
 	$proto._initWidgets = function(width, height) {
-		let $ = document.getElementById.bind(document);
+		var $ = document.getElementById.bind(document);
 		this.leds = [
 			$("led0"), $("led1"), $("led2"), $("led3"),
 			$("led4"), $("led5"), $("led6"), $("led7")
@@ -368,9 +368,9 @@ function ControlBarUI(emulator, width, height) {
 
 		// Hack to reposition elements.  Gecko and WebKit/Blink can't seem to
 		// agree on how to lay things out based on our CSS.
-		let boxes = $(".endcontrols").children;
-		for (let i = 0; i < boxes.length; ++i) {
-			let adjustment = boxes[i].offsetTop -
+		var boxes = $(".endcontrols").children;
+		for (var i = 0; i < boxes.length; ++i) {
+			var adjustment = boxes[i].offsetTop -
 				this.controlBarBox.offsetTop;
 			boxes[i].style.position = "relative";
 			boxes[i].style.top = "-" + adjustment + "px";
@@ -378,16 +378,16 @@ function ControlBarUI(emulator, width, height) {
 	};
 
 	$proto.togglePopup = function(menuButton) {
-		let popup = menuButton.parentNode.querySelector(".popup");
+		var popup = menuButton.parentNode.querySelector(".popup");
 		if (!popup.classList.contains("open")) {
 			this.closeOpenPopups();
-			let items = popup.querySelectorAll(".menuitem");
-			let baselineWidth = parseInt(this.controlBarBox.style.width) / 5;
-			let width = Math.max(menuButton.offsetWidth, baselineWidth | 0);
-			for (let i = 0; i < items.length; ++i) {
-				let itemWidth = 0;
-				let kids = items[i].childNodes;
-				for (let j = 0; j < kids.length; ++j) {
+			var items = popup.querySelectorAll(".menuitem");
+			var baselineWidth = parseInt(this.controlBarBox.style.width) / 5;
+			var width = Math.max(menuButton.offsetWidth, baselineWidth | 0);
+			for (var i = 0; i < items.length; ++i) {
+				var itemWidth = 0;
+				var kids = items[i].childNodes;
+				for (var j = 0; j < kids.length; ++j) {
 					if (kids[j].offsetWidth !== undefined) {
 						itemWidth += kids[j].offsetWidth;
 					}
@@ -401,17 +401,17 @@ function ControlBarUI(emulator, width, height) {
 	};
 
 	$proto.closeOpenPopups = function() {
-		let openPopups =
+		var openPopups =
 			this.controlBarBox.querySelectorAll(".menu .popup.open");
-		for (let i = 0; i < openPopups.length; ++i) {
-			let menu = openPopups[i].parentNode;
+		for (var i = 0; i < openPopups.length; ++i) {
+			var menu = openPopups[i].parentNode;
 			this.togglePopup(menu.querySelector(".menubutton"));
 		}
 	};
 
 	$proto.selectMouseButton = function(event) {
 		this.closeOpenPopups();
-		let clicked = event.target;
+		var clicked = event.target;
 		if (event.type === "mousedown") {
 			event.preventDefault();
 			this.clickLeft.className = "mousebtn";
@@ -437,7 +437,7 @@ function ControlBarUI(emulator, width, height) {
 	$proto.toggleClipboard = function() {
 		this.clipboardInput.classList.toggle("open");
 	};
-}
+})();
 
 function ScreenUpdater(context, width, height) {
 	this.context = context;
@@ -446,8 +446,8 @@ function ScreenUpdater(context, width, height) {
 	this.clear();
 }
 
-{
-	let $proto = ScreenUpdater.prototype;
+(function(){
+	var $proto = ScreenUpdater.prototype;
 
 	$proto.backBuffer = null;
 	$proto.context = null;
@@ -478,14 +478,14 @@ function ScreenUpdater(context, width, height) {
 		this.maxX = this.maxY = 0;
 		this.update = null;
 	};
-}
+})();
 
 function Clipboard(widget) {
 	this._input = widget;
 }
 
-{
-	let $proto = Clipboard.prototype;
+(function(){
+	var $proto = Clipboard.prototype;
 
 	$proto._buffer = null;
 	$proto._input = null;
@@ -519,12 +519,12 @@ function Clipboard(widget) {
 
 	$proto.get = function() {
 		// assert(this._buffer.length > 0)
-		let singleChar = this._buffer.shift();
+		var singleChar = this._buffer.shift();
 		if (this._buffer.length === 0) this._buffer = null;
 		// XXX Warn for non-ASCII?
 		return singleChar.charCodeAt(0) | 0;
 	};
-}
+})();
 
 // TODO: Avoid anything exotic for virtualized keys.
 //
@@ -565,7 +565,7 @@ function Clipboard(widget) {
 function VirtualKeyboard(screen, emulator) {
 	// Reading keyboard input on the Web is still a big mess.
 	screen.addEventListener("keydown", function(event) {
-		let code = event.keyCode;
+		var code = event.keyCode;
 		// Backspace, Tab, Enter, or Escape
 		if (code === 8 || code === 9 || code === 13 || code == 27) {
 			event.preventDefault();
@@ -594,7 +594,7 @@ function VirtualKeyboard(screen, emulator) {
 		}
 	});
 	screen.addEventListener("keypress", function(event) {
-		let code = event.keyCode;
+		var code = event.keyCode;
 		// Backspace, Tab, Enter, or Escape
 		if (code === 8 || code === 9 || code === 13 || code == 27) {
 			event.preventDefault();
@@ -621,8 +621,8 @@ function FileLink(emulator) {
 	this.intakeQueue = [];
 }
 
-{
-	let $proto = FileLink.prototype;
+(function(){
+	var $proto = FileLink.prototype;
 
 	FileLink.SUPPLY_TRANSFER = $proto.SUPPLY_TRANSFER = 0x21;
 	FileLink.DEMAND_TRANSFER = $proto.DEMAND_TRANSFER = 0x22;
@@ -636,9 +636,9 @@ function FileLink(emulator) {
 	$proto.transfer = null;
 
 	$proto.getStatus = function() {
-		let result = this.RX_READY;
+		var result = this.RX_READY;
 		if (this.transfer) {
-			let { transfer } = this;
+			var { transfer } = this;
 			if (transfer.readyState === 0) {
 				delete this.transfer;
 
@@ -663,8 +663,8 @@ function FileLink(emulator) {
 	};
 
 	$proto.getData = function() {
-		let result = 0;
-		let { count, fileName } = this.transfer;
+		var result = 0;
+		var { count, fileName } = this.transfer;
 		if (count === 0) {
 			result = this.transfer.type;
 		} else if (count - 1 < fileName.length) {
@@ -698,7 +698,7 @@ function FileLink(emulator) {
 		}
 	};
 
-}
+})();
 
 function SupplyTransfer(file) {
 	// See `acceptLinkByte` for the significance of `readyState` transitions.
@@ -708,13 +708,13 @@ function SupplyTransfer(file) {
 	this.type = FileLink.SUPPLY_TRANSFER;
 	this.fileName = file.name;
 
-	let reader = new FileReader();
+	var reader = new FileReader();
 	reader.addEventListener("loadend", this);
 	reader.readAsArrayBuffer(file);
 }
 
-{
-	let $proto = SupplyTransfer.prototype;
+(function(){
+	var $proto = SupplyTransfer.prototype;
 
 	$proto.success = 0;
 
@@ -728,9 +728,9 @@ function SupplyTransfer(file) {
 	};
 
 	$proto.getPacketByte = function() {
-		let sent = this.count - 1 - (this.fileName.length + 1);
+		var sent = this.count - 1 - (this.fileName.length + 1);
 		if ((sent % 256) === 0) {
-			let remaining = this.fileBytes.byteLength - this.offset;
+			var remaining = this.fileBytes.byteLength - this.offset;
 			if (remaining >= 255) {
 				result = 255;
 			} else {
@@ -765,7 +765,7 @@ function SupplyTransfer(file) {
 			if (this.readyState < 0) ++this.readyState;
 		}
 	};
-}
+})();
 
 function DemandTransfer(name) {
 	this.blocks = [];
@@ -776,8 +776,8 @@ function DemandTransfer(name) {
 	this.readyState = 2;
 }
 
-{
-	let $proto = DemandTransfer.prototype;
+(function(){
+	var $proto = DemandTransfer.prototype;
 
 	$proto.success = 0;
 
@@ -834,7 +834,7 @@ function DemandTransfer(name) {
 		}
 		return result;
 	};
-}
+})();
 
 function ImageReader(imageName, emulator) {
 	this.imageName = imageName;
@@ -844,31 +844,31 @@ function ImageReader(imageName, emulator) {
 	this.container.src = imageName + ".png";
 }
 
-{
-	let $proto = ImageReader.prototype;
+(function(){
+	var $proto = ImageReader.prototype;
 
 	$proto.handleEvent = function(event) {
 		if (event.type !== "load") throw new Error(
 			"Unexpected event: " + event.type
 		);
 
-		let canvas = document.createElement("canvas");
-		let width = canvas.width = this.container.width;
-		let height = canvas.height = this.container.height;
-		let context = canvas.getContext("2d");
+		var canvas = document.createElement("canvas");
+		var width = canvas.width = this.container.width;
+		var height = canvas.height = this.container.height;
+		var context = canvas.getContext("2d");
 
 		context.drawImage(this.container, 0, 0);
-		let { data } = context.getImageData(0, 0, width, height);
-		let sectors = this._unpack(data, width, height);
+		var { data } = context.getImageData(0, 0, width, height);
+		var sectors = this._unpack(data, width, height);
 		this.emulator.bootFromSystemImage(sectors, this.imageName);
 	};
 
 	$proto._unpack = function(imageData, width, height) {
-		let contents = [];
-		for (let i = 0; i < height; i++) {
-			let sectorWords = new Int32Array(width / 4);
-			for (let j = 0; j < width / 4; j++) {
-				let b = i * 4096 + j * 16 + 2;
+		var contents = [];
+		for (var i = 0; i < height; i++) {
+			var sectorWords = new Int32Array(width / 4);
+			for (var j = 0; j < width / 4; j++) {
+				var b = i * 4096 + j * 16 + 2;
 				sectorWords[j] =
 					((imageData[b +  0] & 0xFF) <<  0) |
 					((imageData[b +  4] & 0xFF) <<  8) |
@@ -881,17 +881,17 @@ function ImageReader(imageName, emulator) {
 
 		return contents;
 	};
-}
+})();
 
 function DiskSync(emulator) {
 	this.emulator = emulator;
 }
 
-{
-	let $proto = DiskSync.prototype;
+(function(){
+	var $proto = DiskSync.prototype;
 
 	$proto.load = function(file) {
-		let reader = new FileReader();
+		var reader = new FileReader();
 		reader.fileName = file.name;
 		reader.addEventListener("loadend", this);
 		reader.readAsArrayBuffer(file);
@@ -902,13 +902,13 @@ function DiskSync(emulator) {
 			"Unexpected event: " + event.type
 		);
 
-		let reader = event.target;
-		let contents = [];
-		let sectorStart = 0;
+		var reader = event.target;
+		var contents = [];
+		var sectorStart = 0;
 		var view = new DataView(reader.result);
 		while (sectorStart < view.byteLength) {
-			let sectorWords = new Int32Array(1024 / 4);
-			for (let i = 0; i < 1024 / 4; i++) {
+			var sectorWords = new Int32Array(1024 / 4);
+			for (var i = 0; i < 1024 / 4; i++) {
 				sectorWords[i] = view.getInt32(sectorStart + i * 4, true);
 			}
 			contents.push(sectorWords);
@@ -917,4 +917,4 @@ function DiskSync(emulator) {
 
 		emulator.bootFromSystemImage(contents, reader.fileName);
 	};
-}
+})();
