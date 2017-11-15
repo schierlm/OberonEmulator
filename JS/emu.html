@@ -27,12 +27,16 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   background-repeat: no-repeat;
 }
 .led {
-  display: inline; padding: 2px 6px; cursor: default; 
+  display: inline-block; cursor: default;
   border:1px solid #dfe4e6; border-radius: 50%;
   font-size: small; color: #677073;
 }
 .led.lit {
   background-color: #bbedff;
+}
+.led > .label {
+  width: 1.5em; height: 1.5em; line-height: 1.5em;
+  vertical-align: middle; text-align: center;
 }
 #buttonbox { background-color: #dfe4e6; }
 .mousebtn.active { background-color: #677073; }
@@ -177,14 +181,14 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
       </div>
     </div>
     <div id="ledbox">
-       <div id="led7" class="led">7</div>
-       <div id="led6" class="led">6</div>
-       <div id="led5" class="led">5</div>
-       <div id="led4" class="led">4</div>
-       <div id="led3" class="led">3</div>
-       <div id="led2" class="led">2</div>
-       <div id="led1" class="led">1</div>
-       <div id="led0" class="led">0</div>
+       <span id="led7" class="led"><div class="label">7</div></span>
+       <span id="led6" class="led"><div class="label">6</div></span>
+       <span id="led5" class="led"><div class="label">5</div></span>
+       <span id="led4" class="led"><div class="label">4</div></span>
+       <span id="led3" class="led"><div class="label">3</div></span>
+       <span id="led2" class="led"><div class="label">2</div></span>
+       <span id="led1" class="led"><div class="label">1</div></span>
+       <span id="led0" class="led"><div class="label">0</div></span>
     </div>
     <div id="buttonbox"
          onmouseup="emulator.ui.selectMouseButton(event);"
