@@ -75,9 +75,9 @@ function WebDriver(imageName, width, height) {
 	$proto.transferHistory = null;
 	$proto.waitMillis = 0;
 
-	$proto.__defineGetter__("tickCount", function() {
+	$proto.getTickCount = function() {
 		return Date.now() - this.startMillis;
-	});
+	};
 
 	$proto.bootFromSystemImage = function(contents, name) {
 		// Two system image formats are supported: one with 1024-byte sectors
@@ -492,12 +492,12 @@ function Clipboard(widget) {
 	$proto._input = null;
 	$proto._count = null;
 
-	$proto.__defineGetter__("size", function() {
+	$proto.getSize = function() {
 		// assert(this._buffer === null)
 		// assert(this._count === null)
 		this._buffer = this._input.value.split("\n").join("\r").split("");
 		return this._buffer.length;
-	});
+	};
 
 	$proto.expect = function(count) {
 		// assert(this._buffer === null)
@@ -506,7 +506,7 @@ function Clipboard(widget) {
 		this._count = count;
 	};
 
-	$proto.put = function(charBits) {
+	$proto.putData = function(charBits) {
 		// assert(this._buffer !== null)
 		// assert(this._count > 0)
 		this._buffer.push(String.fromCharCode(charBits));
@@ -518,7 +518,7 @@ function Clipboard(widget) {
 		}
 	};
 
-	$proto.get = function() {
+	$proto.getData = function() {
 		// assert(this._buffer.length > 0)
 		var singleChar = this._buffer.shift();
 		if (this._buffer.length === 0) this._buffer = null;
