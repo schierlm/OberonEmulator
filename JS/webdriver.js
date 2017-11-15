@@ -369,16 +369,6 @@ function ControlBarUI(emulator, width, height) {
 			this.linkNameInput.offsetHeight + "px";
 		this.linkExportButton.style.width =
 			this.linkExportButton.offsetWidth + "px";
-
-		// Hack to reposition elements.  Gecko and WebKit/Blink can't seem to
-		// agree on how to lay things out based on our CSS.
-		var boxes = $(".endcontrols").children;
-		for (var i = 0; i < boxes.length; ++i) {
-			var adjustment = boxes[i].offsetTop -
-				this.controlBarBox.offsetTop;
-			boxes[i].style.position = "relative";
-			boxes[i].style.top = "-" + adjustment + "px";
-		}
 	};
 
 	$proto.togglePopup = function(menuButton) {
