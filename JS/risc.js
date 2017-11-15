@@ -264,43 +264,25 @@ function RISCMachine(romWords) {
 		else {
 			var t;
 			switch ((ir >>> 24) & 7) {
-			case 0:
-				t = this.flag_N;
-				break;
-			case 1:
-				t = this.flag_Z;
-				break;
-			case 2:
-				t = this.flag_C;
-				break;
-			case 3:
-				t = this.flag_V;
-				break;
-			case 4:
-				t = this.flag_C || this.flag_Z;
-				break;
-			case 5:
-				t = this.flag_N != this.flag_V;
-				break;
-			case 6:
-				t = (this.flag_N != this.flag_V) || this.flag_Z;
-				break;
-			case 7:
-				t = true;
-				break;
+                case 0: t = this.flag_N; break;
+                case 1: t = this.flag_Z; break;
+                case 2: t = this.flag_C; break;
+                case 3: t = this.flag_V; break;
+                case 4: t = this.flag_C || this.flag_Z; break;
+                case 5: t = this.flag_N != this.flag_V; break;
+                case 6: t = this.flag_N != this.flag_V || this.flag_Z; break;
+                case 7: t = true; break;
 			}
 			if (t ^ (((ir >>> 24) & 8) != 0)) {
+                var pc = this.cpuGetRegister(this.PCID);
 				if ((ir & vbit) != 0) {
-					this.cpuPutRegister(
-						15, (this.cpuGetRegister(this.PCID) * 4) | 0
-					);
+					this.cpuPutRegister(15, pc * 4 | 0);
 				}
 				if ((ir & ubit) == 0) {
-					var pos = (this.cpuGetRegister(ir & 0x0000000F) >>> 0) / 4
+					var pos = (this.cpuGetRegister(ir & 0x0000000F) >>> 0) / 4;
 					this.cpuPutRegister(this.PCID, pos % this.MemWords);
 				} else {
-					var pos = this.cpuGetRegister(this.PCID) +
-						(ir & 0x00FFFFFF);
+					var pos = pc + (ir & 0x00FFFFFF);
 					this.cpuPutRegister(this.PCID, pos % this.MemWords);
 				}
 			}
