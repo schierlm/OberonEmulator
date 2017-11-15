@@ -12,10 +12,6 @@ window.onload = function() {
 }
 
 function WebDriver(imageName, width, height) {
-	// Init callback suitable for passing to `setTimeout`.  This is necessary
-	// in order for `this` to resolve correctly within the method body.
-	this.$run = this.run.bind(this);
-
 	this.disk = [];
 	this.keyBuffer = [];
 	this.startMillis = Date.now();
@@ -51,7 +47,12 @@ function WebDriver(imageName, width, height) {
 {
 	let $proto = WebDriver.prototype;
 
-	$proto.$run = null;
+	// This is a callback suitable for use with `setTimeout` so that `this`
+	// will resolve correctly within the `run` method body.  We would use
+	// `Function.prototype.bind`, but we want to be compatible with IE10.
+	WebDriver.$run = $proto.$run = function(self) {
+		self.run();
+	};
 
 	$proto.localSaveAnchor = null;
 	$proto.screen = null;
@@ -111,7 +112,7 @@ function WebDriver(imageName, width, height) {
 
 	$proto.reschedule = function() {
 		if (this.cpuTimeout != null) window.clearTimeout(this.cpuTimeout);
-		this.cpuTimeout = window.setTimeout(this.$run, 1);
+		this.cpuTimeout = window.setTimeout(this.$run, 1, this);
 	};
 
 	$proto.run = function() {
@@ -121,7 +122,7 @@ function WebDriver(imageName, width, height) {
 			this.machine.cpuSingleStep();
 		}
 		this.cpuTimeout = window.setTimeout(
-			this.$run, Math.max(this.waitMillis - Date.now(), 10)
+			this.$run, Math.max(this.waitMillis - Date.now(), 10), this
 		);
 	};
 
