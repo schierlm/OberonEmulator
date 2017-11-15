@@ -101,10 +101,10 @@ function WebDriver(imageName, width, height) {
 	$proto.reset = function(cold) {
 		this.machine.cpuReset(cold);
 		if (cold) {
-			let base = this.machine.DisplayStart / 4;
+			let base = this.machine.DisplayStart;
 			this.machine.memWriteWord(base, 0x53697A65); // magic value 'Size'
-			this.machine.memWriteWord(base + 1, this.screen.width);
-			this.machine.memWriteWord(base + 2, this.screen.height);
+			this.machine.memWriteWord(base + 4, this.screen.width);
+			this.machine.memWriteWord(base + 8, this.screen.height);
 		}
 		this.reschedule();
 	};

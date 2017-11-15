@@ -45,28 +45,28 @@ function RISCMachine(romWords) {
 		this.registers[this.cpuRegisterSlot(id)] = value;
 	}
 
-	$proto.memReadWord = function(wordIndex, mapROM) {
-		if (mapROM && wordIndex >= this.ROMStart / 4) {
-			return this.bootROM[wordIndex - this.ROMStart / 4];
-		} else if (wordIndex >= this.IOStart / 4) {
-			return this.memReadIO(wordIndex);
+	$proto.memReadWord = function(address, mapROM) {
+		if (mapROM && address >= this.ROMStart) {
+			return this.bootROM[(address - this.ROMStart) / 4 | 0];
+		} else if (address >= this.IOStart) {
+			return this.memReadIO(address);
 		} else {
-			return this.mainMemory[wordIndex];
+			return this.mainMemory[address / 4 | 0];
 		}
 	}
 
-	$proto.memWriteWord = function(wordIndex, value) {
-		if (wordIndex >= this.IOStart / 4) {
-			this.memWriteIO(wordIndex, value);
-		} else if (wordIndex >= this.DisplayStart / 4) {
-			this.memWriteVideo(wordIndex, value);
+	$proto.memWriteWord = function(address, value) {
+		if (address >= this.IOStart) {
+			this.memWriteIO(address, value);
+		} else if (address >= this.DisplayStart) {
+			this.memWriteVideo(address, value);
 		} else {
-			this.mainMemory[wordIndex] = value;
+			this.mainMemory[address / 4 | 0] = value;
 		}
 	}
 
-	$proto.memReadIO = function(wordIndex) {
-		switch (wordIndex * 4 - this.IOStart) {
+	$proto.memReadIO = function(address) {
+		switch (address - this.IOStart) {
 			case  0: return emulator.tickCount | 0;
 			case  8: return emulator.link.getData();
 			case 12: return emulator.link.getStatus();
@@ -78,8 +78,8 @@ function RISCMachine(romWords) {
 		}
 	}
 
-	$proto.memWriteIO = function(wordIndex, val) {
-		switch (wordIndex * 4 - this.IOStart) {
+	$proto.memWriteIO = function(address, val) {
+		switch (address - this.IOStart) {
 			case  0: return void(emulator.wait(val));
 			case  4: return void(emulator.registerLEDs(val));
 			case  8: return void(emulator.link.setData(val));
@@ -89,10 +89,10 @@ function RISCMachine(romWords) {
 		}
 	}
 
-	$proto.memWriteVideo = function(wordIndex, word) {
-		this.mainMemory[wordIndex] = word;
-		let offset = wordIndex - this.DisplayStart / 4;
-		emulator.registerVideoChange(offset, word);
+	$proto.memWriteVideo = function(address, val) {
+		this.mainMemory[address / 4 | 0] = val;
+		let offset = (address - this.DisplayStart) / 4;
+		emulator.registerVideoChange(offset, val);
 	}
 
 	$proto.cpuReset = function(cold) {
@@ -107,7 +107,7 @@ function RISCMachine(romWords) {
 		var vbit = 0x10000000;
 
 		var pc = this.cpuGetRegister(this.PCID);
-		var ir = this.memReadWord(this.cpuGetRegister(this.PCID), true);
+		var ir = this.memReadWord(this.cpuGetRegister(this.PCID) * 4, true);
 		this.cpuPutRegister(this.PCID, pc + 1);
 
 		if ((ir & pbit) == 0) {
@@ -308,27 +308,27 @@ function RISCMachine(romWords) {
 	}
 
 	$proto.cpuLoadWord = function(address) {
-		return this.memReadWord(address / 4, false);
+		return this.memReadWord(address | 0, false);
 	}
 
 	$proto.cpuLoadByte = function(address) {
-		var w = this.cpuLoadWord((address / 4|0) * 4);
+		var w = this.cpuLoadWord(address);
 		return (w >>> ((address % 4) * 8)) & 0xff;
 	}
 
 	$proto.cpuStoreWord = function(address, value) {
-		this.memWriteWord(address / 4|0, value);
+		this.memWriteWord(address | 0, value);
 	}
 
 	$proto.cpuStoreByte = function(address, value) {
 		if (address < this.IOStart) {
-			var w = this.memReadWord(address / 4|0, false);
+			var w = this.memReadWord(address | 0, false);
 			var shift = (address & 3) * 8;
 			w &= ~(0xFF << shift);
 			w |= (value & 0xFF) << shift;
-			this.memWriteWord(address / 4|0, w);
+			this.memWriteWord(address | 0, w);
 		} else {
-			this.memWriteWord(address / 4|0, value & 0xFF);
+			this.memWriteWord(address | 0, value & 0xFF);
 		}
 	}
 }
