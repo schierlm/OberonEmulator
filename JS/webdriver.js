@@ -4,14 +4,16 @@ window.onload = function() {
 	var params = Object.create(null);
 	var pairs = window.location.search.substr(1).split("&");
 	for (var i = 0, n = pairs.length; i < n; ++i) {
-		var [ name, value ] = pairs[i].split("=");
-		params[name] = value;
+		var keyAndValue = pairs[i].split("=");
+		params[keyAndValue[0]] = keyAndValue[1];
 	}
-	var { image, width, height } = params;
-	emulator = new WebDriver(image, width | 0, height | 0);
+	emulator = new WebDriver(params.image, params.width, params.height);
 }
 
 function WebDriver(imageName, width, height) {
+	width = width | 0;
+	height = height | 0;
+
 	this.disk = [];
 	this.keyBuffer = [];
 	this.startMillis = Date.now();
@@ -140,7 +142,7 @@ function WebDriver(imageName, width, height) {
 		var y = this.screen.height - 1 - (offset / 32 | 0);
 		if (y < 0 || x >= this.screen.width) return;
 		var base = (y * this.screen.width + x) * 4;
-		var { data } = this.screenUpdater.backBuffer;
+		var data = this.screenUpdater.backBuffer.data;
 		for (var i = 0; i < 32; i++) {
 			var lit = ((value & (1 << i)) != 0);
 			data[base++] = lit ? 0xfd : 0x65;
@@ -289,11 +291,10 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto._onMouseMove = function(event) {
-		var { offsetLeft, offsetTop } = this.screen;
-		var scrollX = document.body.scrollLeft;
-		var scrollY = document.body.scrollTop;
-		var x = event.clientX - offsetLeft + scrollX;
-		var y = -(event.clientY - offsetTop + scrollY) + this.screen.height - 1;
+		var deltaH = -(this.screen.offsetLeft + document.body.scrollLeft);
+		var deltaV = -(this.screen.offsetTop + document.body.scrollTop);
+		var x = event.clientX + deltaH;
+		var y = -(event.clientY + deltaV) + this.screen.height - 1;
 		this.registerMousePosition(x, y);
 	};
 
@@ -637,8 +638,8 @@ function FileLink(emulator) {
 
 	$proto.getStatus = function() {
 		var result = this.RX_READY;
-		if (this.transfer) {
-			var { transfer } = this;
+		var transfer = this.transfer;
+		if (transfer !== null) {
 			if (transfer.readyState === 0) {
 				delete this.transfer;
 
@@ -664,7 +665,8 @@ function FileLink(emulator) {
 
 	$proto.getData = function() {
 		var result = 0;
-		var { count, fileName } = this.transfer;
+		var count = this.transfer.count;
+		var fileName = this.transfer.fileName;
 		if (count === 0) {
 			result = this.transfer.type;
 		} else if (count - 1 < fileName.length) {
@@ -858,7 +860,7 @@ function ImageReader(imageName, emulator) {
 		var context = canvas.getContext("2d");
 
 		context.drawImage(this.container, 0, 0);
-		var { data } = context.getImageData(0, 0, width, height);
+		var data = context.getImageData(0, 0, width, height).data;
 		var sectors = this._unpack(data, width, height);
 		this.emulator.bootFromSystemImage(sectors, this.imageName);
 	};
