@@ -389,7 +389,7 @@ function ControlBarUI(emulator, width, height) {
 				width = Math.max(width, itemWidth);
 			}
 			// NB: Assumes no margins.
-			popup.style.width = width + "px";
+			popup.style.width = (width + 1) + "px";
 		}
 		popup.classList.toggle("open");
 	};
