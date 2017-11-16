@@ -251,7 +251,11 @@ function WebDriver(imageName, width, height) {
 	$proto.save = function(name, content) {
 		this.localSaveAnchor.setAttribute("download", name);
 		this.localSaveAnchor.href = URL.createObjectURL(new Blob(content));
-		this.localSaveAnchor.click();
+		try {
+			this.localSaveAnchor.click();
+		} catch (ex) {
+			alert("Browser doesn't support file save.  Got error:\n" + ex);
+		}
 		this.localSaveAnchor.removeAttribute("href");
 		this.localSaveAnchor.removeAttribute("download");
 	};
