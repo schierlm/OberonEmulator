@@ -249,12 +249,20 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.save = function(name, content) {
+		var blob = new Blob(content, { type: "application/octet-stream" });
 		this.localSaveAnchor.setAttribute("download", name);
-		this.localSaveAnchor.href = URL.createObjectURL(new Blob(content));
+		this.localSaveAnchor.href = URL.createObjectURL(blob);
 		try {
 			this.localSaveAnchor.click();
 		} catch (ex) {
-			alert("Browser doesn't support file save.  Got error:\n" + ex);
+			var workaroundSuccess = false;
+			// IE10/IE11 *will* fail.  Use a workaround, if possible:
+			if (typeof(navigator.msSaveBlob) !== "undefined") {
+				workaroundSuccess = navigator.msSaveBlob(blob, name);
+			}
+			if (!workaroundSuccess) {
+				alert("Browser doesn't support file save:\n\n" + ex);
+			}
 		}
 		this.localSaveAnchor.removeAttribute("href");
 		this.localSaveAnchor.removeAttribute("download");
