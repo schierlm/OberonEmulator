@@ -369,6 +369,22 @@ function ControlBarUI(emulator, width, height) {
 			this.linkNameInput.offsetHeight + "px";
 		this.linkExportButton.style.width =
 			this.linkExportButton.offsetWidth + "px";
+
+		// XXX Hack to reposition mouse buttons.  Gecko/WebKit/Blink can't
+		// seem to agree with IE on how to lay things out based on our CSS,
+		// but what they can agree on is making the mouse buttons vertically
+		// translated a few pixels down from where we actually want them to be.
+		// Note that this fixes things for modern Gecko/WebKit/Blink, but they
+		// remain out of place (but not unusably so) on IE and older Chrome.
+		var adjustment = this.buttonBox.offsetTop - this.clickLeft.offsetTop;
+		if (adjustment !== 0) {
+			this.buttonBox.parentNode.style.position = "relative";
+			this.buttonBox.style.position = "absolute";
+			this.buttonBox.style.right = "0px";
+			this.buttonBox.style.top = adjustment + "px";
+			this.leds[0].parentNode.style.marginRight =
+				(this.buttonBox.offsetWidth + 4) + "px";
+		}
 	};
 
 	$proto.togglePopup = function(menuButton) {
