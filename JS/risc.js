@@ -8,8 +8,8 @@ function RISCMachine(romWords) {
 	this.bootROM = romWords;
 }
 
-{
-	let $proto = RISCMachine.prototype;
+(function($proto) {
+	var $proto = RISCMachine.prototype;
 
 	RISCMachine.GeneralRegisterCount = $proto.GeneralRegisterCount = 16;
 	RISCMachine.SpecialRegisterCount = $proto.SpecialRegisterCount =  2;
@@ -67,13 +67,13 @@ function RISCMachine(romWords) {
 
 	$proto.memReadIO = function(address) {
 		switch (address - this.IOStart) {
-			case  0: return emulator.tickCount | 0;
+			case  0: return emulator.getTickCount();
 			case  8: return emulator.link.getData();
 			case 12: return emulator.link.getStatus();
 			case 24: return emulator.getInputStatus();
 			case 28: return emulator.getKeyCode();
-			case 40: return emulator.clipboard.size;
-			case 44: return emulator.clipboard.get();
+			case 40: return emulator.clipboard.getSize();
+			case 44: return emulator.clipboard.getData();
 			default: return 0;
 		}
 	}
@@ -85,7 +85,7 @@ function RISCMachine(romWords) {
 			case  8: return void(emulator.link.setData(val));
 			case 36: return void(emulator.storageRequest(val, this.mainMemory));
 			case 40: return void(emulator.clipboard.expect(val));
-			case 44: return void(emulator.clipboard.put(val));
+			case 44: return void(emulator.clipboard.putData(val));
 		}
 	}
 
@@ -313,7 +313,7 @@ function RISCMachine(romWords) {
 			this.memWriteWord(address | 0, value & 0xFF);
 		}
 	}
-}
+})();
 
 var _ieeeBuffer = new ArrayBuffer(4);
 var _floatBuffer = new Float32Array(_ieeeBuffer);

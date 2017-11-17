@@ -1,3 +1,6 @@
+<!DOCTYPE html>
+<html>
+<head>
 <meta charset="utf-8">
 <style>
 body { font-family: Verdana, Arial, Helvetica, sans-serif; }
@@ -14,34 +17,37 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   color: #677073;
 }
 #controlbar > *, .endcontrols > * { display: inline-block; }
-#systemcontrol { line-height: 2em; }
+#systemcontrol, .endcontrols { line-height: 2em; }
 .endcontrols { float: right; }
 #settingsbutton {
   width: 2em;
-  height: 100%;
-  border: 0;
-  background-color: inherit;
+  color: transparent;
+  background-size: 1em;
+  background-color: #f7f5f0;
   background-position: center;
   background-repeat: no-repeat;
 }
-#ledbox { font-size: 0; }
-#ledbox > table { height: 100%; }
 .led {
-  display: inline; padding: 2px 6px; cursor: default; 
+  display: inline-block; cursor: default;
   border:1px solid #dfe4e6; border-radius: 50%;
   font-size: small; color: #677073;
 }
 .led.lit {
   background-color: #bbedff;
 }
-#buttonbox { font-size: 0; background-color: #dfe4e6; }
+.led > .label {
+  width: 1.5em; height: 1.5em; line-height: 1.5em;
+  vertical-align: middle; text-align: center;
+}
+#buttonbox { background-color: #dfe4e6; }
 .mousebtn.active { background-color: #677073; }
 .mousebtn.interclick { background-color: #b4c6cc; }
 .mousebtn {
-  width: 1.25em; height: 100%; background-color: inherit; color:#FFF;
+  width: 1.25em; height: 2.5em; /* 2.5em × 80% [font-size] = 2em */
+  background-color: #dfe4e6; color:#FFF;
   border: 0px; border-radius: 0 0 4px 4px;
   margin: 0; padding: 0;
-  font-size: small;
+  font-size: 0.8em;
   text-shadow:
     -1px 0 #000, 0 -1px #000, 1px 0 #000, 0 1px #000,
     -1px -1px #000, -1px 1px #000, 1px -1px #000, 1px 1px #000;
@@ -50,8 +56,8 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   position: relative;
 }
 .menu input[type="button"] {
-  height: 100%;
-  background-color: inherit; color: inherit;
+  height: 2em;
+  background-color: #f7f5f0; color: #677073;
   border: 0;
 }
 .menu input[type="button"].bordered {
@@ -83,7 +89,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   height: 100%;
 }
 .menuitem > input[type="button"], button.menuitem {
-  border: 0px; background-color: inherit; color: inherit;
+  border: 0px; background-color: #454b4d; color: #dcdfe0;
   text-align: left;
   width: 100%;
 }
@@ -107,7 +113,8 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 </style>
 <script src="risc.js"></script>
 <script src="webdriver.js"></script>
-
+</head>
+<body>
 <div id="emulatorface">
 <div id="controlbar">
   <div id="systemcontrol" class="menu">
@@ -136,7 +143,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
     <div class="menu">
       <input type="button" id="settingsbutton" class="iconlabel menubutton"
              onclick="emulator.ui.togglePopup(this);"
-             title="Settings">
+             value="Settings" title="Settings">
       <div class="popup right">
         <button id="breakbutton" class="menuitem"
                 onclick="emulator.reset(false);">Break</button>
@@ -175,26 +182,22 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
       </div>
     </div>
     <div id="ledbox">
-      <table>
-        <tr>
-          <td><div id="led7" class="led">7</div></td>
-          <td><div id="led6" class="led">6</div></td>
-          <td><div id="led5" class="led">5</div></td>
-          <td><div id="led4" class="led">4</div></td>
-          <td><div id="led3" class="led">3</div></td>
-          <td><div id="led2" class="led">2</div></td>
-          <td><div id="led1" class="led">1</div></td>
-          <td><div id="led0" class="led">0</div></td>
-        </tr>
-      </table>
+       <span id="led7" class="led"><div class="label">7</div></span>
+       <span id="led6" class="led"><div class="label">6</div></span>
+       <span id="led5" class="led"><div class="label">5</div></span>
+       <span id="led4" class="led"><div class="label">4</div></span>
+       <span id="led3" class="led"><div class="label">3</div></span>
+       <span id="led2" class="led"><div class="label">2</div></span>
+       <span id="led1" class="led"><div class="label">1</div></span>
+       <span id="led0" class="led"><div class="label">0</div></span>
     </div>
     <div id="buttonbox"
          onmouseup="emulator.ui.selectMouseButton(event);"
-         onmousedown="emulator.ui.selectMouseButton(event);">
-      <input type="button" data-button="1" value="L" class="mousebtn active">
-      <input type="button" data-button="2" value="M" class="mousebtn">
-      <input type="button" data-button="3" value="R" class="mousebtn">
-    </div>
+         onmousedown="emulator.ui.selectMouseButton(event);"><!--
+   --><input type="button" name="1" value="L" class="mousebtn active"><!--
+   --><input type="button" name="2" value="M" class="mousebtn"><!--
+   --><input type="button" name="3" value="R" class="mousebtn"><!--
+ --></div>
   </div>
 </div>
 <canvas id="screen" tabindex="1000"></canvas>
@@ -204,6 +207,8 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 
 <style>
 .iconlabel#settingsbutton {
-  background-image: url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D"http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg"%20version%3D"1.1"%0D%0A%20width%3D"1em"%20height%3D"1em"%20viewBox%3D"0%200%201536%201536"%3E%0D%0A%20%3Cpath%20fill%3D"%23677073"%20d%3D"m%201024%2C768%20q%200%2C106%20-75%2C181%20-75%2C75%20-181%2C75%20-106%2C0%20-181%2C-75%20-75%2C-75%20-75%2C-181%200%2C-106%2075%2C-181%2075%2C-75%20181%2C-75%20106%2C0%20181%2C75%2075%2C75%2075%2C181%20z%20m%20512%2C109%200%2C-222%20q%200%2C-12%20-8%2C-23%20-8%2C-11%20-20%2C-13%20l%20-185%2C-28%20q%20-19%2C-54%20-39%2C-91%2035%2C-50%20107%2C-138%2010%2C-12%2010%2C-25%200%2C-13%20-9%2C-23%20-27%2C-37%20-99%2C-108%20-72%2C-71%20-94%2C-71%20-12%2C0%20-26%2C9%20L%201035%2C252%20Q%20991%2C229%20944%2C214%20928%2C78%20915%2C28%20908%2C0%20879%2C0%20L%20657%2C0%20Q%20643%2C0%20632.5%2C8.5%20622%2C17%20621%2C30%20l%20-28%2C184%20q%20-49%2C16%20-90%2C37%20L%20362%2C144%20q%20-10%2C-9%20-25%2C-9%20-14%2C0%20-25%2C11%20-126%2C114%20-165%2C168%20-7%2C10%20-7%2C23%200%2C12%208%2C23%2015%2C21%2051%2C66.5%2036%2C45.5%2054%2C70.5%20-27%2C50%20-41%2C99%20L%2029%2C623%20Q%2016%2C625%208%2C635.5%200%2C646%200%2C659%20l%200%2C222%20q%200%2C12%208%2C23%208%2C11%2019%2C13%20l%20186%2C28%20q%2014%2C46%2039%2C92%20-40%2C57%20-107%2C138%20-10%2C12%20-10%2C24%200%2C10%209%2C23%2026%2C36%2098.5%2C107.5%2072.5%2C71.5%2094.5%2C71.5%2013%2C0%2026%2C-10%20l%20138%2C-107%20q%2044%2C23%2091%2C38%2016%2C136%2029%2C186%207%2C28%2036%2C28%20l%20222%2C0%20q%2014%2C0%2024.5%2C-8.5%20Q%20914%2C1519%20915%2C1506%20l%2028%2C-184%20q%2049%2C-16%2090%2C-37%20l%20142%2C107%20q%209%2C9%2024%2C9%2013%2C0%2025%2C-10%20129%2C-119%20165%2C-170%207%2C-8%207%2C-22%200%2C-12%20-8%2C-23%20-15%2C-21%20-51%2C-66.5%20-36%2C-45.5%20-54%2C-70.5%2026%2C-50%2041%2C-98%20l%20183%2C-28%20q%2013%2C-2%2021%2C-12.5%208%2C-10.5%208%2C-23.5%20z"%2F%3E%0D%0A%3C%2Fsvg%3E');
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAlAAAAJQBeb8N7wAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAUoSURBVHja3VtdjBRFEB78A4xGRXz3ARLxj2BEX%2FwFXogvSliM0cS70%2B3dW7LXP9V3xxkfFgzBBGJUIqIxJP6gUYy%2FCf4QfTAhGn0hBEI4NPIsR2IiCnp3YNXsHoruzkz31OztzCSVu%2Bxu91R%2F3V1VX3V1EHTnmVNR8CHKFMq5GJmuaPiU2gRFeWpKLUkw8AvFmKWFAaCq7UPOAGjbXxgAhIYNzgAoeLEwAFQk7PIA4KueHVBZwvKytquSbwHY7wHAz0kNbFXZFYPS3tql%2FQwalTsbKinNB2J09KrYFaBgwgOAqVKjcVlUv31KXU0eY8Z7VCVsztR7VKQd%2Fa%2BiQsFxIe2dHfc%2FwEKPwYdS03pRp35pxvE3P7Zpt6ev0ZjH7scR3W0dlZVwGmei2lZRPXy3LwBlBavbT4R5rKLM7xFtvxSicTnLyBuNxkVC2Z1JFK5Ks7tWq10RbhVl70NX9iZ%2BfsoXAJQ%2FhIR3KkNmJfVJW0Josz2RLgr2aa3np1%2F22rzqpLSEI%2Fjy71MMutOAqM%2FvHNvsrdfrc9O4r6e5B9JtwSDsPS%2FDiI0fOW%2Ft8w6CspucBv%2BE1guw4ZkiDL4lZ6M81f%2Be9evHri0YAOfKWt%2FruAWMKQ4A9nVfDr%2BnAAAc9I4JKMzFDsZzPPhfo6LJhFRW3xITdfWs4UNZw0OAFDyaO9cnYQsvEcqVPTDflEqli7mTmoeYFDyBDPINYpZCw%2BMkIcts8oYTTO84wEqLUeEHGZQ6irI2amboOyFNicPwdmKSnoTofNLBTyS8JIS4NDHg%2BFsMX3ek3AYfsSx9AXADdvinryIYgg57rzxsmwKEv5AIrcMI8Ka4zFLQX69fh7z7rqoyA2Q9hbbvUwARJjpSznx6D5R2JTTTa5Q9InqM43yOkjfCmPtDqoxfvJKRNT7qsuyjtkOGwdjnBMBkRp2vZTxYWZeRjtNBRvz7F04%2FTH0xusgLJBMAyM%2BzZ6QVvJUbANDYjPADYMfyswIwumMHQNv%2BHK0A08d%2BIoUuOjcAUGyfwQnzU%2FkBAIkN%2BwqQZnd%2BAFBwMgM3OJEVANOZGEJkdXyHsubhjCZqkrK%2FX2TU%2BThHKByeByo4lk28YncGRAjo8FEoM4gfPo8G7DP8%2B1PCiq64iHBH%2BlxEsoPZqFlucYlPMJbYimA%2BiSTtHiKAkS8mYIhKtuLwydmgwxRQpaLDxizjWIWkyN6UtPhlF0Wayz7dzONMf8wZh6%2FhsAm0muJSYmTwOPY8AvgAGwBUJFHRcJjJ%2BEw0iY0do4iRJPy%2F6edPcp0GsSZFQwAkfJ2zmgBOIgIb81cTYAZ4agK1XcXhErsuEk4LNXxbSuuvrmfcl7Mh40nqGDvGAWicfsj78XjLHXrUCLlWh%2FX2WaFxGnya4sYelTNU9uMw%2B%2Fr2olSIzRRcDg5uuMbV9T1TlAoxqm%2Fwqw%2FGgKIA%2B996u0HyBM5ESMK3mZXKSjjilp0221MHQlR6ToXHyUJQ88IM66NLDPjZ27T%2FUgz8FOUXZ2r8qBC7VUiRdPA8fIDKzGIyR78Ri2sbSSpY7QsAeaP2CVJbjgbWbmW%2FLIGE6BKMDV5rdwpcHbI3dzSmQ8OLfQGIcl2VOtzYtmxHm2ezvDFDFyc2%2FyuR%2Bu7AyMiVcckNTy4xEacMvTu8T%2FDPzI915d4Q1Q7ShQiHGqPj7pQW9id22UNmZVXrO4JefbxyCRJ2BUV56BJkLxyvzR4AHie7VJpXHACMWep8ZU6pJUGBnjnNg4lEx3BTdCEz6NL1%2Bb8BcpascGtu3iIAAAAASUVORK5CYII%3D');
 }
 </style>
+</body>
+</html>
