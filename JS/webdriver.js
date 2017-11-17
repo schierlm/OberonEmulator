@@ -370,9 +370,9 @@ function ControlBarUI(emulator, width, height) {
 		this.linkExportButton = $("linkexportbutton");
 
 		$ = document.querySelector.bind(document);
-		this.clickLeft = $(".mousebtn[data-button='1']");
-		this.clickMiddle = $(".mousebtn[data-button='2']");
-		this.clickRight = $(".mousebtn[data-button='3']");
+		this.clickLeft = $(".mousebtn[name='1']");
+		this.clickMiddle = $(".mousebtn[name='2']");
+		this.clickRight = $(".mousebtn[name='3']");
 
 		this.controlBarBox.style.width = width + "px";
 		this.clipboardInput.style.width = width + "px";
@@ -442,12 +442,12 @@ function ControlBarUI(emulator, width, height) {
 
 			clicked.classList.add("active");
 
-			this.emulator.activeButton = clicked.dataset.button;
+			this.emulator.activeButton = parseInt(clicked.name);
 			this.emulator.interclickButton = 0;
 		}
 		else {
-			if (clicked.dataset.button === this.emulator.activeButton) return;
-			this.emulator.interclickButton = clicked.dataset.button;
+			if (parseInt(clicked.name) === this.emulator.activeButton) return;
+			this.emulator.interclickButton = parseInt(clicked.name);
 			clicked.classList.add("interclick");
 		}
 	};
