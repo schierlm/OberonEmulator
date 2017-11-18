@@ -12,13 +12,13 @@ Batch.Run
 |> Batch.Collect
 |> ImageTool.AddFiles Clipboard.rsc Curves.rsc Draw.rsc Edit.rsc Fonts.rsc
 	GraphTool.rsc GraphicFrames.rsc Graphics.rsc Input.rsc MenuViewers.rsc
-	ORB.rsc ORG.rsc ORP.rsc ORS.rsc ORTool.rsc Oberon.rsc Raster.rsc
+	ORB.rsc ORG.rsc ORP.rsc ORS.rsc ORTool.rsc Oberon.rsc Display.rsc
 	Rectangles.rsc System.rsc TextFrames.rsc Texts.rsc Viewers.rsc PCLink1.rsc
 ~ |> Batch.Collect |> ImageTool.AddFiles
 	Kernel.smb FileDir.smb Files.smb  Modules.smb
 	Clipboard.smb Curves.smb Draw.smb Edit.smb Fonts.smb
 	GraphTool.smb GraphicFrames.smb Graphics.smb Input.smb MenuViewers.smb
-	ORB.smb ORG.smb ORP.smb ORS.smb ORTool.smb Oberon.smb Raster.smb
+	ORB.smb ORG.smb ORP.smb ORS.smb ORTool.smb Oberon.smb Display.smb
 	Rectangles.smb System.smb TextFrames.smb Texts.smb Viewers.smb PCLink1.smb
 ~ |> Batch.Collect |> ImageTool.AddFiles
 	Elektra.Scn.Fnt Oberon10.Scn.Fnt Oberon10b.Scn.Fnt Oberon10i.Scn.Fnt
