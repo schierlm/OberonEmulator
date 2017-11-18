@@ -313,6 +313,7 @@ function WebDriver(imageName, width, height) {
 	$proto._onMouseButton = function(event) {
 		this.ui.closeOpenPopups();
 		var button = event.button + 1;
+		if (button === 2) event.preventDefault();
 		if (event.type === "mousedown") {
 			if (button === 1) button = this.activeButton;
 			this.registerMouseButton(button, true);
