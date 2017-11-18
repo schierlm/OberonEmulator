@@ -110,15 +110,21 @@ var clipboard;
 		};
 		screen.onmousedown = function(e) {
 			var button = e.button + 1;
+			if (button == 2) e.preventDefault();
 			if (button == 1) button = activeButton;
 			hwMouseButton(button, true);
 		};
 		screen.onmouseup = function(e) {
 			var button = e.button + 1;
+			if (button == 2) e.preventDefault();
 			if (button == 1) {
 				if (interClickButton != 0) {
 					hwMouseButton(interClickButton, true);
-					hwMouseButton(interClickButton, false);
+					setTimeout(function() {
+						hwMouseButton(interClickButton, false);
+						hwMouseButton(activeButton, false);
+					}, 10);
+					return;
 				}
 				button = activeButton;
 			}
