@@ -303,8 +303,9 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto._onMouseMove = function(event) {
-		var deltaH = -(this.screen.offsetLeft + document.body.scrollLeft);
-		var deltaV = -(this.screen.offsetTop + document.body.scrollTop);
+		var root = document.documentElement;
+		var deltaH = root.scrollLeft - this.screen.offsetLeft;
+		var deltaV = root.scrollTop - this.screen.offsetTop;
 		var x = event.clientX + deltaH;
 		var y = -(event.clientY + deltaV) + this.screen.height - 1;
 		this.registerMousePosition(x, y);
