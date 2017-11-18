@@ -54,9 +54,9 @@ Batch.Run
 |> Batch.ClearLog
 |> Batch.Collect |> XORP.Compile Draw.Mod/s ~
 |> Batch.Collect |> XORP.Compile GraphTool.Mod/s ~
-|> Batch.Collect |> XORP.Compile Rectangles.Mod/s ~
+|> Batch.Collect |> XORP.Compile Rectangles.Mod/s PCLink1.Mod/s ~
 |> Batch.Collect |> XORP.Compile Curves.Mod/s RealCalc.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 0B81C7DD8H
+|> Batch.Collect |> Batch.VerifyLog 74265013H
 |> Batch.WriteLog * \ 1 "*** Building MinimalDiskImage"
 |> Batch.WriteLog 0 ".Bin ***"
 |> System.CopyFiles System.Tool.Min => System.Tool.X ~
@@ -67,13 +67,13 @@ Batch.Run
 |> ImageTool.AddFiles System.Tool.X Oberon10.Scn.Fnt
         Input.rsc.X Display.rsc.X Viewers.rsc.X Fonts.rsc.X
         Texts.rsc.X Oberon.rsc.X MenuViewers.rsc.X TextFrames.rsc.X
-        System.rsc.X Edit.rsc.X Clipboard.rsc.X ~
+        System.rsc.X Edit.rsc.X Clipboard.rsc.X PCLink1.rsc.X ~
 |> Batch.Collect
 |> ImageORL.Link
 |> ImageTool.Close
 |> Batch.Collect
 |> System.RenameFiles DiskImage.Bin => MinimalDiskImage.Bin ~
-|> Batch.VerifyLog 143DECAAH
+|> Batch.VerifyLog 89B6004EH
 |> Batch.Collect
 |> Batch.Collect
 |> Batch.WriteLog * 1 "*** Building DiskImage.Bin ***"
@@ -83,7 +83,7 @@ Batch.Run
 |> ImageTool.AddFiles System.Tool.X Oberon10.Scn.Fnt
         Input.rsc.X Display.rsc.X Viewers.rsc.X Fonts.rsc.X
         Texts.rsc.X Oberon.rsc.X MenuViewers.rsc.X TextFrames.rsc.X
-        System.rsc.X Edit.rsc.X Clipboard.rsc.X
+        System.rsc.X Edit.rsc.X Clipboard.rsc.X PCLink1.rsc.X
         ORS.rsc.X ORB.rsc.X ORG.rsc.X ORP.rsc.X
         ORTool.rsc.X Calc.rsc.X RealCalc.rsc.X ResourceMonitor.rsc.X
         Graphics.rsc.X GraphicFrames.rsc.X Draw.rsc.X
@@ -93,7 +93,7 @@ Batch.Run
         Kernel.smb.X FileDir.smb.X Files.smb.X Modules.smb.X
         Input.smb.X Display.smb.X Viewers.smb.X Fonts.smb.X
         Texts.smb.X Oberon.smb.X MenuViewers.smb.X TextFrames.smb.X
-        System.smb.X Edit.smb.X Clipboard.smb.X
+        System.smb.X Edit.smb.X Clipboard.smb.X PCLink1.smb.X
         ORS.smb.X ORB.smb.X ORG.smb.X ORP.smb.X
         ORTool.smb.X Calc.smb.X RealCalc.smb.X ResourceMonitor.smb.X
 ~ |> Batch.Collect |> ImageTool.AddFiles
@@ -107,7 +107,7 @@ Batch.Run
 |> Batch.Collect
 |> ImageORL.Link
 |> ImageTool.Close
-|> Batch.VerifyLog 81DC017CH
+|> Batch.VerifyLog 0A924EC6CH
 |> Batch.Collect
 |> Batch.WriteLog * 3 "*** FINISHED ***"
 ||

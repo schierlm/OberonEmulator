@@ -15,7 +15,4 @@ patch -d work <reduce-filesystem-offset.patch
 
 ./derive-files.sh
 
-sed 's/PCLink1.Run  //' \
-    -i work/System.Tool.Full.txt
-
 patch -d work <fix-js-start-offset.patch
