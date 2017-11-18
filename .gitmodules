@@ -1,0 +1,3 @@
+[submodule "Oberon/wirth-personal"]
+	path = Oberon/wirth-personal
+	url = https://github.com/Spirit-of-Oberon/wirth-personal

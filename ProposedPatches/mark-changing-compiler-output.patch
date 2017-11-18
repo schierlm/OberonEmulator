@@ -1,6 +1,6 @@
 --- 1/ORP.Mod.txt
 +++ 2/ORP.Mod.txt
-@@ -942,6 +942,6 @@
+@@ -940,6 +940,6 @@
        END ;
        IF ORS.errcnt = 0 THEN
 -        ORG.Close(modid, key, exno);

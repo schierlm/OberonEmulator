@@ -1,12 +1,12 @@
 --- 1/XORB.Mod.txt
 +++ 2/XORB.Mod.txt
 @@ -1,4 +1,4 @@
--MODULE ORB;   (*NW 25.6.2014  / 17.9.2016  in Oberon-07*)
-+MODULE XORB;   (*NW 25.6.2014  / 17.9.2016  in Oberon-07*)
+-MODULE ORB;   (*NW 25.6.2014  / 19.4.2017  in Oberon-07*)
++MODULE XORB;   (*NW 25.6.2014  / 19.4.2017  in Oberon-07*)
    IMPORT Files, ORS;
    (*Definition of data types Object and Type, which together form the data structure
      called "symbol table". Contains procedures for creation of Objects, and for search:
-@@ -210,7 +210,7 @@
+@@ -211,7 +211,7 @@
      IF modid1 = "SYSTEM" THEN
        thismod := ThisModule(modid, modid1, TRUE, key); DEC(nofmod);
        thismod.lev := 0; thismod.dsc := system; thismod.rdo := TRUE
@@ -15,7 +15,7 @@
        IF F # NIL THEN
          Files.Set(R, F, 0); Files.ReadInt(R, key); Files.ReadInt(R, key); Files.ReadString(R, modname);
          thismod := ThisModule(modid, modid1, TRUE, key); thismod.rdo := TRUE;
-@@ -305,7 +305,7 @@
+@@ -304,7 +304,7 @@
        obj, obj0: Object;
        filename: ORS.Ident;
        F, F1: Files.File; R, R1: Files.Rider;
@@ -24,7 +24,7 @@
      F := Files.New(filename); Files.Set(R, F, 0);
      Files.WriteInt(R, 0); (*placeholder*)
      Files.WriteInt(R, 0); (*placeholder for key to be inserted at the end*)
-@@ -426,4 +426,4 @@
+@@ -425,4 +425,4 @@
    enter("COPY", SProc, noType, 123);
    enter("PUT", SProc, noType, 112);
    enter("GET", SProc, noType, 102);
@@ -33,9 +33,9 @@
 --- 1/XORG.Mod.txt
 +++ 2/XORG.Mod.txt
 @@ -1,5 +1,5 @@
--MODULE ORG; (* NW  18.4.2016 / 17.9.2016  code generator in Oberon-07 for RISC*)
+-MODULE ORG; (* NW  18.4.2016 / 4.4.2017  code generator in Oberon-07 for RISC*)
 -  IMPORT SYSTEM, Files, ORS, ORB;
-+MODULE XORG; (* NW  18.4.2016 / 17.9.2016  code generator in Oberon-07 for RISC*)
++MODULE XORG; (* NW  18.4.2016 / 4.4.2017  code generator in Oberon-07 for RISC*)
 +  IMPORT SYSTEM, Files, ORS, ORB := XORB;
    (*Code generator for Oberon compiler for RISC processor.
       Procedural interface to Parser OSAP; result in array "code".
@@ -58,14 +58,14 @@
 --- 1/XORP.Mod.txt
 +++ 2/XORP.Mod.txt
 @@ -1,5 +1,5 @@
--MODULE ORP; (*N. Wirth 1.7.97 / 17.10.2016  Oberon compiler for RISC in Oberon-07*)
+-MODULE ORP; (*N. Wirth 1.7.97 / 23.9.2017  Oberon compiler for RISC in Oberon-07*)
 -  IMPORT Texts, Oberon, ORS, ORB, ORG;
-+MODULE XORP; (*N. Wirth 1.7.97 / 17.10.2016  Oberon compiler for RISC in Oberon-07*)
++MODULE XORP; (*N. Wirth 1.7.97 / 23.9.2017  Oberon compiler for RISC in Oberon-07*)
 +  IMPORT Texts, Oberon, ORS, ORB := XORB, ORG := XORG;
    (*Author: Niklaus Wirth, 2014.
      Parser of Oberon-RISC compiler. Uses Scanner ORS to obtain symbols (tokens),
      ORB for definition of data structures and for handling import and export, and
-@@ -995,4 +995,4 @@
+@@ -993,4 +993,4 @@
    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
    NEW(dummy); dummy.class := ORB.Var; dummy.type := ORB.intType;
    expression := expression0; Type := Type0; FormalType := FormalType0
