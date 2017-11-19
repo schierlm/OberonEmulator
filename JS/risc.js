@@ -91,7 +91,7 @@ function RISCMachine(romWords) {
 
 	$proto.memWriteVideo = function(address, val) {
 		this.mainMemory[address / 4 | 0] = val;
-		let offset = (address - this.DisplayStart) / 4;
+		var offset = (address - this.DisplayStart) / 4;
 		emulator.registerVideoChange(offset, val);
 	}
 
