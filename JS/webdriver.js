@@ -313,6 +313,7 @@ function WebDriver(imageName, width, height) {
 	$proto._onMouseButton = function(event) {
 		this.ui.closeOpenPopups();
 		var button = event.button + 1;
+		if (button === 2) event.preventDefault();
 		if (event.type === "mousedown") {
 			if (button === 1) button = this.activeButton;
 			this.registerMouseButton(button, true);
@@ -826,8 +827,12 @@ function DemandTransfer(name) {
 				}
 			break;
 			case 3:
-				this.blocks.push(new Uint8Array(val));
-				this.readyState = 4;
+				if (val === 0) {
+					this.readyState = -1;
+				} else {
+					this.blocks.push(new Uint8Array(val));
+					this.readyState = 4;
+				}
 			break;
 			case 4:
 				topBlock = this.blocks[this.blocks.length - 1];
