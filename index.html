@@ -1,5 +1,7 @@
+<!DOCTYPE html>
 <html>
 <head>
+<meta charset="utf-8">
 <title>Project Oberon emulator in JavaScript and Java</title>
 <style>
 body { font-family: Verdana, Arial, Helvetica, sans-serif; }
@@ -31,12 +33,12 @@ You also need a fairly fast PC or some patience during the boot process.</p>
 <p>
 <form id="emuform" style="display:none;">
 	<select name="size">
-		<option>800x400</option>
-		<option>800x450</option>
-		<option>800x600</option>
-		<option>1024x512</option>
-		<option selected>1024x576</option>
-		<option>1024x768</option>
+		<option>800×400</option>
+		<option>800×450</option>
+		<option>800×600</option>
+		<option>1024×512</option>
+		<option selected>1024×576</option>
+		<option>1024×768</option>
 	</select>
 	<select name="image">
 		<option selected>MinimalDiskImage</option>
@@ -45,6 +47,7 @@ You also need a fairly fast PC or some patience during the boot process.</p>
 		<option>ExperimentalOberonDiskImage</option>
 	</select>
 	<input type="Button" value="Start" onclick="startEmu()">
+	<label><input type="checkbox" name="oldemu" value="false">Use old (ugly) emulator</label>
 </form>
 <script type="text/javascript">
 try {
@@ -60,9 +63,16 @@ try {
 }
 
 function startEmu() {
-	var size = document.forms.emuform.size.value;
-	var image = document.forms.emuform.image.value;
-	document.location.href="old_emu.html#"+image+","+size.split("x").join(",");
+	if (document.forms.emuform.oldemu.checked) {
+		var size = document.forms.emuform.size.value;
+		var image = document.forms.emuform.image.value;
+		document.location.href="old_emu.html#"+image+","+size.split("×").join(",");
+		return;
+	}
+	var imageName = document.forms.emuform.image.value;
+	var size = document.forms.emuform.size.value.split("×");
+	document.location.href = "emu.html?image=" + imageName +
+		"&width=" + size[0] + "&height=" + size[1];
 }
 </script>
 <noscript>
