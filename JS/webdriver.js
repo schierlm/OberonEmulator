@@ -323,7 +323,12 @@ function WebDriver(imageName, width, height) {
 			if (button === 1) {
 				if (this.interclickButton !== 0) {
 					this.registerMouseButton(this.interclickButton, true);
-					this.registerMouseButton(this.interclickButton, false);
+					var that = this;
+					window.setTimeout(function() {
+						that.registerMouseButton(that.interclickButton, false);
+						that.registerMouseButton(that.activeButton, false);
+					}, 10);
+					return;
 				}
 				button = this.activeButton;
 			}
