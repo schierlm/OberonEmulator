@@ -282,7 +282,8 @@ function WebDriver(imageName, width, height) {
 
 	$proto.exportFile = function() {
 		var name = this.ui.linkNameInput.value;
-		if (name) this.link.demandFile(name);
+		if (name.indexOf("*") != -1) this.link.demandFilesByGlob(name);
+		else if (name) this.link.demandFile(name);
 	};
 
 	// DOM Event handling
@@ -655,6 +656,7 @@ function FileLink(emulator) {
 
 	FileLink.SUPPLY_TRANSFER = $proto.SUPPLY_TRANSFER = 0x21;
 	FileLink.DEMAND_TRANSFER = $proto.DEMAND_TRANSFER = 0x22;
+	FileLink.GLOB_TRANSFER = $proto.GLOB_TRANSFER = 0x23;
 
 	FileLink.TX_READY = $proto.TX_READY = 0x01;
 	FileLink.RX_READY = $proto.RX_READY = 0x02;
@@ -682,7 +684,7 @@ function FileLink(emulator) {
 				}
 
 				if (this.intakeQueue.length) {
-					this.supplyFile(this.intakeQueue.shift());
+					this.transfer = this.intakeQueue.shift();
 				}
 			} else if (transfer.readyState !== 1) {
 				result |= this.TX_READY;
@@ -714,17 +716,26 @@ function FileLink(emulator) {
 	};
 
 	$proto.demandFile = function(name) {
-		if (this.transfer) throw new Error(
-			"Existing file transfer is ongoing; type: " + this.transfer.type
-		);
-		this.transfer = new DemandTransfer(name);
+		if (this.transfer) {
+			this.intakeQueue.push(new DemandTransfer(name));
+		} else {
+			this.transfer = new DemandTransfer(name);
+		}
 	};
 
 	$proto.supplyFile = function(file) {
 		if (this.transfer) {
-			this.intakeQueue.push(file);
+			this.intakeQueue.push(new SupplyTransfer(file));
 		} else {
 			this.transfer = new SupplyTransfer(file);
+		}
+	};
+
+	$proto.demandFilesByGlob = function(glob) {
+		if (this.transfer) {
+			this.intakeQueue.push(new GlobTransfer(this, glob));
+		} else {
+			this.transfer = new GlobTransfer(this, glob);
 		}
 	};
 
@@ -753,7 +764,14 @@ function SupplyTransfer(file) {
 			"Unexpected event: " + event.type
 		);
 
-		this.fileBytes = new DataView(event.target.result);
+		var result = event.target.result;
+		if (/\.txt$/.test(this.fileName)) {
+			this.fileName = this.fileName.substring(0, this.fileName.length - 4);
+			var text = String.fromCharCode.apply(null, new Uint8Array(event.target.result)).split(/\n|\r\n?/).join("\r");
+			result = new ArrayBuffer(text.length);
+			new Uint8Array(result).set(text.split('').map(function(x) {return x.charCodeAt();}));
+		}
+		this.fileBytes = new DataView(result);
 		this.readyState = 2;
 	};
 
@@ -869,6 +887,67 @@ function DemandTransfer(name) {
 		return result;
 	};
 })();
+
+function GlobTransfer(link, name) {
+	this._link = link;
+	this.type = FileLink.GLOB_TRANSFER;
+	this.count = 0;
+	this.fileName = name;
+	this.readyState = 2;
+	this.currentName = "";
+}
+
+(function(){
+	var $proto = GlobTransfer.prototype;
+
+	$proto.success = 0;
+
+	/**
+	 * readyState-based flow control:
+	 *   -1: Expect 1 (final) ACK is needed from us, then die
+	 *    0: Dead
+	 *    1: Start state/receive-only (unused)
+	 *    2: Ready for ACK
+	 *    3: Ready for file names
+	 */
+	$proto.acceptLinkByte = function(val) {
+		switch (this.readyState) {
+			case 2:
+				if (val === FileLink.NAK) {
+					this.success = FileLink.NAK;
+					this.readyState = 0;
+				} else if (val === FileLink.ACK) {
+					this.readyState = 3;
+				} else {
+					throw new Error("Expected ACK");
+				}
+			break;
+			case 3:
+				if (val === 0 && this.currentName.length === 0) {
+					this.readyState = -1;
+				} else if (val === 0) {
+					this._link.demandFile(this.currentName);
+					this.currentName = "";
+				} else {
+					this.currentName += String.fromCharCode(val);
+				}
+			break;
+			default: throw new Error("Unexpected state: " + this.readyState);
+		}
+	};
+
+	$proto.getPacketByte = function() {
+		if (this.readyState < 0 || this.readyState >= 2) {
+			result = FileLink.ACK;
+			if (this.readyState < 0) {
+				++this.readyState;
+			}
+		} else {
+			throw new Error("Unexpected byte request");
+		}
+		return result;
+	};
+})(); //
 
 function ImageReader(imageName, emulator) {
 	this.imageName = imageName;
