@@ -315,14 +315,14 @@ function RISCMachine(romWords) {
 	}
 })();
 
-var _ieeeBuffer = new ArrayBuffer(4);
-var _floatBuffer = new Float32Array(_ieeeBuffer);
-var _intBuffer = new Int32Array(_ieeeBuffer);
+var _ieeeDataView = new DataView(new ArrayBuffer(4));
 
 function _float2Int(bits) {
-	return _floatBuffer[0] = bits, _intBuffer[0];
+	_ieeeDataView.setFloat32(0, bits);
+	return _ieeeDataView.getInt32(0);
 }
 
 function _int2Float(bits) {
-	return _intBuffer[0] = bits, _floatBuffer[0];
+	_ieeeDataView.setInt32(0, bits);
+	return _ieeeDataView.getFloat32(0);
 }
