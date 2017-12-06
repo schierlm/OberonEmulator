@@ -285,6 +285,16 @@ function WebDriver(imageName, width, height) {
 		if (name) this.link.demandFile(name);
 	};
 
+	$proto.completeTransfer = function(transfer) {
+		// TODO: Add UI to retransmit files from the transfer history.
+		this.transferHistory.push(transfer);
+		if (transfer.success === this.link.NAK) {
+			alert("Transfer failed: " + transfer.fileName);
+		} else if (transfer.type === this.link.DEMAND_TRANSFER) {
+			this.save(transfer.fileName, transfer.blocks);
+		}
+	};
+
 	// DOM Event handling
 
 	$proto.handleEvent = function(event) {
@@ -646,8 +656,8 @@ function VirtualKeyboard(screen, emulator) {
 }
 
 function FileLink(emulator) {
-	this._emulator = emulator;
-	this.intakeQueue = [];
+	this.emulator = emulator;
+	this.pending = [];
 }
 
 (function(){
@@ -666,25 +676,10 @@ function FileLink(emulator) {
 
 	$proto.getStatus = function() {
 		var result = this.RX_READY;
-		var transfer = this.transfer;
-		if (transfer !== null) {
-			if (transfer.readyState === 0) {
-				delete this.transfer;
-
-				// TODO: Add UI to retransmit files from the transfer history.
-				this._emulator.transferHistory.push(transfer);
-
-				if (transfer.success === this.NAK) {
-					alert("Unable to transfer file with name " +
-						transfer.fileName);
-				} else if (transfer.type === this.DEMAND_TRANSFER) {
-					this._emulator.save(transfer.fileName, transfer.blocks);
-				}
-
-				if (this.intakeQueue.length) {
-					this.supplyFile(this.intakeQueue.shift());
-				}
-			} else if (transfer.readyState !== 1) {
+		if (this.transfer !== null) {
+			if (this.transfer.readyState === 0) {
+				throw new Error("Unexpected transfer state: 0 (dead)");
+			} else if (this.transfer.readyState !== 1) {
 				result |= this.TX_READY;
 			}
 		}
@@ -706,11 +701,13 @@ function FileLink(emulator) {
 		}
 
 		++this.transfer.count;
+		this._checkFinished(this.transfer);
 		return result;
 	};
 
 	$proto.setData = function(val) {
 		this.transfer.acceptLinkByte(val);
+		this._checkFinished(this.transfer);
 	};
 
 	$proto.demandFile = function(name) {
@@ -721,13 +718,23 @@ function FileLink(emulator) {
 	};
 
 	$proto.supplyFile = function(file) {
+		var transfer = new SupplyTransfer(file);
 		if (this.transfer) {
-			this.intakeQueue.push(file);
+			this.pending.push(transfer);
 		} else {
-			this.transfer = new SupplyTransfer(file);
+			this.transfer = transfer;
 		}
 	};
 
+	$proto._checkFinished = function(transfer) {
+		if (transfer.readyState === 0) {
+			delete this.transfer;
+			this.emulator.completeTransfer(transfer);
+			if (this.pending.length) {
+				this.transfer = this.pending.shift();
+			}
+		}
+	};
 })();
 
 function SupplyTransfer(file) {
@@ -803,6 +810,8 @@ function DemandTransfer(name) {
 	this.count = 0;
 	this.type = FileLink.DEMAND_TRANSFER;
 	this.fileName = name;
+	// [readyState: 1] is reserved for transfers' start state, but we're ready
+	// to transmit immediately, so we skip straight ahead to [readyState: 2].
 	this.readyState = 2;
 }
 
