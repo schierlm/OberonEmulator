@@ -271,7 +271,7 @@ function WebDriver(imageName, width, height) {
 	$proto.importFiles = function(files) {
 		if (files === undefined) files = this.ui.linkFileInput.files;
 		for (var i = 0; i < files.length; ++i) {
-			this.link.supplyFile(files[i]);
+			this.link.queue(new SupplyTransfer(files[i]));
 		}
 	};
 
@@ -281,8 +281,10 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.exportFile = function() {
-		var name = this.ui.linkNameInput.value;
-		if (name) this.link.demandFile(name);
+		var names = this.ui.linkNameInput.value.split(/\s+/);
+		for (var i = 0; i < names.length; ++i) {
+			if (names[i]) this.link.queue(new DemandTransfer(names[i]));
+		}
 	};
 
 	$proto.completeTransfer = function(transfer) {
@@ -674,6 +676,14 @@ function FileLink(emulator) {
 
 	$proto.transfer = null;
 
+	$proto.queue = function(transfer) {
+		if (this.transfer) {
+			this.pending.push(transfer);
+		} else {
+			this.transfer = transfer;
+		}
+	};
+
 	$proto.getStatus = function() {
 		var result = this.RX_READY;
 		if (this.transfer !== null) {
@@ -708,22 +718,6 @@ function FileLink(emulator) {
 	$proto.setData = function(val) {
 		this.transfer.acceptLinkByte(val);
 		this._checkFinished(this.transfer);
-	};
-
-	$proto.demandFile = function(name) {
-		if (this.transfer) throw new Error(
-			"Existing file transfer is ongoing; type: " + this.transfer.type
-		);
-		this.transfer = new DemandTransfer(name);
-	};
-
-	$proto.supplyFile = function(file) {
-		var transfer = new SupplyTransfer(file);
-		if (this.transfer) {
-			this.pending.push(transfer);
-		} else {
-			this.transfer = transfer;
-		}
 	};
 
 	$proto._checkFinished = function(transfer) {
