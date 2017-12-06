@@ -418,6 +418,21 @@ function ControlBarUI(emulator, width, height) {
 		}
 	};
 
+	$proto.toggleTransferPopup = function(menuButton) {
+		// This looks scarier than it is.  It's similar to a right-recursive
+		// rule for identifiers such as
+		//
+		//   ident  =  letter {letter | digit}.
+		//
+		// ... except this is for file names, and we're matching a whitespace-
+		// delimited list of one or more of them.
+		var fileNames = this.clipboardInput.value.match(
+			/^\s*([a-zA-Z][a-zA-Z0-9.]*)(?:\s+([a-zA-Z][a-zA-Z0-9.]*))*\s*$/
+		);
+		if (fileNames) this.linkNameInput.value = fileNames.slice(1).join(" ");
+		this.togglePopup(menuButton);
+	};
+
 	$proto.togglePopup = function(menuButton) {
 		var popup = menuButton.parentNode.querySelector(".popup");
 		if (!popup.classList.contains("open")) {
