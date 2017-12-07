@@ -271,7 +271,7 @@ function WebDriver(imageName, width, height) {
 	$proto.importFiles = function(files) {
 		if (files === undefined) files = this.ui.linkFileInput.files;
 		for (var i = 0; i < files.length; ++i) {
-			this.link.supplyFile(files[i]);
+			this.link.queue(new SupplyTransfer(files[i]));
 		}
 	};
 
@@ -281,9 +281,21 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.exportFile = function() {
-		var name = this.ui.linkNameInput.value;
-		if (name.indexOf("*") != -1) this.link.demandFilesByGlob(name);
-		else if (name) this.link.demandFile(name);
+		var names = this.ui.linkNameInput.value.split(/\s+/);
+		for (var i = 0; i < names.length; ++i) {
+			if (names[i].indexOf("*") != -1) this.link.queue(new GlobTransfer(this.link, names[i]));
+			else if (names[i]) this.link.queue(new DemandTransfer(names[i]));
+		}
+	};
+
+	$proto.completeTransfer = function(transfer) {
+		// TODO: Add UI to retransmit files from the transfer history.
+		this.transferHistory.push(transfer);
+		if (transfer.success === this.link.NAK) {
+			alert("Transfer failed: " + transfer.fileName);
+		} else if (transfer.type === this.link.DEMAND_TRANSFER) {
+			this.save(transfer.fileName, transfer.blocks);
+		}
 	};
 
 	// DOM Event handling
@@ -405,6 +417,21 @@ function ControlBarUI(emulator, width, height) {
 			this.leds[0].parentNode.style.marginRight =
 				(this.buttonBox.offsetWidth + 4) + "px";
 		}
+	};
+
+	$proto.toggleTransferPopup = function(menuButton) {
+		// This looks scarier than it is.  It's similar to a right-recursive
+		// rule for identifiers such as
+		//
+		//   ident  =  letter {letter | digit}.
+		//
+		// ... except this is for file names, and we're matching a whitespace-
+		// delimited list of one or more of them.
+		var fileNames = this.clipboardInput.value.match(
+			/^\s*([a-zA-Z][a-zA-Z0-9.]*)(?:\s+([a-zA-Z][a-zA-Z0-9.]*))*\s*$/
+		);
+		if (fileNames) this.linkNameInput.value = fileNames.slice(1).join(" ");
+		this.togglePopup(menuButton);
 	};
 
 	$proto.togglePopup = function(menuButton) {
@@ -647,8 +674,8 @@ function VirtualKeyboard(screen, emulator) {
 }
 
 function FileLink(emulator) {
-	this._emulator = emulator;
-	this.intakeQueue = [];
+	this.emulator = emulator;
+	this.pending = [];
 }
 
 (function(){
@@ -666,27 +693,20 @@ function FileLink(emulator) {
 
 	$proto.transfer = null;
 
+	$proto.queue = function(transfer) {
+		if (this.transfer) {
+			this.pending.push(transfer);
+		} else {
+			this.transfer = transfer;
+		}
+	};
+
 	$proto.getStatus = function() {
 		var result = this.RX_READY;
-		var transfer = this.transfer;
-		if (transfer !== null) {
-			if (transfer.readyState === 0) {
-				delete this.transfer;
-
-				// TODO: Add UI to retransmit files from the transfer history.
-				this._emulator.transferHistory.push(transfer);
-
-				if (transfer.success === this.NAK) {
-					alert("Unable to transfer file with name " +
-						transfer.fileName);
-				} else if (transfer.type === this.DEMAND_TRANSFER) {
-					this._emulator.save(transfer.fileName, transfer.blocks);
-				}
-
-				if (this.intakeQueue.length) {
-					this.transfer = this.intakeQueue.shift();
-				}
-			} else if (transfer.readyState !== 1) {
+		if (this.transfer !== null) {
+			if (this.transfer.readyState === 0) {
+				throw new Error("Unexpected transfer state: 0 (dead)");
+			} else if (this.transfer.readyState !== 1) {
 				result |= this.TX_READY;
 			}
 		}
@@ -708,34 +728,22 @@ function FileLink(emulator) {
 		}
 
 		++this.transfer.count;
+		this._checkFinished(this.transfer);
 		return result;
 	};
 
 	$proto.setData = function(val) {
 		this.transfer.acceptLinkByte(val);
+		this._checkFinished(this.transfer);
 	};
 
-	$proto.demandFile = function(name) {
-		if (this.transfer) {
-			this.intakeQueue.push(new DemandTransfer(name));
-		} else {
-			this.transfer = new DemandTransfer(name);
-		}
-	};
-
-	$proto.supplyFile = function(file) {
-		if (this.transfer) {
-			this.intakeQueue.push(new SupplyTransfer(file));
-		} else {
-			this.transfer = new SupplyTransfer(file);
-		}
-	};
-
-	$proto.demandFilesByGlob = function(glob) {
-		if (this.transfer) {
-			this.intakeQueue.push(new GlobTransfer(this, glob));
-		} else {
-			this.transfer = new GlobTransfer(this, glob);
+	$proto._checkFinished = function(transfer) {
+		if (transfer.readyState === 0) {
+			delete this.transfer;
+			this.emulator.completeTransfer(transfer);
+			if (this.pending.length) {
+				this.transfer = this.pending.shift();
+			}
 		}
 	};
 
@@ -821,6 +829,8 @@ function DemandTransfer(name) {
 	this.count = 0;
 	this.type = FileLink.DEMAND_TRANSFER;
 	this.fileName = name;
+	// [readyState: 1] is reserved for transfers' start state, but we're ready
+	// to transmit immediately, so we skip straight ahead to [readyState: 2].
 	this.readyState = 2;
 }
 
@@ -926,7 +936,7 @@ function GlobTransfer(link, name) {
 				if (val === 0 && this.currentName.length === 0) {
 					this.readyState = -1;
 				} else if (val === 0) {
-					this._link.demandFile(this.currentName);
+					this._link.queue(new DemandTransfer(this.currentName));
 					this.currentName = "";
 				} else {
 					this.currentName += String.fromCharCode(val);
