@@ -441,18 +441,20 @@ function ControlBarUI(emulator, width, height) {
 			var items = popup.querySelectorAll(".menuitem");
 			var baselineWidth = parseInt(this.controlBarBox.style.width) / 5;
 			var width = Math.max(menuButton.offsetWidth, baselineWidth | 0);
-			for (var i = 0; i < items.length; ++i) {
-				var itemWidth = 0;
-				var kids = items[i].childNodes;
-				for (var j = 0; j < kids.length; ++j) {
-					if (kids[j].offsetWidth !== undefined) {
-						itemWidth += kids[j].offsetWidth;
+			if (!popup.style.width) {
+				for (var i = 0; i < items.length; ++i) {
+					var itemWidth = 0;
+					var kids = items[i].childNodes;
+					for (var j = 0; j < kids.length; ++j) {
+						if (kids[j].offsetWidth !== undefined) {
+							itemWidth += kids[j].offsetWidth;
+						}
 					}
+					width = Math.max(width, itemWidth);
 				}
-				width = Math.max(width, itemWidth);
+				// NB: Assumes no margins.
+				popup.style.width = (width + 1) + "px";
 			}
-			// NB: Assumes no margins.
-			popup.style.width = (width + 1) + "px";
 		}
 		popup.classList.toggle("open");
 	};
