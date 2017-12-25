@@ -25,8 +25,10 @@ function WebDriver(imageName, width, height) {
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
 	this.link = new FileLink(this);
 
-	var reader = new PNGImageReader(imageName);
-	reader.prepareContentsThenNotify(this);
+	if (imageName !== undefined) {
+		var reader = new PNGImageReader(imageName);
+		reader.prepareContentsThenNotify(this);
+	}
 }
 
 (function(){
@@ -67,31 +69,47 @@ function WebDriver(imageName, width, height) {
 		}
 	};
 
-	$proto.bootFromSystemImage = function(contents, name) {
-		if (!this.isDisplayReady()) {
-			this.setUpDisplay(this.width, this.height);
+	// Two system image formats are supported: one with 1024-byte sectors
+	// in the format used for Peter De Wachter's RISC emulator, and another in
+	// the same form, except with the first disk sector preceded by another
+	// "sector" (1024-byte region) dedicated to the preferred boot ROM.
+	//
+	// If the image doesn't have a ROM, on our first boot we load our default,
+	// unless we've already booted once before, in which case we use whatever
+	// is already "burned in".
+	$proto.useSystemImage = function(name, contents, rom) {
+		if (rom === undefined) {
+			if (this._hasDirMark(contents, 0)) {
+				if (!this.machine) {
+					var reader = new ROMFileReader("boot.rom", contents, name);
+					return void(reader.prepareContentsThenNotify(this));
+				} else {
+					rom = this.machine.bootROM;
+				}
+			} else if (this._hasDirMark(contents, 1)) {
+				rom = contents.shift();
+			} else {
+				throw new Error("Invalid system image");
+			}
 		}
-
-		// Two system image formats are supported: one with 1024-byte sectors
-		// in the format used for Peter De Wachter's RISC emulator, and
-		// another in the same form except, except with the first disk sector
-		// preceded by another "sector" dedicated to the preferred ROM image.
-		this.startMillis = Date.now();
-		if (this._hasDirMark(contents, 0)) {
-			this.machine = new RISCMachine(this.machine.bootROM);
-		} else if (this._hasDirMark(contents, 1)) {
-			this.machine = new RISCMachine(contents.shift());
-		} else {
-			throw new Error("Invalid system image");
-		}
-		this.disk = contents;
-		this.reset(true);
-		this.ui.systemButton.value = name;
+		this.ui.markName(name);
+		this.bootFromDisk(contents, rom);
 	};
 
 	$proto._hasDirMark = function(contents, sectorNumber) {
 		var view = new DataView(contents[sectorNumber].buffer);
 		return view.getUint32(0) === 0x8DA31E9B;
+	};
+
+	$proto.bootFromDisk = function(disk, rom) {
+		if (!this.isDisplayReady()) {
+			this.setUpDisplay(this.width, this.height);
+		}
+
+		this.disk = disk;
+		this.startMillis = Date.now();
+		this.machine = new RISCMachine(rom);
+		this.reset(true);
 	};
 
 	$proto.isDisplayReady = function() {
@@ -434,6 +452,11 @@ function ControlBarUI(emulator) {
 			this.leds[0].parentNode.style.marginRight =
 				(this.buttonBox.offsetWidth + 4) + "px";
 		}
+	};
+
+	$proto.markName = function(name) {
+		this.systemButton.classList.remove("feedback");
+		this.systemButton.value = name;
 	};
 
 	$proto.resize = function(width, height) {
@@ -1025,8 +1048,8 @@ function PNGImageReader(name) {
 
 		context.drawImage(this.container, 0, 0);
 		var data = context.getImageData(0, 0, width, height).data;
-		var sectors = this._unpack(data, width, height);
-		this.listener.bootFromSystemImage(sectors, this.name);
+		var contents = this._unpack(data, width, height);
+		this.listener.useSystemImage(this.name, contents);
 	};
 
 	$proto._unpack = function(imageData, width, height) {
@@ -1056,6 +1079,21 @@ function DiskFileReader(file) {
 (function(){
 	var $proto = DiskFileReader.prototype;
 
+	DiskFileReader.getContents = $proto.getContents = function(buffer) {
+		var contents = [];
+		var sectorStart = 0;
+		var view = new DataView(buffer);
+		while (sectorStart < view.byteLength) {
+			var sectorWords = new Int32Array(1024 / 4);
+			for (var i = 0; i < 1024 / 4; i++) {
+				sectorWords[i] = view.getInt32(sectorStart + i * 4, true);
+			}
+			contents.push(sectorWords);
+			sectorStart += 1024;
+		}
+		return contents;
+	};
+
 	$proto.prepareContentsThenNotify = function(listener) {
 		this.listener = listener;
 		var reader = new FileReader();
@@ -1068,19 +1106,35 @@ function DiskFileReader(file) {
 			"Unexpected event: " + event.type
 		);
 
-		var reader = event.target;
-		var contents = [];
-		var sectorStart = 0;
-		var view = new DataView(reader.result);
-		while (sectorStart < view.byteLength) {
-			var sectorWords = new Int32Array(1024 / 4);
-			for (var i = 0; i < 1024 / 4; i++) {
-				sectorWords[i] = view.getInt32(sectorStart + i * 4, true);
-			}
-			contents.push(sectorWords);
-			sectorStart += 1024;
-		}
+		var contents = this.getContents(event.target.result);
+		this.listener.useSystemImage(this.file.name, contents);
+	};
+})();
 
-		this.listener.bootFromSystemImage(contents, this.file.name);
+function ROMFileReader(uri, disk, name) {
+	this.uri = uri;
+	this.disk = disk;
+	this.name = name;
+}
+
+(function(){
+	var $proto = ROMFileReader.prototype;
+
+	$proto.prepareContentsThenNotify = function(listener) {
+		this.listener = listener;
+		var request = new XMLHttpRequest();
+		request.addEventListener("load", this);
+		request.open("GET", this.uri);
+		request.responseType = "arraybuffer";
+		request.send(null);
+	};
+
+	$proto.handleEvent = function(event) {
+		if (event.type !== "load") throw new Error(
+			"Unexpected event: " + event.type
+		);
+
+		var contents = DiskFileReader.getContents(event.target.response);
+		this.listener.useSystemImage(this.name, this.disk, contents[0]);
 	};
 })();

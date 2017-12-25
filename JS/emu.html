@@ -25,6 +25,9 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   background-position: center right;
   background-repeat: no-repeat;
 }
+#systembutton.feedback {
+  font-style: italic;
+}
 #settingsbutton {
   width: 2em;
   color: transparent;
@@ -132,10 +135,11 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 <div id="emulatorface">
 <div id="controlbar">
   <div id="systemcontrol" class="menu">
-    <input type="button" id="systembutton" class="menubutton"
+    <input type="button" id="systembutton" class="feedback menubutton"
            onclick="emulator.ui.togglePopup(this);"
            ondragover="emulator.cancelEvent(event);"
-           ondrop="emulator.importDiskImageFromEvent(event);">
+           ondrop="emulator.importDiskImageFromEvent(event);"
+           value="Select disk image…">
     <div class="popup">
       <div class="menuitem">
         <input type="file" id="diskfileinput"
@@ -215,7 +219,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
  --></div>
   </div>
 </div>
-<canvas id="screen" tabindex="1000"></canvas>
+<canvas id="screen" tabindex="1000" height="0"></canvas>
 <textarea id="clipboardinput"></textarea>
 </div>
 <a id="localsaveanchor" style="display: none;"></a>
