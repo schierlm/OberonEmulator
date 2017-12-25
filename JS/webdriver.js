@@ -68,6 +68,14 @@ function WebDriver(imageName, width, height) {
 		if (resizeControlBar) {
 			this.ui.resize(this.width, this.height);
 		}
+		var size = this.width + "×" + this.height;
+		this.ui.selectItem(this.ui.settingsButton, "size", size);
+	};
+
+	$proto.setDimensionsFromEvent = function(event) {
+		var dimensions = event.target.value.split("×");
+		this.setDimensions(dimensions[0], dimensions[1], true);
+		this.ui.closeOpenPopups();
 	};
 
 	$proto.useConfiguration = function(config) {
@@ -100,6 +108,7 @@ function WebDriver(imageName, width, height) {
 	// unless we've already booted once before, in which case we use whatever
 	// is already "burned in".
 	$proto.useSystemImage = function(name, contents, rom) {
+		this.ui.markLoading();
 		this.imageName = name;
 		if (rom === undefined) {
 			if (this._hasDirMark(contents, 0)) {
@@ -292,6 +301,7 @@ function WebDriver(imageName, width, height) {
 
 	$proto.importDiskImage = function(file) {
 		if (file === undefined) file = this.ui.diskFileInput.files[0];
+		this.ui.markLoading();
 		this.chooseDisk(null);
 		var reader = new DiskFileReader(file);
 		reader.prepareContentsThenNotify(this);
@@ -487,6 +497,8 @@ function ControlBarUI(emulator) {
 	$proto.markLoading = function() {
 		this.systemButton.value = "Loading…";
 		this.systemButton.classList.add("feedback");
+		this.controlBarBox.classList.remove("preflight");
+		this.controlBarBox.classList.add("started");
 	};
 
 	$proto.markName = function(name) {

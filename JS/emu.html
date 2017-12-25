@@ -88,6 +88,12 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 .menu .popup.right {
   right: 0%;
 }
+#controlbar.preflight .midflight.menuitem {
+  display: none;
+}
+#controlbar.started .preflight.menuitem {
+  display: none;
+}
 .menuitem {
   display: block;
   height: 2em;
@@ -133,7 +139,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 </head>
 <body>
 <div id="emulatorface">
-<div id="controlbar">
+<div id="controlbar" class="preflight">
   <div id="systemcontrol" class="menu">
     <input type="button" id="systembutton" class="feedback menubutton"
            onclick="emulator.ui.togglePopup(this);"
@@ -163,14 +169,39 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
              onclick="emulator.ui.togglePopup(this);"
              value="Settings" title="Settings">
       <div class="popup right">
-        <button id="romdumpbutton" class="menuitem"
+        <button class="preflight checkable size menuitem" value="800×400"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          800×400
+        </button>
+        <button class="preflight checkable size menuitem" value="800×450"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          800×450
+        </button>
+        <button class="preflight checkable size menuitem" value="800×600"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          800×600
+        </button>
+        <button class="preflight checkable size menuitem" value="1024×512"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1024×512
+        </button>
+        <button class="preflight checkable size menuitem" value="1024×576"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1024×576
+        </button>
+        <button class="preflight checkable size menuitem" value="1024×768"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1024×768
+        </button>
+
+        <button id="romdumpbutton" class="midflight menuitem"
                 onclick="emulator.dumpROM();"
                 title="Dump ROM image to local file">Dump ROM…</button>
 
-        <button id="breakbutton" class="menuitem"
+        <button id="breakbutton" class="midflight menuitem"
                 onclick="emulator.reset(false);">Break</button>
 
-        <button id="resetbutton" class="menuitem"
+        <button id="resetbutton" class="midflight menuitem"
                 onclick="emulator.reset(true);">Reset</button>
       </div>
     </div>
