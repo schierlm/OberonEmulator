@@ -36,14 +36,12 @@ function WebDriver(imageName, width, height) {
 
 	this.clipboard = new Clipboard(this.ui.clipboardInput);
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
-	this.sync = new DiskSync(this);
 
 	this.transferHistory = [];
 	this.link = new FileLink(this);
 
-	// We save no reference because we don't need one; we just want to kick
-	// off the load, be notified when it's done, and then let this get GCed.
-	new ImageReader(imageName, this);
+	var reader = new PNGImageReader(imageName);
+	reader.prepareContentsThenNotify(this);
 }
 
 (function(){
@@ -71,7 +69,6 @@ function WebDriver(imageName, width, height) {
 	$proto.paused = false;
 	$proto.screenUpdater = null;
 	$proto.startMillis = null;
-	$proto.sync = null;
 	$proto.transferHistory = null;
 	$proto.waitMillis = 0;
 
@@ -235,13 +232,15 @@ function WebDriver(imageName, width, height) {
 		return this.keyBuffer.shift();
 	};
 
-	$proto.importDiskImage = function() {
-		this.sync.load(this.ui.diskFileInput.files[0]);
+	$proto.importDiskImage = function(file) {
+		if (file === undefined) file = this.ui.diskFileInput.files[0];
+		var reader = new DiskFileReader(file);
+		reader.prepareContentsThenNotify(this);
 	};
 
 	$proto.importDiskImageFromEvent = function(event) {
 		this.cancelEvent(event);
-		this.sync.load(event.dataTransfer.files[0]);
+		this.importDiskImage(event.dataTransfer.files[0]);
 	};
 
 	$proto.exportDiskImage = function() {
@@ -981,16 +980,19 @@ function GlobTransfer(link, name) {
 	};
 })(); //
 
-function ImageReader(imageName, emulator) {
-	this.imageName = imageName;
-	this.emulator = emulator;
-	this.container = new Image();
-	this.container.addEventListener("load", this);
-	this.container.src = imageName + ".png";
+function PNGImageReader(name) {
+	this.name = name;
 }
 
 (function(){
-	var $proto = ImageReader.prototype;
+	var $proto = PNGImageReader.prototype;
+
+	$proto.prepareContentsThenNotify = function(listener) {
+		this.listener = listener;
+		this.container = new Image();
+		this.container.addEventListener("load", this);
+		this.container.src = this.name + ".png";
+	};
 
 	$proto.handleEvent = function(event) {
 		if (event.type !== "load") throw new Error(
@@ -1005,7 +1007,7 @@ function ImageReader(imageName, emulator) {
 		context.drawImage(this.container, 0, 0);
 		var data = context.getImageData(0, 0, width, height).data;
 		var sectors = this._unpack(data, width, height);
-		this.emulator.bootFromSystemImage(sectors, this.imageName);
+		this.listener.bootFromSystemImage(sectors, this.name);
 	};
 
 	$proto._unpack = function(imageData, width, height) {
@@ -1028,18 +1030,18 @@ function ImageReader(imageName, emulator) {
 	};
 })();
 
-function DiskSync(emulator) {
-	this.emulator = emulator;
+function DiskFileReader(file) {
+	this.file = file;
 }
 
 (function(){
-	var $proto = DiskSync.prototype;
+	var $proto = DiskFileReader.prototype;
 
-	$proto.load = function(file) {
+	$proto.prepareContentsThenNotify = function(listener) {
+		this.listener = listener;
 		var reader = new FileReader();
-		reader.fileName = file.name;
 		reader.addEventListener("loadend", this);
-		reader.readAsArrayBuffer(file);
+		reader.readAsArrayBuffer(this.file);
 	};
 
 	$proto.handleEvent = function(event) {
@@ -1060,6 +1062,6 @@ function DiskSync(emulator) {
 			sectorStart += 1024;
 		}
 
-		emulator.bootFromSystemImage(contents, reader.fileName);
+		this.listener.bootFromSystemImage(contents, this.file.name);
 	};
 })();
