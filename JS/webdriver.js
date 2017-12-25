@@ -363,12 +363,14 @@ function ControlBarUI(emulator, width, height) {
 	$proto.clickMiddle = null;
 	$proto.clickRight = null;
 	$proto.clipboardInput = null;
+	$proto.clipboardToggle = null;
 	$proto.controlBarBox = null;
 	$proto.diskFileInput = null;
 	$proto.leds = null;
 	$proto.linkExportButton = null;
 	$proto.linkFileInput = null;
 	$proto.linkNameInput = null;
+	$proto.settingsButton = null;
 	$proto.systemButton = null;
 
 	$proto._initWidgets = function(width, height) {
@@ -380,7 +382,9 @@ function ControlBarUI(emulator, width, height) {
 
 		this.buttonBox = $("buttonbox");
 		this.clipboardInput = $("clipboardinput");
+		this.clipboardToggle = $("clipboardToggle");
 		this.controlBarBox = $("controlbar");
+		this.settingsButton = $("settingsbutton");
 		this.systemButton = $("systembutton");
 
 		this.diskFileInput = $("diskfileinput");
@@ -417,6 +421,22 @@ function ControlBarUI(emulator, width, height) {
 			this.leds[0].parentNode.style.marginRight =
 				(this.buttonBox.offsetWidth + 4) + "px";
 		}
+	};
+
+	$proto.selectItem = function(menuButton, kind, value /* optional */) {
+		if (value === undefined) value = kind;
+		var foundItem = null;
+		var popup = menuButton.parentNode.querySelector(".popup");
+		var options = popup.querySelectorAll(".menuitem." + kind);
+		for (var i = 0; i < options.length; ++i) {
+			if (options[i].value === value) {
+				options[i].classList.add("checked");
+				foundItem = options[i];
+			} else {
+				options[i].classList.remove("checked");
+			}
+		}
+		return foundItem;
 	};
 
 	$proto.toggleTransferPopup = function(menuButton) {
@@ -493,6 +513,8 @@ function ControlBarUI(emulator, width, height) {
 
 	$proto.toggleClipboard = function() {
 		this.clipboardInput.classList.toggle("open");
+		this.selectItem(this.settingsButton, "clipboard");
+		this.clipboardToggle.classList.toggle("checked");
 	};
 })();
 
