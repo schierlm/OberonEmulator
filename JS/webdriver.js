@@ -11,33 +11,18 @@ window.onload = function() {
 }
 
 function WebDriver(imageName, width, height) {
-	width = width | 0;
-	height = height | 0;
-
 	this.disk = [];
 	this.keyBuffer = [];
-	this.startMillis = Date.now();
+	this.transferHistory = [];
 
 	this.localSaveAnchor = document.getElementById("localsaveanchor");
-
-	this.ui = new ControlBarUI(this, width, height);
-
 	this.screen = document.getElementById("screen");
-	this.screen.focus();
-	this.screen.width = width;
-	this.screen.height = height;
-	this.screen.addEventListener("mousemove", this, false);
-	this.screen.addEventListener("mousedown", this, false);
-	this.screen.addEventListener("mouseup", this, false);
-	this.screen.addEventListener("contextmenu", this, false);
-	this.screenUpdater = new ScreenUpdater(
-		this.screen.getContext("2d"), width, height
-	);
+
+	this.ui = new ControlBarUI(this);
+	this.setDimensions(width, height, true);
 
 	this.clipboard = new Clipboard(this.ui.clipboardInput);
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
-
-	this.transferHistory = [];
 	this.link = new FileLink(this);
 
 	var reader = new PNGImageReader(imageName);
@@ -61,6 +46,7 @@ function WebDriver(imageName, width, height) {
 	$proto.clipboard = null;
 	$proto.cpuTimeout = null;
 	$proto.disk = null;
+	$proto.height = 0;
 	$proto.interclickButton = 0;
 	$proto.keyBuffer = null;
 	$proto.machine = null;
@@ -71,16 +57,26 @@ function WebDriver(imageName, width, height) {
 	$proto.startMillis = null;
 	$proto.transferHistory = null;
 	$proto.waitMillis = 0;
+	$proto.width = 0;
 
-	$proto.getTickCount = function() {
-		return Date.now() - this.startMillis;
+	$proto.setDimensions = function(width, height, resizeControlBar) {
+		this.width = width || 1024;
+		this.height = height || 768;
+		if (resizeControlBar) {
+			this.ui.resize(this.width, this.height);
+		}
 	};
 
 	$proto.bootFromSystemImage = function(contents, name) {
+		if (!this.isDisplayReady()) {
+			this.setUpDisplay(this.width, this.height);
+		}
+
 		// Two system image formats are supported: one with 1024-byte sectors
 		// in the format used for Peter De Wachter's RISC emulator, and
 		// another in the same form except, except with the first disk sector
 		// preceded by another "sector" dedicated to the preferred ROM image.
+		this.startMillis = Date.now();
 		if (this._hasDirMark(contents, 0)) {
 			this.machine = new RISCMachine(this.machine.bootROM);
 		} else if (this._hasDirMark(contents, 1)) {
@@ -96,6 +92,23 @@ function WebDriver(imageName, width, height) {
 	$proto._hasDirMark = function(contents, sectorNumber) {
 		var view = new DataView(contents[sectorNumber].buffer);
 		return view.getUint32(0) === 0x8DA31E9B;
+	};
+
+	$proto.isDisplayReady = function() {
+		return this.screenUpdater !== null;
+	};
+
+	$proto.setUpDisplay = function(width, height) {
+		this.screen.focus();
+		this.screen.width = width;
+		this.screen.height = height;
+		this.screen.addEventListener("mousemove", this, false);
+		this.screen.addEventListener("mousedown", this, false);
+		this.screen.addEventListener("mouseup", this, false);
+		this.screen.addEventListener("contextmenu", this, false);
+		this.screenUpdater = new ScreenUpdater(
+			this.screen.getContext("2d"), width, height
+		);
 	};
 
 	$proto.reset = function(cold) {
@@ -132,6 +145,10 @@ function WebDriver(imageName, width, height) {
 		else {
 			this.waitMillis = this.startMillis + x;
 		}
+	};
+
+	$proto.getTickCount = function() {
+		return Date.now() - this.startMillis;
 	};
 
 	$proto.registerVideoChange = function(offset, value) {
@@ -349,9 +366,9 @@ function WebDriver(imageName, width, height) {
 	};
 })();
 
-function ControlBarUI(emulator, width, height) {
+function ControlBarUI(emulator) {
 	this.emulator = emulator;
-	this._initWidgets(width, height);
+	this._initWidgets();
 }
 
 (function(){
@@ -397,9 +414,6 @@ function ControlBarUI(emulator, width, height) {
 		this.clickMiddle = $(".mousebtn[name='2']");
 		this.clickRight = $(".mousebtn[name='3']");
 
-		this.controlBarBox.style.width = width + "px";
-		this.clipboardInput.style.width = width + "px";
-
 		this.linkExportButton.style.height =
 			this.linkNameInput.offsetHeight + "px";
 		this.linkExportButton.style.width =
@@ -420,6 +434,11 @@ function ControlBarUI(emulator, width, height) {
 			this.leds[0].parentNode.style.marginRight =
 				(this.buttonBox.offsetWidth + 4) + "px";
 		}
+	};
+
+	$proto.resize = function(width, height) {
+		this.controlBarBox.style.width = width + "px";
+		this.clipboardInput.style.width = width + "px";
 	};
 
 	$proto.selectItem = function(menuButton, kind, value /* optional */) {
