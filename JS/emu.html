@@ -163,6 +163,10 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
              onclick="emulator.ui.togglePopup(this);"
              value="Settings" title="Settings">
       <div class="popup right">
+        <button id="romdumpbutton" class="menuitem"
+                onclick="emulator.dumpROM();"
+                title="Dump ROM image to local file">Dump ROM…</button>
+
         <button id="breakbutton" class="menuitem"
                 onclick="emulator.reset(false);">Break</button>
 

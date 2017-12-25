@@ -306,6 +306,10 @@ function WebDriver(imageName, width, height) {
 		this.save("oberon.dsk", this.disk);
 	};
 
+	$proto.dumpROM = function() {
+		this.save("boot.rom", [ this.machine.bootROM ]);
+	};
+
 	$proto.save = function(name, content) {
 		var blob = new Blob(content, { type: "application/octet-stream" });
 		this.localSaveAnchor.setAttribute("download", name);
