@@ -20,15 +20,15 @@ function WebDriver(imageName, width, height) {
 
 	this.ui = new ControlBarUI(this);
 	this.setDimensions(width, height, true);
+	if (imageName !== undefined) {
+		this.imageName = imageName;
+	}
 
 	this.clipboard = new Clipboard(this.ui.clipboardInput);
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
 	this.link = new FileLink(this);
 
-	if (imageName !== undefined) {
-		var reader = new PNGImageReader(imageName);
-		reader.prepareContentsThenNotify(this);
-	}
+	SiteConfigLoader.read("config.json", this);
 }
 
 (function(){
@@ -49,6 +49,7 @@ function WebDriver(imageName, width, height) {
 	$proto.cpuTimeout = null;
 	$proto.disk = null;
 	$proto.height = 0;
+	$proto.imageName = null;
 	$proto.interclickButton = 0;
 	$proto.keyBuffer = null;
 	$proto.machine = null;
@@ -69,6 +70,27 @@ function WebDriver(imageName, width, height) {
 		}
 	};
 
+	$proto.useConfiguration = function(config) {
+		var images = config.images;
+		for (var i = 0; i < images.length; ++i) {
+			this.ui.addSystemItem(images[i]);
+		}
+		if (this.imageName !== null) {
+			this.chooseDisk(this.imageName);
+		}
+	};
+
+	$proto.chooseDisk = function(name) {
+		this.ui.markLoading();
+		this.ui.closeOpenPopups();
+		var item = this.ui.selectItem(this.ui.systemButton, "diskimage", name);
+		if (item !== null) {
+			// It's one of our premade images, not user supplied.
+			this.reader = new PNGImageReader(name);
+			this.reader.prepareContentsThenNotify(this);
+		}
+	};
+
 	// Two system image formats are supported: one with 1024-byte sectors
 	// in the format used for Peter De Wachter's RISC emulator, and another in
 	// the same form, except with the first disk sector preceded by another
@@ -78,6 +100,7 @@ function WebDriver(imageName, width, height) {
 	// unless we've already booted once before, in which case we use whatever
 	// is already "burned in".
 	$proto.useSystemImage = function(name, contents, rom) {
+		this.imageName = name;
 		if (rom === undefined) {
 			if (this._hasDirMark(contents, 0)) {
 				if (!this.machine) {
@@ -92,7 +115,7 @@ function WebDriver(imageName, width, height) {
 				throw new Error("Invalid system image");
 			}
 		}
-		this.ui.markName(name);
+		this.ui.markName(this.imageName);
 		this.bootFromDisk(contents, rom);
 	};
 
@@ -269,6 +292,7 @@ function WebDriver(imageName, width, height) {
 
 	$proto.importDiskImage = function(file) {
 		if (file === undefined) file = this.ui.diskFileInput.files[0];
+		this.chooseDisk(null);
 		var reader = new DiskFileReader(file);
 		reader.prepareContentsThenNotify(this);
 	};
@@ -400,6 +424,7 @@ function ControlBarUI(emulator) {
 	$proto.clipboardToggle = null;
 	$proto.controlBarBox = null;
 	$proto.diskFileInput = null;
+	$proto.diskImportButton = null;
 	$proto.leds = null;
 	$proto.linkExportButton = null;
 	$proto.linkFileInput = null;
@@ -422,6 +447,7 @@ function ControlBarUI(emulator) {
 		this.systemButton = $("systembutton");
 
 		this.diskFileInput = $("diskfileinput");
+		this.diskImportButton = $("diskimportbutton");
 
 		this.linkFileInput = $("linkfileinput");
 		this.linkNameInput = $("linknameinput");
@@ -454,6 +480,11 @@ function ControlBarUI(emulator) {
 		}
 	};
 
+	$proto.markLoading = function() {
+		this.systemButton.value = "Loading…";
+		this.systemButton.classList.add("feedback");
+	};
+
 	$proto.markName = function(name) {
 		this.systemButton.classList.remove("feedback");
 		this.systemButton.value = name;
@@ -462,6 +493,18 @@ function ControlBarUI(emulator) {
 	$proto.resize = function(width, height) {
 		this.controlBarBox.style.width = width + "px";
 		this.clipboardInput.style.width = width + "px";
+	};
+
+	$proto.addSystemItem = function(name) {
+		var button = document.createElement("button");
+		var popup = this.systemButton.parentNode.querySelector(".popup");
+		popup.insertBefore(button, this.diskImportButton.parentNode);
+		button.outerHTML =
+			"<button class='checkable menuitem diskimage'" +
+			         "value='" + name + "'" +
+			         "onclick='emulator.chooseDisk(this.value);'>" +
+				name +
+			"</button>";
 	};
 
 	$proto.selectItem = function(menuButton, kind, value /* optional */) {
@@ -1021,6 +1064,31 @@ function GlobTransfer(link, name) {
 		return result;
 	};
 })(); //
+
+function SiteConfigLoader(emulator) {
+	this.emulator = emulator;
+}
+
+(function(){
+	var $proto = SiteConfigLoader.prototype;
+
+	SiteConfigLoader.read = $proto.read = function(uri, emulator) {
+		var loader = new SiteConfigLoader(emulator);
+		var request = new XMLHttpRequest();
+		request.addEventListener("load", loader);
+		request.open("GET", uri);
+		request.send(null);
+	};
+
+	$proto.handleEvent = function(event) {
+		if (event.type !== "load") throw new Error(
+			"Unexpected event: " + event.type
+		);
+
+		var config = JSON.parse(event.target.responseText);
+		this.emulator.useConfiguration(config);
+	};
+})();
 
 function PNGImageReader(name) {
 	this.name = name;
