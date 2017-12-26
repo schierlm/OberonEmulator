@@ -353,6 +353,8 @@ function WebDriver(imageName, width, height) {
 function ControlBarUI(emulator, width, height) {
 	this.emulator = emulator;
 	this._initWidgets(width, height);
+
+	this.linkNameInput.addEventListener("keypress", this, false);
 }
 
 (function(){
@@ -447,6 +449,7 @@ function ControlBarUI(emulator, width, height) {
 			this.linkNameInput.value = fileNames.join(" ");
 		}
 		this.togglePopup(menuButton);
+		this.linkNameInput.focus();
 	};
 
 	$proto.togglePopup = function(menuButton) {
@@ -510,6 +513,15 @@ function ControlBarUI(emulator, width, height) {
 
 	$proto.toggleClipboard = function() {
 		this.clipboardInput.classList.toggle("open");
+	};
+
+	// DOM Event handling
+
+	$proto.handleEvent = function(event) {
+		if (event.type !== "keypress") throw new Error(
+			"Unexpected event: " + event.type
+		);
+		if (event.keyCode === 13) this.linkExportButton.click();
 	};
 })();
 
