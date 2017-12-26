@@ -420,17 +420,32 @@ function ControlBarUI(emulator, width, height) {
 	};
 
 	$proto.toggleTransferPopup = function(menuButton) {
-		// This looks scarier than it is.  It's similar to a right-recursive
-		// rule for identifiers such as
-		//
-		//   ident  =  letter {letter | digit}.
-		//
-		// ... except this is for file names, and we're matching a whitespace-
-		// delimited list of one or more of them.
-		var fileNames = this.clipboardInput.value.match(
-			/^\s*([a-zA-Z][a-zA-Z0-9.]*)(?:\s+([a-zA-Z][a-zA-Z0-9.]*))*\s*$/
-		);
-		if (fileNames) this.linkNameInput.value = fileNames.slice(1).join(" ");
+		// Fill in the textbox with the contents of the clipboard, but only if
+		// it's a whitespace delimited list of valid file names.
+		var input = this.clipboardInput.value;
+		var fileNames = [];
+		var currentName = "";
+		for (var i = 0; i < input.length; ++i) {
+			if (/[0-9.]/.test(input[i]) && currentName.length ||
+			    /[a-zA-Z]/.test(input[i])) {
+				currentName += input[i];
+			} else if (/\s/.test(input[i])) {
+				if (currentName !== "") {
+					fileNames.push(currentName);
+					currentName = "";
+				}
+			} else {
+				fileNames = [];
+				currentName = "";
+				break;
+			}
+		}
+		if (currentName !== "") {
+			fileNames.push(currentName);
+		}
+		if (fileNames.length) {
+			this.linkNameInput.value = fileNames.join(" ");
+		}
 		this.togglePopup(menuButton);
 	};
 
