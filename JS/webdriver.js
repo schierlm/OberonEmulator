@@ -7,6 +7,16 @@ window.onload = function() {
 		var keyAndValue = pairs[i].split("=");
 		params[keyAndValue[0]] = keyAndValue[1];
 	}
+	if (!params.width && !params.height) {
+		var h = window.innerHeight - document.getElementById("screen").offsetTop;
+		if (window.innerWidth < 1024 || h < 512) {
+			params.width = 800;
+			params.height = h < 450 ? 400 : h < 600 ? 450 : 600;
+		} else {
+			params.width = 1024;
+			params.height = h < 576 ? 512 : h < 768 ? 576 : 768;
+		}
+	}
 	emulator = new WebDriver(params.image, params.width, params.height);
 }
 
