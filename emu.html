@@ -19,6 +19,15 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 #controlbar > *, .endcontrols > * { display: inline-block; }
 #systemcontrol, .endcontrols { line-height: 2em; }
 .endcontrols { float: right; }
+#systembutton {
+  padding-right: 1.5em;
+  background-size: 1em;
+  background-position: center right;
+  background-repeat: no-repeat;
+}
+#systembutton.feedback {
+  font-style: italic;
+}
 #settingsbutton {
   width: 2em;
   color: transparent;
@@ -79,6 +88,12 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 .menu .popup.right {
   right: 0%;
 }
+#controlbar.preflight .midflight.menuitem {
+  display: none;
+}
+#controlbar.started .preflight.menuitem {
+  display: none;
+}
 .menuitem {
   display: block;
   height: 2em;
@@ -91,9 +106,11 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 .menuitem > input[type="button"], button.menuitem {
   border: 0px; background-color: #454b4d; color: #dcdfe0;
   text-align: left;
+  font-size: inherit;
   width: 100%;
 }
 .menuitem > input[type="text"] {
+  font-size: inherit;
   background-color: #fff;
   color: #4d4b45;
   border: 1px solid #b3aab3;
@@ -101,6 +118,14 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 .menuitem > input[type="button"].cap {
   border: 1px solid #b3aab3;
   width: auto;
+}
+.checkable.menuitem {
+  padding-right: 2.0em;
+}
+.checked.menuitem {
+  background-size: 1em;
+  background-position: center right 0.5em;
+  background-repeat: no-repeat;
 }
 #clipboardinput {
   visibility: hidden;
@@ -116,12 +141,13 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 </head>
 <body>
 <div id="emulatorface">
-<div id="controlbar">
+<div id="controlbar" class="preflight">
   <div id="systemcontrol" class="menu">
-    <input type="button" id="systembutton" class="menubutton"
+    <input type="button" id="systembutton" class="feedback menubutton"
            onclick="emulator.ui.togglePopup(this);"
            ondragover="emulator.cancelEvent(event);"
-           ondrop="emulator.importDiskImageFromEvent(event);">
+           ondrop="emulator.importDiskImageFromEvent(event);"
+           value="Select disk image…">
     <div class="popup">
       <div class="menuitem">
         <input type="file" id="diskfileinput"
@@ -145,16 +171,45 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
              onclick="emulator.ui.togglePopup(this);"
              value="Settings" title="Settings">
       <div class="popup right">
-        <button id="breakbutton" class="menuitem"
+        <button class="preflight checkable size menuitem" value="800×400"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          800×400
+        </button>
+        <button class="preflight checkable size menuitem" value="800×450"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          800×450
+        </button>
+        <button class="preflight checkable size menuitem" value="800×600"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          800×600
+        </button>
+        <button class="preflight checkable size menuitem" value="1024×512"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1024×512
+        </button>
+        <button class="preflight checkable size menuitem" value="1024×576"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1024×576
+        </button>
+        <button class="preflight checkable size menuitem" value="1024×768"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1024×768
+        </button>
+
+        <button id="romdumpbutton" class="midflight menuitem"
+                onclick="emulator.dumpROM();"
+                title="Dump ROM image to local file">Dump ROM…</button>
+
+        <button id="breakbutton" class="midflight menuitem"
                 onclick="emulator.reset(false);">Break</button>
 
-        <button id="resetbutton" class="menuitem"
+        <button id="resetbutton" class="midflight menuitem"
                 onclick="emulator.reset(true);">Reset</button>
       </div>
     </div>
     <div class="menu">
       <input type="button" class="bordered menubutton" value="Transfer…"
-             onclick="emulator.ui.togglePopup(this);"
+             onclick="emulator.ui.toggleTransferPopup(this);"
              ondragover="emulator.cancelEvent(event);"
              ondrop="emulator.importFilesFromEvent(event);"
              title="Transfer data between the emulated system and your computer">
@@ -166,8 +221,9 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
                  title="Copy file out of the emulated system">
         </div>
 
-        <button id="clipboardToggle" class="menuitem"
-                onclick="emulator.ui.toggleClipboard();">Toggle Clipboard</button>
+        <button id="clipboardToggle" class="checkable menuitem clipboard"
+                onclick="emulator.ui.toggleClipboard();"
+                value="clipboard">Show Clipboard</button>
 
         <div class="menuitem">
           <input type="button" id="fileimportbutton" value="Import File…"
@@ -200,12 +256,18 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
  --></div>
   </div>
 </div>
-<canvas id="screen" tabindex="1000"></canvas>
+<canvas id="screen" tabindex="1000" height="0"></canvas>
 <textarea id="clipboardinput"></textarea>
 </div>
 <a id="localsaveanchor" style="display: none;"></a>
 
 <style>
+#systembutton {
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAlAAAAJQBeb8N7wAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFOSURBVHja7Zo7CsJAFEWtbATBBbgsO22NCiGfSWGZfWQV2lpZ%2BGzUHYlmQAUbzXfem5l74EFINfeQwGRyBwMAAAAAAMPM8nwYROlcj772KnwYhuNVok5BrB569LW%2B5034IFLnd%2FjPJOqyXm8nfob3QcLf8C5LqBzeRQm1w7skoXF4FyS0Dm%2BzhM7C2yih8%2FA2SegtvA0Seg8vWYKx8BIlGA8vSQJbeCkSykXs2cK%2FZhmrHd%2BBRqzu3AL0GtgOVMrH%2F8YvIL2yvQKbNJ2uYlWUc2CaQq8BB4wAAAAAwEYIW2F8DOFz2CiLLBuVizgyCiD23%2BqMEkhMp4BBAokrVBiUQGLbJAYkkPgqTY8SyJoeUQ8SyLoSVYcSyNoGWQcSyPr6XAsJ5Ex3sIEEcq44WUMCOdsarSCBnK%2FM%2FpBAXvWFvS1Lfx2o%2BFqXBwAAAIAInj1afVr6eMCCAAAAAElFTkSuQmCC');
+}
+.checked.menuitem {
+  background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAD8AAAA%2FCAYAAABXXxDfAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAkgAAAJIB%2BbxJdAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAH4SURBVGje7Ze%2FalRBFIePKFhYCpZq9AEEW8tFQfyDhYUIop2VvoFPYBC0sRMRLXyKPIM2BufMOb%2BzpEibgFHBOBZu4iYYcnPv7O7MveeDae893zcz%2B4fIcRzHcRzHcZwSCCGcjGYjVr3DzGeGIz4eX2TVz6xIk7URxO72XlxEzrFCp8R31q8g9mCI4v0O0EC8nwH%2B3nEbNxDfDRCB%2B9WLfzW7cETxnfVTRC4N4aj%2FfwGvKt5xWGtxRWK1twMVR2LVe8MUB95Vd8ejQjLs%2BMeVlXQi63DRbMTAcxY8WwWWcj57FVjKseNB8SGldDzbYCmlYyxY3veiTQauZxRHmeKqLw%2F6Lg1itzqdphjPFnnUDxHfDRCj3RyieOsAxYoTEUXFiyMO8j2IXGvybFU9X%2BQdJyIKMr7dcqAtEbtarTgRUVC86TDYgQEm4lqsOBERq73uOOCPCNzYf8dZEYu843vkza6wYrvjoFvRbFTNju8JIPaEFb87DvyNVR9WJf7v%2BOvjDAFS8Ue93AALEl98gAWLLy5AIeLzD1CY%2BPwCFCo%2B%2BwCFi88uQCXi%2BQNUJp4vQKXiU3%2BEnrYJEATv5%2FqTtZwTUPmOtw%2FQM%2FHmAXoqfniAnotPBXjEis2J%2BDYLlnvx4daUT%2BvrpwJw%2Bcva2mlyHMdxHMdxHMeZAX8A5NvWwU6E2pUAAAAASUVORK5CYII%3D');
+}
 .iconlabel#settingsbutton {
   background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAlAAAAJQBeb8N7wAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAUoSURBVHja3VtdjBRFEB78A4xGRXz3ARLxj2BEX%2FwFXogvSliM0cS70%2B3dW7LXP9V3xxkfFgzBBGJUIqIxJP6gUYy%2FCf4QfTAhGn0hBEI4NPIsR2IiCnp3YNXsHoruzkz31OztzCSVu%2Bxu91R%2F3V1VX3V1EHTnmVNR8CHKFMq5GJmuaPiU2gRFeWpKLUkw8AvFmKWFAaCq7UPOAGjbXxgAhIYNzgAoeLEwAFQk7PIA4KueHVBZwvKytquSbwHY7wHAz0kNbFXZFYPS3tql%2FQwalTsbKinNB2J09KrYFaBgwgOAqVKjcVlUv31KXU0eY8Z7VCVsztR7VKQd%2Fa%2BiQsFxIe2dHfc%2FwEKPwYdS03pRp35pxvE3P7Zpt6ev0ZjH7scR3W0dlZVwGmei2lZRPXy3LwBlBavbT4R5rKLM7xFtvxSicTnLyBuNxkVC2Z1JFK5Ks7tWq10RbhVl70NX9iZ%2BfsoXAJQ%2FhIR3KkNmJfVJW0Josz2RLgr2aa3np1%2F22rzqpLSEI%2Fjy71MMutOAqM%2FvHNvsrdfrc9O4r6e5B9JtwSDsPS%2FDiI0fOW%2Ft8w6CspucBv%2BE1guw4ZkiDL4lZ6M81f%2Be9evHri0YAOfKWt%2FruAWMKQ4A9nVfDr%2BnAAAc9I4JKMzFDsZzPPhfo6LJhFRW3xITdfWs4UNZw0OAFDyaO9cnYQsvEcqVPTDflEqli7mTmoeYFDyBDPINYpZCw%2BMkIcts8oYTTO84wEqLUeEHGZQ6irI2amboOyFNicPwdmKSnoTofNLBTyS8JIS4NDHg%2BFsMX3ek3AYfsSx9AXADdvinryIYgg57rzxsmwKEv5AIrcMI8Ka4zFLQX69fh7z7rqoyA2Q9hbbvUwARJjpSznx6D5R2JTTTa5Q9InqM43yOkjfCmPtDqoxfvJKRNT7qsuyjtkOGwdjnBMBkRp2vZTxYWZeRjtNBRvz7F04%2FTH0xusgLJBMAyM%2BzZ6QVvJUbANDYjPADYMfyswIwumMHQNv%2BHK0A08d%2BIoUuOjcAUGyfwQnzU%2FkBAIkN%2BwqQZnd%2BAFBwMgM3OJEVANOZGEJkdXyHsubhjCZqkrK%2FX2TU%2BThHKByeByo4lk28YncGRAjo8FEoM4gfPo8G7DP8%2B1PCiq64iHBH%2BlxEsoPZqFlucYlPMJbYimA%2BiSTtHiKAkS8mYIhKtuLwydmgwxRQpaLDxizjWIWkyN6UtPhlF0Wayz7dzONMf8wZh6%2FhsAm0muJSYmTwOPY8AvgAGwBUJFHRcJjJ%2BEw0iY0do4iRJPy%2F6edPcp0GsSZFQwAkfJ2zmgBOIgIb81cTYAZ4agK1XcXhErsuEk4LNXxbSuuvrmfcl7Mh40nqGDvGAWicfsj78XjLHXrUCLlWh%2FX2WaFxGnya4sYelTNU9uMw%2B%2Fr2olSIzRRcDg5uuMbV9T1TlAoxqm%2Fwqw%2FGgKIA%2B996u0HyBM5ESMK3mZXKSjjilp0221MHQlR6ToXHyUJQ88IM66NLDPjZ27T%2FUgz8FOUXZ2r8qBC7VUiRdPA8fIDKzGIyR78Ri2sbSSpY7QsAeaP2CVJbjgbWbmW%2FLIGE6BKMDV5rdwpcHbI3dzSmQ8OLfQGIcl2VOtzYtmxHm2ezvDFDFyc2%2FyuR%2Bu7AyMiVcckNTy4xEacMvTu8T%2FDPzI915d4Q1Q7ShQiHGqPj7pQW9id22UNmZVXrO4JefbxyCRJ2BUV56BJkLxyvzR4AHie7VJpXHACMWep8ZU6pJUGBnjnNg4lEx3BTdCEz6NL1%2Bb8BcpascGtu3iIAAAAASUVORK5CYII%3D');
 }
