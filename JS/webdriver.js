@@ -458,7 +458,7 @@ function ControlBarUI(emulator) {
 	$proto.settingsButton = null;
 	$proto.systemButton = null;
 
-	$proto._initWidgets = function(width, height) {
+	$proto._initWidgets = function() {
 		var $ = document.getElementById.bind(document);
 		this.leds = [
 			$("led0"), $("led1"), $("led2"), $("led3"),
