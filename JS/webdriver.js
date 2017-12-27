@@ -11,39 +11,24 @@ window.onload = function() {
 }
 
 function WebDriver(imageName, width, height) {
-	width = width | 0;
-	height = height | 0;
-
 	this.disk = [];
 	this.keyBuffer = [];
-	this.startMillis = Date.now();
+	this.transferHistory = [];
 
 	this.localSaveAnchor = document.getElementById("localsaveanchor");
-
-	this.ui = new ControlBarUI(this, width, height);
-
 	this.screen = document.getElementById("screen");
-	this.screen.focus();
-	this.screen.width = width;
-	this.screen.height = height;
-	this.screen.addEventListener("mousemove", this, false);
-	this.screen.addEventListener("mousedown", this, false);
-	this.screen.addEventListener("mouseup", this, false);
-	this.screen.addEventListener("contextmenu", this, false);
-	this.screenUpdater = new ScreenUpdater(
-		this.screen.getContext("2d"), width, height
-	);
+
+	this.ui = new ControlBarUI(this);
+	this.setDimensions(width, height, true);
+	if (imageName !== undefined) {
+		this.imageName = imageName;
+	}
 
 	this.clipboard = new Clipboard(this.ui.clipboardInput);
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
-	this.sync = new DiskSync(this);
-
-	this.transferHistory = [];
 	this.link = new FileLink(this);
 
-	// We save no reference because we don't need one; we just want to kick
-	// off the load, be notified when it's done, and then let this get GCed.
-	new ImageReader(imageName, this);
+	SiteConfigLoader.read("config.json", this);
 }
 
 (function(){
@@ -63,6 +48,8 @@ function WebDriver(imageName, width, height) {
 	$proto.clipboard = null;
 	$proto.cpuTimeout = null;
 	$proto.disk = null;
+	$proto.height = 0;
+	$proto.imageName = null;
 	$proto.interclickButton = 0;
 	$proto.keyBuffer = null;
 	$proto.machine = null;
@@ -71,34 +58,107 @@ function WebDriver(imageName, width, height) {
 	$proto.paused = false;
 	$proto.screenUpdater = null;
 	$proto.startMillis = null;
-	$proto.sync = null;
 	$proto.transferHistory = null;
 	$proto.waitMillis = 0;
+	$proto.width = 0;
 
-	$proto.getTickCount = function() {
-		return Date.now() - this.startMillis;
+	$proto.setDimensions = function(width, height, resizeControlBar) {
+		this.width = width || 1024;
+		this.height = height || 768;
+		if (resizeControlBar) {
+			this.ui.resize(this.width, this.height);
+		}
+		var size = this.width + "×" + this.height;
+		this.ui.selectItem(this.ui.settingsButton, "size", size);
 	};
 
-	$proto.bootFromSystemImage = function(contents, name) {
-		// Two system image formats are supported: one with 1024-byte sectors
-		// in the format used for Peter De Wachter's RISC emulator, and
-		// another in the same form except, except with the first disk sector
-		// preceded by another "sector" dedicated to the preferred ROM image.
-		if (this._hasDirMark(contents, 0)) {
-			this.machine = new RISCMachine(this.machine.bootROM);
-		} else if (this._hasDirMark(contents, 1)) {
-			this.machine = new RISCMachine(contents.shift());
-		} else {
-			throw new Error("Invalid system image");
+	$proto.setDimensionsFromEvent = function(event) {
+		var dimensions = event.target.value.split("×");
+		this.setDimensions(dimensions[0], dimensions[1], true);
+		this.ui.closeOpenPopups();
+	};
+
+	$proto.useConfiguration = function(config) {
+		var images = config.images;
+		for (var i = 0; i < images.length; ++i) {
+			this.ui.addSystemItem(images[i]);
 		}
-		this.disk = contents;
-		this.reset(true);
-		this.ui.systemButton.value = name;
+		if (this.imageName !== null) {
+			this.chooseDisk(this.imageName);
+		}
+	};
+
+	$proto.chooseDisk = function(name) {
+		this.ui.markLoading();
+		this.ui.closeOpenPopups();
+		var item = this.ui.selectItem(this.ui.systemButton, "diskimage", name);
+		if (item !== null) {
+			// It's one of our premade images, not user supplied.
+			this.reader = new PNGImageReader(name);
+			this.reader.prepareContentsThenNotify(this);
+		}
+	};
+
+	// Two system image formats are supported: one with 1024-byte sectors
+	// in the format used for Peter De Wachter's RISC emulator, and another in
+	// the same form, except with the first disk sector preceded by another
+	// "sector" (1024-byte region) dedicated to the preferred boot ROM.
+	//
+	// If the image doesn't have a ROM, on our first boot we load our default,
+	// unless we've already booted once before, in which case we use whatever
+	// is already "burned in".
+	$proto.useSystemImage = function(name, contents, rom) {
+		this.ui.markLoading();
+		this.imageName = name;
+		if (rom === undefined) {
+			if (this._hasDirMark(contents, 0)) {
+				if (!this.machine) {
+					var reader = new ROMFileReader("boot.rom", contents, name);
+					return void(reader.prepareContentsThenNotify(this));
+				} else {
+					rom = this.machine.bootROM;
+				}
+			} else if (this._hasDirMark(contents, 1)) {
+				rom = contents.shift();
+			} else {
+				throw new Error("Invalid system image");
+			}
+		}
+		this.ui.markName(this.imageName);
+		this.bootFromDisk(contents, rom);
 	};
 
 	$proto._hasDirMark = function(contents, sectorNumber) {
 		var view = new DataView(contents[sectorNumber].buffer);
 		return view.getUint32(0) === 0x8DA31E9B;
+	};
+
+	$proto.bootFromDisk = function(disk, rom) {
+		if (!this.isDisplayReady()) {
+			this.setUpDisplay(this.width, this.height);
+		}
+
+		this.disk = disk;
+		this.startMillis = Date.now();
+		this.machine = new RISCMachine(rom);
+		this.reset(true);
+	};
+
+	$proto.isDisplayReady = function() {
+		return this.screenUpdater !== null;
+	};
+
+	$proto.setUpDisplay = function(width, height) {
+		this.screen.focus();
+		this.screen.width = width;
+		this.screen.height = height;
+		this.screen.addEventListener("mousemove", this, false);
+		this.screen.addEventListener("mousedown", this, false);
+		this.screen.addEventListener("mouseup", this, false);
+		this.screen.addEventListener("contextmenu", this, false);
+		this.screenUpdater = new ScreenUpdater(
+			this.screen.getContext("2d"), width, height
+		);
 	};
 
 	$proto.reset = function(cold) {
@@ -135,6 +195,10 @@ function WebDriver(imageName, width, height) {
 		else {
 			this.waitMillis = this.startMillis + x;
 		}
+	};
+
+	$proto.getTickCount = function() {
+		return Date.now() - this.startMillis;
 	};
 
 	$proto.registerVideoChange = function(offset, value) {
@@ -235,17 +299,25 @@ function WebDriver(imageName, width, height) {
 		return this.keyBuffer.shift();
 	};
 
-	$proto.importDiskImage = function() {
-		this.sync.load(this.ui.diskFileInput.files[0]);
+	$proto.importDiskImage = function(file) {
+		if (file === undefined) file = this.ui.diskFileInput.files[0];
+		this.ui.markLoading();
+		this.chooseDisk(null);
+		var reader = new DiskFileReader(file);
+		reader.prepareContentsThenNotify(this);
 	};
 
 	$proto.importDiskImageFromEvent = function(event) {
 		this.cancelEvent(event);
-		this.sync.load(event.dataTransfer.files[0]);
+		this.importDiskImage(event.dataTransfer.files[0]);
 	};
 
 	$proto.exportDiskImage = function() {
 		this.save("oberon.dsk", this.disk);
+	};
+
+	$proto.dumpROM = function() {
+		this.save("boot.rom", [ this.machine.bootROM ]);
 	};
 
 	$proto.save = function(name, content) {
@@ -350,9 +422,9 @@ function WebDriver(imageName, width, height) {
 	};
 })();
 
-function ControlBarUI(emulator, width, height) {
+function ControlBarUI(emulator) {
 	this.emulator = emulator;
-	this._initWidgets(width, height);
+	this._initWidgets();
 }
 
 (function(){
@@ -363,12 +435,15 @@ function ControlBarUI(emulator, width, height) {
 	$proto.clickMiddle = null;
 	$proto.clickRight = null;
 	$proto.clipboardInput = null;
+	$proto.clipboardToggle = null;
 	$proto.controlBarBox = null;
 	$proto.diskFileInput = null;
+	$proto.diskImportButton = null;
 	$proto.leds = null;
 	$proto.linkExportButton = null;
 	$proto.linkFileInput = null;
 	$proto.linkNameInput = null;
+	$proto.settingsButton = null;
 	$proto.systemButton = null;
 
 	$proto._initWidgets = function(width, height) {
@@ -380,10 +455,13 @@ function ControlBarUI(emulator, width, height) {
 
 		this.buttonBox = $("buttonbox");
 		this.clipboardInput = $("clipboardinput");
+		this.clipboardToggle = $("clipboardToggle");
 		this.controlBarBox = $("controlbar");
+		this.settingsButton = $("settingsbutton");
 		this.systemButton = $("systembutton");
 
 		this.diskFileInput = $("diskfileinput");
+		this.diskImportButton = $("diskimportbutton");
 
 		this.linkFileInput = $("linkfileinput");
 		this.linkNameInput = $("linknameinput");
@@ -393,9 +471,6 @@ function ControlBarUI(emulator, width, height) {
 		this.clickLeft = $(".mousebtn[name='1']");
 		this.clickMiddle = $(".mousebtn[name='2']");
 		this.clickRight = $(".mousebtn[name='3']");
-
-		this.controlBarBox.style.width = width + "px";
-		this.clipboardInput.style.width = width + "px";
 
 		this.linkExportButton.style.height =
 			this.linkNameInput.offsetHeight + "px";
@@ -417,6 +492,51 @@ function ControlBarUI(emulator, width, height) {
 			this.leds[0].parentNode.style.marginRight =
 				(this.buttonBox.offsetWidth + 4) + "px";
 		}
+	};
+
+	$proto.markLoading = function() {
+		this.systemButton.value = "Loading…";
+		this.systemButton.classList.add("feedback");
+		this.controlBarBox.classList.remove("preflight");
+		this.controlBarBox.classList.add("started");
+	};
+
+	$proto.markName = function(name) {
+		this.systemButton.classList.remove("feedback");
+		this.systemButton.value = name;
+	};
+
+	$proto.resize = function(width, height) {
+		this.controlBarBox.style.width = width + "px";
+		this.clipboardInput.style.width = width + "px";
+	};
+
+	$proto.addSystemItem = function(name) {
+		var button = document.createElement("button");
+		var popup = this.systemButton.parentNode.querySelector(".popup");
+		popup.insertBefore(button, this.diskImportButton.parentNode);
+		button.outerHTML =
+			"<button class='checkable menuitem diskimage'" +
+			         "value='" + name + "'" +
+			         "onclick='emulator.chooseDisk(this.value);'>" +
+				name +
+			"</button>";
+	};
+
+	$proto.selectItem = function(menuButton, kind, value /* optional */) {
+		if (value === undefined) value = kind;
+		var foundItem = null;
+		var popup = menuButton.parentNode.querySelector(".popup");
+		var options = popup.querySelectorAll(".menuitem." + kind);
+		for (var i = 0; i < options.length; ++i) {
+			if (options[i].value === value) {
+				options[i].classList.add("checked");
+				foundItem = options[i];
+			} else {
+				options[i].classList.remove("checked");
+			}
+		}
+		return foundItem;
 	};
 
 	$proto.toggleTransferPopup = function(menuButton) {
@@ -493,6 +613,8 @@ function ControlBarUI(emulator, width, height) {
 
 	$proto.toggleClipboard = function() {
 		this.clipboardInput.classList.toggle("open");
+		this.selectItem(this.settingsButton, "clipboard");
+		this.clipboardToggle.classList.toggle("checked");
 	};
 })();
 
@@ -959,16 +1081,44 @@ function GlobTransfer(link, name) {
 	};
 })(); //
 
-function ImageReader(imageName, emulator) {
-	this.imageName = imageName;
+function SiteConfigLoader(emulator) {
 	this.emulator = emulator;
-	this.container = new Image();
-	this.container.addEventListener("load", this);
-	this.container.src = imageName + ".png";
 }
 
 (function(){
-	var $proto = ImageReader.prototype;
+	var $proto = SiteConfigLoader.prototype;
+
+	SiteConfigLoader.read = $proto.read = function(uri, emulator) {
+		var loader = new SiteConfigLoader(emulator);
+		var request = new XMLHttpRequest();
+		request.addEventListener("load", loader);
+		request.open("GET", uri);
+		request.send(null);
+	};
+
+	$proto.handleEvent = function(event) {
+		if (event.type !== "load") throw new Error(
+			"Unexpected event: " + event.type
+		);
+
+		var config = JSON.parse(event.target.responseText);
+		this.emulator.useConfiguration(config);
+	};
+})();
+
+function PNGImageReader(name) {
+	this.name = name;
+}
+
+(function(){
+	var $proto = PNGImageReader.prototype;
+
+	$proto.prepareContentsThenNotify = function(listener) {
+		this.listener = listener;
+		this.container = new Image();
+		this.container.addEventListener("load", this);
+		this.container.src = this.name + ".png";
+	};
 
 	$proto.handleEvent = function(event) {
 		if (event.type !== "load") throw new Error(
@@ -982,8 +1132,8 @@ function ImageReader(imageName, emulator) {
 
 		context.drawImage(this.container, 0, 0);
 		var data = context.getImageData(0, 0, width, height).data;
-		var sectors = this._unpack(data, width, height);
-		this.emulator.bootFromSystemImage(sectors, this.imageName);
+		var contents = this._unpack(data, width, height);
+		this.listener.useSystemImage(this.name, contents);
 	};
 
 	$proto._unpack = function(imageData, width, height) {
@@ -1006,29 +1156,17 @@ function ImageReader(imageName, emulator) {
 	};
 })();
 
-function DiskSync(emulator) {
-	this.emulator = emulator;
+function DiskFileReader(file) {
+	this.file = file;
 }
 
 (function(){
-	var $proto = DiskSync.prototype;
+	var $proto = DiskFileReader.prototype;
 
-	$proto.load = function(file) {
-		var reader = new FileReader();
-		reader.fileName = file.name;
-		reader.addEventListener("loadend", this);
-		reader.readAsArrayBuffer(file);
-	};
-
-	$proto.handleEvent = function(event) {
-		if (event.type !== "loadend") throw new Error(
-			"Unexpected event: " + event.type
-		);
-
-		var reader = event.target;
+	DiskFileReader.getContents = $proto.getContents = function(buffer) {
 		var contents = [];
 		var sectorStart = 0;
-		var view = new DataView(reader.result);
+		var view = new DataView(buffer);
 		while (sectorStart < view.byteLength) {
 			var sectorWords = new Int32Array(1024 / 4);
 			for (var i = 0; i < 1024 / 4; i++) {
@@ -1037,7 +1175,50 @@ function DiskSync(emulator) {
 			contents.push(sectorWords);
 			sectorStart += 1024;
 		}
+		return contents;
+	};
 
-		emulator.bootFromSystemImage(contents, reader.fileName);
+	$proto.prepareContentsThenNotify = function(listener) {
+		this.listener = listener;
+		var reader = new FileReader();
+		reader.addEventListener("loadend", this);
+		reader.readAsArrayBuffer(this.file);
+	};
+
+	$proto.handleEvent = function(event) {
+		if (event.type !== "loadend") throw new Error(
+			"Unexpected event: " + event.type
+		);
+
+		var contents = this.getContents(event.target.result);
+		this.listener.useSystemImage(this.file.name, contents);
+	};
+})();
+
+function ROMFileReader(uri, disk, name) {
+	this.uri = uri;
+	this.disk = disk;
+	this.name = name;
+}
+
+(function(){
+	var $proto = ROMFileReader.prototype;
+
+	$proto.prepareContentsThenNotify = function(listener) {
+		this.listener = listener;
+		var request = new XMLHttpRequest();
+		request.addEventListener("load", this);
+		request.open("GET", this.uri);
+		request.responseType = "arraybuffer";
+		request.send(null);
+	};
+
+	$proto.handleEvent = function(event) {
+		if (event.type !== "load") throw new Error(
+			"Unexpected event: " + event.type
+		);
+
+		var contents = DiskFileReader.getContents(event.target.response);
+		this.listener.useSystemImage(this.name, this.disk, contents[0]);
 	};
 })();
