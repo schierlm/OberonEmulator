@@ -435,6 +435,8 @@ function WebDriver(imageName, width, height) {
 function ControlBarUI(emulator) {
 	this.emulator = emulator;
 	this._initWidgets();
+
+	this.linkNameInput.addEventListener("keypress", this, false);
 }
 
 (function(){
@@ -550,18 +552,34 @@ function ControlBarUI(emulator) {
 	};
 
 	$proto.toggleTransferPopup = function(menuButton) {
-		// This looks scarier than it is.  It's similar to a right-recursive
-		// rule for identifiers such as
-		//
-		//   ident  =  letter {letter | digit}.
-		//
-		// ... except this is for file names, and we're matching a whitespace-
-		// delimited list of one or more of them.
-		var fileNames = this.clipboardInput.value.match(
-			/^\s*([a-zA-Z][a-zA-Z0-9.]*)(?:\s+([a-zA-Z][a-zA-Z0-9.]*))*\s*$/
-		);
-		if (fileNames) this.linkNameInput.value = fileNames.slice(1).join(" ");
+		// Fill in the textbox with the contents of the clipboard, but only if
+		// it's a whitespace delimited list of valid file names.
+		var input = this.clipboardInput.value;
+		var fileNames = [];
+		var currentName = "";
+		for (var i = 0; i < input.length; ++i) {
+			if (/[0-9.]/.test(input[i]) && currentName.length ||
+			    /[a-zA-Z]/.test(input[i])) {
+				currentName += input[i];
+			} else if (/\s/.test(input[i])) {
+				if (currentName !== "") {
+					fileNames.push(currentName);
+					currentName = "";
+				}
+			} else {
+				fileNames = [];
+				currentName = "";
+				break;
+			}
+		}
+		if (currentName !== "") {
+			fileNames.push(currentName);
+		}
+		if (fileNames.length) {
+			this.linkNameInput.value = fileNames.join(" ");
+		}
 		this.togglePopup(menuButton);
+		this.linkNameInput.focus();
 	};
 
 	$proto.togglePopup = function(menuButton) {
@@ -571,18 +589,20 @@ function ControlBarUI(emulator) {
 			var items = popup.querySelectorAll(".menuitem");
 			var baselineWidth = parseInt(this.controlBarBox.style.width) / 5;
 			var width = Math.max(menuButton.offsetWidth, baselineWidth | 0);
-			for (var i = 0; i < items.length; ++i) {
-				var itemWidth = 0;
-				var kids = items[i].childNodes;
-				for (var j = 0; j < kids.length; ++j) {
-					if (kids[j].offsetWidth !== undefined) {
-						itemWidth += kids[j].offsetWidth;
+			if (!popup.style.width) {
+				for (var i = 0; i < items.length; ++i) {
+					var itemWidth = 0;
+					var kids = items[i].childNodes;
+					for (var j = 0; j < kids.length; ++j) {
+						if (kids[j].offsetWidth !== undefined) {
+							itemWidth += kids[j].offsetWidth;
+						}
 					}
+					width = Math.max(width, itemWidth);
 				}
-				width = Math.max(width, itemWidth);
+				// NB: Assumes no margins.
+				popup.style.width = (width + 1) + "px";
 			}
-			// NB: Assumes no margins.
-			popup.style.width = (width + 1) + "px";
 		}
 		popup.classList.toggle("open");
 	};
@@ -625,6 +645,15 @@ function ControlBarUI(emulator) {
 		this.clipboardInput.classList.toggle("open");
 		this.selectItem(this.settingsButton, "clipboard");
 		this.clipboardToggle.classList.toggle("checked");
+	};
+
+	// DOM Event handling
+
+	$proto.handleEvent = function(event) {
+		if (event.type !== "keypress") throw new Error(
+			"Unexpected event: " + event.type
+		);
+		if (event.keyCode === 13) this.linkExportButton.click();
 	};
 })();
 
