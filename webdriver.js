@@ -686,7 +686,7 @@ function ScreenUpdater(context, width, height) {
 	$proto.mark = function(x, y) {
 		if (x < this.minX) this.minX = x;
 		if (y < this.minY) this.minY = y;
-		if (x > this.maxX) this.maxX = x + 31;
+		if (x + 31 > this.maxX) this.maxX = x + 31;
 		if (y > this.maxY) this.maxY = y;
 		if (!this.update) this.update = window.setTimeout(this.paint, 1, this);
 	};

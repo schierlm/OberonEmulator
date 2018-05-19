@@ -173,7 +173,7 @@ function memWriteIMGWord(wordAddress, value) {
 	}
 	if (x < backBufferMinX) backBufferMinX = x;
 	if (y < backBufferMinY) backBufferMinY = y;
-	if (x > backBufferMaxX) backBufferMaxX = x + 31;
+	if (x + 31 > backBufferMaxX) backBufferMaxX = x + 31;
 	if (y > backBufferMaxY) backBufferMaxY = y;
 	if (!backBufferDirty) {
 		setTimeout(drawBackBuffer, 1);
