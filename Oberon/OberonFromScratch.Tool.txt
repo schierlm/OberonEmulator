@@ -18,7 +18,7 @@ Batch.Run
 |> Batch.Collect |> Batch.DeleteFiles Image*.smb
 |> ORP.Compile ImageKernel.Mod/s ImageFileDir.Mod/s ImageFiles.Mod/s
         ImageTool.Mod/s ImageORL.Mod/s BootLoad.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 8802BB25H
+|> Batch.Collect |> Batch.VerifyLog 8763BC25H
 |> Batch.WriteLog * 1 "*** Starting crosscompile ***"
 |> Batch.DeleteFiles *.X
 |> XORP.Compile Kernel.Mod/s FileDir.Mod/s Files.Mod/s Modules.Mod/s
@@ -28,20 +28,20 @@ Batch.Run
 |> Batch.Collect |> XORP.Compile MenuViewers.Mod/s ~
 |> Batch.Collect |> XORP.Compile TextFrames.Mod/s ~
 |> Batch.Collect |> XORP.Compile System.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 86C308C9H
+|> Batch.Collect |> Batch.VerifyLog 5E6449C9H
 |> Batch.WriteLog * \ ""
 |> Batch.Collect |> XORP.Compile Edit.Mod/s ~
 |> Batch.Collect |> XORP.Compile Clipboard.Mod/s ~
 |> Batch.Collect |> XORP.Compile ORS.Mod/s ORB.Mod/s ~
 |> Batch.Collect |> XORP.Compile ORG.Mod/s ~
 |> Batch.Collect |> XORP.Compile ORP.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 170CFBEAH
+|> Batch.Collect |> Batch.VerifyLog 0E7AD7BD5H
 |> Batch.WriteLog * \ ""
 |> Batch.Collect |> XORP.Compile ORTool.Mod/s ~
 |> Batch.Collect |> XORP.Compile Calc.Mod/s ResourceMonitor.Mod/s ~
 |> Batch.Collect |> XORP.Compile Graphics.Mod/s ~
 |> Batch.Collect |> XORP.Compile GraphicFrames.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 8387559FH
+|> Batch.Collect |> Batch.VerifyLog 82445FA7H
 |> Batch.WriteLog * \ 2 "*** First part done - "
 |> Batch.WriteLog \ 0 "Restart Oberon and run second "
 |> Batch.WriteLog 0 "part ***"

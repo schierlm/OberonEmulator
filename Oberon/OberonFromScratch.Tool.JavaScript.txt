@@ -18,7 +18,7 @@ Batch.Run
 |> Batch.Collect |> Batch.DeleteFiles Image*.smb
 |> ORP.Compile ImageKernel.Mod/s ImageFileDir.Mod/s ImageFiles.Mod/s
         ImageTool.Mod/s ImageORL.Mod/s BootLoad.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 0D2A514DH
+|> Batch.Collect |> Batch.VerifyLog 49EDA865H
 |> Batch.WriteLog * 1 "*** Starting crosscompile ***"
 |> Batch.DeleteFiles *.X
 |> XORP.Compile Kernel.Mod/s FileDir.Mod/s Files.Mod/s Modules.Mod/s
@@ -28,11 +28,11 @@ Batch.Run
 |> Batch.Collect |> XORP.Compile MenuViewers.Mod/s ~
 |> Batch.Collect |> XORP.Compile TextFrames.Mod/s ~
 |> Batch.Collect |> XORP.Compile System.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 0C4476255H
+|> Batch.Collect |> Batch.VerifyLog 00DF59BAH
 |> Batch.WriteLog * \ ""
 |> Batch.Collect |> XORP.Compile Edit.Mod/s ~
 |> Batch.Collect |> XORP.Compile Clipboard.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 33CB3AA5H
+|> Batch.Collect |> Batch.VerifyLog 188AF5C7H
 |> Batch.Collect |> Batch.WriteLog * 1 "*** Compiling more tools ***"
 |> Batch.Collect |> XORP.Compile ORS.Mod/s ORB.Mod/s ~
 |> Batch.Collect |> XORP.Compile ORG.Mod/s ~
@@ -41,7 +41,7 @@ Batch.Run
 |> Batch.Collect |> XORP.Compile Calc.Mod/s ResourceMonitor.Mod/s ~
 |> Batch.Collect |> XORP.Compile Graphics.Mod/s ~
 |> Batch.Collect |> XORP.Compile GraphicFrames.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 897F3819H
+|> Batch.Collect |> Batch.VerifyLog 11123706H
 |> Batch.WriteLog * \ 2 "*** First part done - "
 |> Batch.WriteLog \ 0 "Restart Oberon and run second "
 |> Batch.WriteLog 0 "part ***"
@@ -56,7 +56,7 @@ Batch.Run
 |> Batch.Collect |> XORP.Compile GraphTool.Mod/s ~
 |> Batch.Collect |> XORP.Compile Rectangles.Mod/s PCLink1.Mod/s ~
 |> Batch.Collect |> XORP.Compile Curves.Mod/s RealCalc.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 74265013H
+|> Batch.Collect |> Batch.VerifyLog 0F1E41627H
 |> Batch.WriteLog * \ 1 "*** Building MinimalDiskImage"
 |> Batch.WriteLog 0 ".Bin ***"
 |> System.CopyFiles System.Tool.Min => System.Tool.X ~
@@ -73,7 +73,7 @@ Batch.Run
 |> ImageTool.Close
 |> Batch.Collect
 |> System.RenameFiles DiskImage.Bin => MinimalDiskImage.Bin ~
-|> Batch.VerifyLog 89B6004EH
+|> Batch.VerifyLog 0B2B17BDAH
 |> Batch.Collect
 |> Batch.Collect
 |> Batch.WriteLog * 1 "*** Building DiskImage.Bin ***"
@@ -107,7 +107,7 @@ Batch.Run
 |> Batch.Collect
 |> ImageORL.Link
 |> ImageTool.Close
-|> Batch.VerifyLog 0A924EC6CH
+|> Batch.VerifyLog 0A03D3E63H
 |> Batch.Collect
 |> Batch.WriteLog * 3 "*** FINISHED ***"
 ||
