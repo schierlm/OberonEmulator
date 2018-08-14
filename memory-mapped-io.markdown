@@ -6,6 +6,7 @@ This document provides a short summary about different Oberon systems/emulators 
 
 Access | Address | System | Description
 --- | --- | --- | ---
+Read/Write | -128 to -68 | Hardware, Java | **Palette**: Modify 16-color palette (if available)
 Read | -64 | Hardware, C, Java, JS | **Timer**: Provide the number of milliseconds since startup
 **Write** | **-64** | **Java, JS** | **Power Management**: When a millisecond timestamp in the future is written here, and since the last write to this address there have not been any keyboard or mouse input since last write to this address, suspend the (virtual) processor until either the timestamp is reached or some input has occurred
 Read | -60 | Hardware, C (Only switch 0, boot-from-serial) | **Switches**: Provide access to hardware switches on the board. Emulators always return 0 here

@@ -2,7 +2,6 @@ package oberonemulator;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
-import java.util.Arrays;
 
 public class ImageMemory {
 
@@ -14,8 +13,7 @@ public class ImageMemory {
 	private int baseAddress;
 	private int slidingWindowBase = -1;
 	private int[] palette = null;
-	private byte[][][] reversePalette = null;
-
+	private int[] indexedPixelBuffer = null;
 
 	public ImageMemory(int span, BufferedImage img, int baseAddress) {
 		this.span = span;
@@ -68,21 +66,8 @@ public class ImageMemory {
 				}
 			}
 		}
-		// create reverse palette lookup array (only store the parts that are
-		// not empty)
-		reversePalette = new byte[256][][];
-		for (int i = 0; i < 256; i++) {
-			int r = (palette[i] >> 16) & 0xFF, g = (palette[i] >> 8) & 0xff, b = palette[i] & 0xFF;
-			if (reversePalette[r] == null)
-				reversePalette[r] = new byte[256][];
-			if (reversePalette[r][g] == null) {
-				reversePalette[r][g] = new byte[256];
-				Arrays.fill(reversePalette[r][g], (byte) -1);
-			}
-			if (reversePalette[r][g][b] != -1)
-				throw new IllegalStateException("Ambiguous reverse palette mapping");
-			reversePalette[r][g][b] = (byte) i;
-		}
+		// create indexed pixel buffer
+		indexedPixelBuffer = new int[4096 * img.getWidth() / 4];
 	}
 
 	private void fill8Colors(int start, int black, int white, int iwhite, int iblack) {
@@ -98,18 +83,7 @@ public class ImageMemory {
 		int offs = wordAddress - baseAddress;
 		if (slidingWindowBase != -1) {
 			Feature.COLOR_GRAPHICS.use();
-			int x = (offs + slidingWindowBase) % (4096 / 4) * 4;
-			int y = img.getHeight() - 1 - (offs + slidingWindowBase) / (4096 / 4);
-			if (y < 0 || x >= img.getWidth()) return 0;
-			int val = 0;
-			for (int i = 0; i < 4; i++) {
-				int col = img.getRGB(x + i, y) & 0xFFFFFF;
-				int r = (col >> 16) & 0xFF, g = (col >> 8) & 0xff;
-				int idx = reversePalette[r] != null && reversePalette[r][g] != null
-						? reversePalette[r][g][col & 0xFF] & 0xFF : 255;
-				val |= (idx << (i * 8));
-			}
-			return val;
+			return offs + slidingWindowBase < indexedPixelBuffer.length ? indexedPixelBuffer[offs + slidingWindowBase] : 0;
 		}
 		Feature.BW_GRAPHICS.use();
 		int x = (offs % (Math.abs(span) / 4)) * 32;
@@ -131,6 +105,7 @@ public class ImageMemory {
 			int x = (offs + slidingWindowBase) % (4096 / 4) * 4;
 			int y = img.getHeight() - 1 - (offs + slidingWindowBase) / (4096 / 4);
 			if (y < 0 || x >= img.getWidth()) return;
+			indexedPixelBuffer[offs + slidingWindowBase] = value;
 			for (int i = 0; i < 4; i++) {
 				img.setRGB(x + i, y, palette[(value >>> (i * 8)) & 0xFF]);
 			}
@@ -145,6 +120,27 @@ public class ImageMemory {
 			img.setRGB(x + i, y, (value & (1 << i)) != 0 ? WHITE : BLACK);
 		}
 		triggerRepaint();
+	}
+
+	public int readPalette(int color) {
+		return palette != null ? palette[color] : 0;
+	};
+
+	public void writePalette(int color, int value) {
+		if (palette != null) {
+			value &= 0xFFFFFF;
+			palette[color] = value;
+			if (slidingWindowBase != -1) {
+				for (int y = 0; y < img.getHeight(); y++) {
+					for (int x = 0; x < img.getWidth(); x++) {
+						if (((indexedPixelBuffer[(y * 4096 + x) / 4] >>> (x % 4 * 8)) & 0xFF) == color) {
+							img.setRGB(x, img.getHeight() - 1 - y, value);
+						}
+					}
+				}
+			}
+			triggerRepaint();
+		}
 	}
 
 	public void reset() {

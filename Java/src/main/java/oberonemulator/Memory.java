@@ -40,6 +40,8 @@ public class Memory {
 			return rom[wordAddress - (romStart >>> 2)];
 		} else if (wordAddress >= (largeAddressSpace ? (int) (LargeIOStart / 4) : (IOStart / 4))) {
 			return mmio.readWord(wordAddress);
+		} else if (wordAddress >= (largeAddressSpace ? (int) (LargeIOStart / 4) : (IOStart / 4)) - 0x10) {
+			return imgio.readPalette(wordAddress % 0x10);
 		} else if (wordAddress >= displayStart >>> 2) {
 			return imgio.readWord(wordAddress);
 		} else if (wordAddress < ram.length) {
@@ -52,6 +54,8 @@ public class Memory {
 	public void writeWord(int wordAddress, int value) {
 		if (wordAddress >= (largeAddressSpace ? (int) (LargeIOStart / 4) : (IOStart / 4))) {
 			mmio.writeWord(wordAddress, value);
+		} else if (wordAddress >= (largeAddressSpace ? (int) (LargeIOStart / 4) : (IOStart / 4)) - 0x10) {
+			imgio.writePalette(wordAddress % 0x10, value);
 		} else if (wordAddress >= displayStart >>> 2) {
 			imgio.writeWord(wordAddress, value);
 		} else if (wordAddress < ram.length) {

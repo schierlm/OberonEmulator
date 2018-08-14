@@ -1,0 +1,38 @@
+MODULE PaletteEdit;
+  IMPORT SYSTEM, Texts, Oberon;
+
+  VAR
+    S: Texts.Scanner;
+    W: Texts.Writer;
+    val: INTEGER;
+
+  PROCEDURE Log*();
+    VAR
+      col: INTEGER;
+  BEGIN
+    Texts.OpenWriter(W);
+    FOR col := 0 TO 15 DO
+      Texts.WriteString(W, "PaletteEdit.Set ");
+      Texts.WriteInt(W, col, 2);
+      Texts.WriteString(W, " ");
+      SYSTEM.GET(-128 + col * 4, val);
+      Texts.WriteHex(W, val);
+      Texts.WriteString(W, "H");
+      Texts.WriteLn(W)
+    END;
+    Texts.Append(Oberon.Log, W.buf)
+  END Log;
+
+  PROCEDURE Set*();
+    VAR
+      col, val: INTEGER;
+  BEGIN
+    Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos);
+    Texts.Scan(S);
+    IF S.class = Texts.Int THEN col := S.i ELSE col := 0 END;
+    Texts.Scan(S);
+    IF S.class = Texts.Int THEN val := S.i ELSE val := 0 END;
+    IF (col >= 0) & (col < 16) THEN SYSTEM.PUT(-128 + col * 4, val) END
+  END Set;
+
+END PaletteEdit.

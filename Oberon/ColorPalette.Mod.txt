@@ -37,7 +37,7 @@ MODULE ColorPalette;
   BEGIN
     NEW(F); F.handle := Handler;
     Oberon.AllocateUserViewer(Oberon.Par.vwr.X, X, Y);
-    V := MenuViewers.New(TextFrames.NewMenu("Hilbert", Menu), F, TextFrames.menuH, X, Y)
+    V := MenuViewers.New(TextFrames.NewMenu("ColorPalette", Menu), F, TextFrames.menuH, X, Y)
   END Draw;
 
 END ColorPalette.
