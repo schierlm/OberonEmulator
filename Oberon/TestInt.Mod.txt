@@ -1,0 +1,16 @@
+MODULE TestInt;  (* from RISC5.Update.pdf *)
+IMPORT SYSTEM;
+VAR led, cnt: INTEGER;
+PROCEDURE* Int; (*interrupt handler called every millisecond*)
+BEGIN INC(cnt);
+IF cnt = 500 THEN led := 3 - led; LED(led); cnt := 0 END
+END Int;
+PROCEDURE On*;
+BEGIN SYSTEM.LDPSR(1)
+END On;
+PROCEDURE Off*;
+BEGIN SYSTEM.LDPSR(0)
+END Off;
+BEGIN led := 1; cnt := 0; (*install Int at address 4*)
+SYSTEM.PUT(4, 0E7000000H + SYSTEM.ADR(Int) DIV 4 - 2)
+END TestInt.

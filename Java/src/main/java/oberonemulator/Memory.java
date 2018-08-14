@@ -67,6 +67,7 @@ public class Memory {
 
 	public void reset() {
 		imgio.reset();
+		setIRQEnabled(false);
 	}
 
 	public int[] getRAM() {
@@ -79,5 +80,9 @@ public class Memory {
 
 	public void triggerRepaint() {
 		imgio.triggerRepaint();
+	}
+
+	public void setIRQEnabled(boolean enabled) {
+		mmio.setIRQEnabled(enabled);
 	}
 }

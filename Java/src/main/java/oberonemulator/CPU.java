@@ -13,6 +13,12 @@ public class CPU extends Thread {
 	private boolean flagZ, flagN, flagC, flagV;
 	private boolean largeAddressSpace;
 
+	private int irqPC, irqStatus = IRQ_STATUS_DISABLED;
+	private boolean irqFZ, irqFN, irqFC, irqFV;
+	private long irqNanos;
+
+	private static int IRQ_STATUS_DISABLED = 0, IRQ_STATUS_ENABLED = 1, IRQ_STATUS_HANDLER = 2;
+
 	private static enum INS {
 		MOV, LSL, ASR, ROR,
 		AND, ANN, IOR, XOR,
@@ -38,6 +44,7 @@ public class CPU extends Thread {
 	public void reset(boolean cold) {
 		if (cold) {
 			regR[15] = 0;
+			irqStatus = IRQ_STATUS_DISABLED;
 			mem.reset();
 		}
 		regPC = mem.getROMStart() >>> 2;
@@ -67,6 +74,14 @@ public class CPU extends Thread {
 	}
 
 	public void singleStep() {
+		if (irqStatus == IRQ_STATUS_ENABLED && System.nanoTime() - irqNanos > 1000000) {
+			irqNanos = System.nanoTime();
+			irqFC = flagC; irqFN=flagN; irqFV = flagV; irqFZ = flagZ;
+			irqPC = regPC;
+			irqStatus = IRQ_STATUS_HANDLER;
+			regPC = 1;
+		}
+
 		int ir = mem.readWord(regPC, true);
 		regPC++;
 
@@ -279,6 +294,21 @@ public class CPU extends Thread {
 					if (largeAddressSpace)
 						off = (off << 8) >> 8;
 					regPC = (regPC + off) % (largeAddressSpace ? Memory.LargeMemWords : Memory.MemWords);
+				}
+			}
+			if ((ir & ubit) == 0 && (ir & vbit) == 0 && (ir & 0x30) != 0) {
+				int c = ir & 0x0000003F;
+				if (c == 0x20 && irqStatus == IRQ_STATUS_ENABLED) {
+					irqStatus = IRQ_STATUS_DISABLED;
+					mem.setIRQEnabled(false);
+				} else if (c == 0x21 && irqStatus == IRQ_STATUS_DISABLED) {
+					irqStatus = IRQ_STATUS_ENABLED;
+					irqNanos = System.nanoTime();
+					mem.setIRQEnabled(true);
+				} else if (c == 0x10 && irqStatus == IRQ_STATUS_HANDLER) {
+					irqStatus = IRQ_STATUS_ENABLED;
+					flagC = irqFC; flagN = irqFN; flagV = irqFV; flagZ = irqFZ;
+					regPC = irqPC;
 				}
 			}
 		}

@@ -14,7 +14,7 @@ import java.nio.CharBuffer;
 public class MemoryMappedIO {
 
 	private long startMillis = System.currentTimeMillis();
-	private boolean inputOccurred = false;
+	private boolean inputOccurred = false, irqEnabled = false;
 	private int paravirtPtr;
 
 	private int[] keyBuf = new int[64];
@@ -63,6 +63,10 @@ public class MemoryMappedIO {
 
 	public void setMem(Memory mem) {
 		this.mem = mem;
+	}
+
+	public void setIRQEnabled(boolean enabled) {
+		irqEnabled = enabled;
 	}
 
 	public synchronized int readWord(int wordAddress) {
@@ -173,6 +177,8 @@ public class MemoryMappedIO {
 	}
 
 	private synchronized void checkProgress() {
+		if (irqEnabled)
+			return;
 		try {
 			wait(10);
 		} catch (InterruptedException ex) {
@@ -186,7 +192,7 @@ public class MemoryMappedIO {
 			Feature.POWER_MANAGEMENT.use();
 			long waitMillis = startMillis + value;
 			long now = System.currentTimeMillis();
-			while (!inputOccurred && waitMillis > now) {
+			while (!inputOccurred && !irqEnabled && waitMillis > now) {
 				try {
 					wait(waitMillis - now);
 				} catch (InterruptedException ex) {
