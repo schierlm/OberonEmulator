@@ -33,6 +33,10 @@ public class ImageMemory {
 		return img.getHeight();
 	}
 
+	public int getBaseAddress() {
+		return baseAddress;
+	}
+
 	public void setSlidingWindowBase(int value) {
 		initPalette();
 		slidingWindowBase = value;
@@ -70,6 +74,19 @@ public class ImageMemory {
 		indexedPixelBuffer = new int[4096 * img.getWidth() / 4];
 	}
 
+	private synchronized void initPalette16() {
+		if (palette != null)
+			return;
+		palette = new int[] {
+				0x000000, 0x000080, 0x008000, 0x008080,	0x800000, 0x800080, 0x808000, 0x808080,
+				0xc0c0c0, 0x0000ff, 0x00ff00, 0x00ffff,	0xff0000, 0xff00ff, 0xffff00, 0xffffff,
+		};
+		indexedPixelBuffer = new int[1024 * img.getWidth() / 8];
+		if ((baseAddress & 0xFFFFF) == 0xE7F00 / 4) {
+			baseAddress = (baseAddress & 0xFFF00000) | 0x9FF00 / 4;
+		}
+	}
+
 	private void fill8Colors(int start, int black, int white, int iwhite, int iblack) {
 		int mask = 0xFF000000;
 		for (int i = 0; i < 4; i++) {
@@ -84,6 +101,9 @@ public class ImageMemory {
 		if (slidingWindowBase != -1) {
 			Feature.COLOR_GRAPHICS.use();
 			return offs + slidingWindowBase < indexedPixelBuffer.length ? indexedPixelBuffer[offs + slidingWindowBase] : 0;
+		} else if (palette != null) {
+			Feature.COLOR16_GRAPHICS.use();
+			return offs < indexedPixelBuffer.length ? indexedPixelBuffer[offs] : 0;
 		}
 		Feature.BW_GRAPHICS.use();
 		int x = (offs % (Math.abs(span) / 4)) * 32;
@@ -111,6 +131,17 @@ public class ImageMemory {
 			}
 			triggerRepaint();
 			return;
+		} else if (palette != null) {
+			Feature.COLOR16_GRAPHICS.use();
+			int x = offs % (1024 / 8) * 8;
+			int y = img.getHeight() - 1 - offs / (1024 / 8);
+			if (y < 0 || x >= img.getWidth()) return;
+			indexedPixelBuffer[offs] = value;
+			for (int i = 0; i < 8; i++) {
+				img.setRGB(x + i, y, palette[(value >>> (i * 4)) & 0xF]);
+			}
+			triggerRepaint();
+			return;
 		}
 		Feature.BW_GRAPHICS.use();
 		int x = (offs % (Math.abs(span) / 4)) * 32;
@@ -123,7 +154,10 @@ public class ImageMemory {
 	}
 
 	public int readPalette(int color) {
-		return palette != null ? palette[color] : 0;
+		if (palette == null) {
+			initPalette16();
+		}
+		return palette[color];
 	};
 
 	public void writePalette(int color, int value) {
@@ -138,6 +172,14 @@ public class ImageMemory {
 						}
 					}
 				}
+			} else {
+				for (int y = 0; y < img.getHeight(); y++) {
+					for (int x = 0; x < img.getWidth(); x++) {
+						if (((indexedPixelBuffer[(y * 1024 + x) / 8] >>> (x % 8 * 4)) & 0xF) == color) {
+							img.setRGB(x, img.getHeight() - 1 - y, value);
+						}
+					}
+				}
 			}
 			triggerRepaint();
 		}
@@ -145,6 +187,12 @@ public class ImageMemory {
 
 	public void reset() {
 		if (slidingWindowBase == -1) {
+			if (palette != null) {
+				palette = null;
+				if (baseAddress == 0x9FF00 / 4) {
+					baseAddress = 0xE7F00 / 4;
+				}
+			}
 			if (span != -128) {
 				writeWord(baseAddress, 0x53697A66); // magic value SIZF
 				writeWord(baseAddress + 1, img.getWidth());

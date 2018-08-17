@@ -17,12 +17,10 @@ public class Memory {
 	private MemoryMappedIO mmio;
 	private ImageMemory imgio;
 	private int romStart;
-	private int displayStart;
 	private boolean largeAddressSpace;
 
 	public Memory(ImageMemory imgio, int[] bootloader, MemoryMappedIO mmio, boolean largeAddressSpace, int memSize, int displayStart, int romStart) {
 		this.largeAddressSpace = largeAddressSpace;
-		this.displayStart = displayStart;
 		this.romStart = romStart;
 		ram = new int[Math.min(memSize >>> 2, displayStart >>> 2)];
 		this.imgio = imgio;
@@ -42,7 +40,7 @@ public class Memory {
 			return mmio.readWord(wordAddress);
 		} else if (wordAddress >= (largeAddressSpace ? (int) (LargeIOStart / 4) : (IOStart / 4)) - 0x10) {
 			return imgio.readPalette(wordAddress % 0x10);
-		} else if (wordAddress >= displayStart >>> 2) {
+		} else if (wordAddress >= imgio.getBaseAddress()) {
 			return imgio.readWord(wordAddress);
 		} else if (wordAddress < ram.length) {
 			return ram[wordAddress];
@@ -56,7 +54,7 @@ public class Memory {
 			mmio.writeWord(wordAddress, value);
 		} else if (wordAddress >= (largeAddressSpace ? (int) (LargeIOStart / 4) : (IOStart / 4)) - 0x10) {
 			imgio.writePalette(wordAddress % 0x10, value);
-		} else if (wordAddress >= displayStart >>> 2) {
+		} else if (wordAddress >= imgio.getBaseAddress()) {
 			imgio.writeWord(wordAddress, value);
 		} else if (wordAddress < ram.length) {
 			ram[wordAddress] = value;

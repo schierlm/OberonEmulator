@@ -211,7 +211,23 @@ function WebDriver(imageName, width, height) {
 		return Date.now() - this.startMillis;
 	};
 
-	$proto.registerVideoChange = function(offset, value) {
+	$proto.registerVideoChange = function(offset, value, palette) {
+		if (palette != null) {
+			var x = (offset % 128) * 8;
+			var y = this.screen.height - 1 - (offset / 128 | 0);
+			if (y < 0 || x >= this.screen.width) return;
+			var base = (y * this.screen.width + x) * 4;
+			var data = this.screenUpdater.backBuffer.data;
+			for (var i = 0; i < 8; i++) {
+				var col = palette[(value >>> (i*4)) & 0xF];
+				data[base++] = col >>> 16;
+				data[base++] = (col >>> 8) & 0xFF;
+				data[base++] = col & 0xFF;
+				data[base++] = 255;
+			}
+			this.screenUpdater.mark(x, y);
+			return;
+		}
 		var x = (offset % 32) * 32;
 		var y = this.screen.height - 1 - (offset / 32 | 0);
 		if (y < 0 || x >= this.screen.width) return;
