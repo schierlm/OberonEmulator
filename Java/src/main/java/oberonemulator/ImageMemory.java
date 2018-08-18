@@ -82,8 +82,8 @@ public class ImageMemory {
 				0xc0c0c0, 0x0000ff, 0x00ff00, 0x00ffff,	0xff0000, 0xff00ff, 0xffff00, 0xffffff,
 		};
 		indexedPixelBuffer = new int[1024 * img.getWidth() / 8];
-		if ((baseAddress & 0xFFFFF) == 0xE7F00 / 4) {
-			baseAddress = (baseAddress & 0xFFF00000) | 0x9FF00 / 4;
+		if ((baseAddress & 0x3FFFF) == 0xE7F00 / 4) {
+			baseAddress = (baseAddress & 0xFFFC0000) | 0x9FF00 / 4;
 		}
 	}
 

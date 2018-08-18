@@ -92,6 +92,15 @@ public class Main {
 				memSize *= bootloader[511];
 				displayStart = bootloader[510];
 				romStart = bootloader[509];
+			} else if ((bootloader[255] & 0xFFFFFF) == 0x3D424D && Arrays.equals(Arrays.copyOfRange(bootloader, 256, 512), new int[256])) {
+				int mb = bootloader[255] >>> 24;
+				if (mb == '1' || mb == '2' || mb == '4' || mb == '8')
+					mb &= 0xF;
+				Feature.LARGE_ADDRESS_SPACE.use();
+				largeAddressSpace = true;
+				memSize *= mb;
+				displayStart += (mb-1) * 0x100000;
+				romStart += (mb-1) * 0x100000;
 			}
 			BufferedImage img = new BufferedImage(Math.abs(Integer.parseInt(args[0])) & ~31, Integer.parseInt(args[1]), BufferedImage.TYPE_INT_RGB);
 			int span = -128;
