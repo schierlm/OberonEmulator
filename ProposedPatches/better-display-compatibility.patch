@@ -11,22 +11,31 @@
  
 --- 1/Texts.Mod.txt
 +++ 2/Texts.Mod.txt
-@@ -400,7 +400,7 @@
- 
-   PROCEDURE OpenWriter* (VAR W: Writer);
-   BEGIN NEW(W.buf);
--    OpenBuf(W.buf); W.fnt := Fonts.Default; W.col := 15; W.voff := 0;
-+    OpenBuf(W.buf); W.fnt := Fonts.Default; W.col := 1; W.voff := 0;
-     Files.Set(W.rider, Files.New(""), 0)
-   END OpenWriter;
- 
+@@ -115,7 +115,7 @@
+       IF tag = TextTag THEN Load(R, T)
+       ELSE (*Ascii file*)
+         len := Files.Length(f); Q := Trailer();
+-        NEW(q); q.fnt := Fonts.Default; q.col := 1; q.voff := 0; q.f := f; q.off := 0; q.len := len;
++        NEW(q); q.fnt := Fonts.Default; q.col := 15; q.voff := 0; q.f := f; q.off := 0; q.len := len;
+         Q.next := q; q.prev := Q; q.next := Q; Q.prev := q; T.trailer := Q; T.len := len
+       END
+     ELSE (*create new text*)
 --- 1/GraphicFrames.Mod.txt
 +++ 2/GraphicFrames.Mod.txt
+@@ -454,7 +454,7 @@
+     CASE M OF DrawMsg:
+       x := obj.x + M.x; y := obj.y + M.y; w := obj.w; h := obj.h; f := M.f;
+       IF (x+w > f.X) & (x < f.X1) & (y+h > f.Y) & (y < f.Y1) THEN
+-        col := Display.white;
++        col := obj.col;
+         IF (M.mode = 0) & obj.selected OR (M.mode = 1) THEN
+           ReplPattern(f, col, Display.grey, x, y, w, h, Display.replace)
+         ELSIF M.mode IN {0, 2} THEN ReplConst(f, col, x, y, w, h, Display.replace)
 @@ -480,6 +480,7 @@
              fnt := R.fnt; x0 := x; y0 := y - fnt.minY;
              REPEAT Fonts.GetPat(fnt, ch, dx, x1, y1, w1, h1, pat);
                IF x0+x1+w1 <= f.X1 THEN
-+                col := Display.white;
++                col := obj.col;
                  Display.CopyPattern(col, pat, x0+x1, y0+y1, Display.paint); INC(x0, dx); Texts.Read(R, ch)
                ELSE ch := 0X
                END

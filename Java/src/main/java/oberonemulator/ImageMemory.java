@@ -46,10 +46,8 @@ public class ImageMemory {
 		if (palette != null)
 			return;
 		palette = new int[256];
-		fill8Colors(0, 0x657b83, 0xfdf6e3, 0x657b83, 0xfdf6e3);
-		fill8Colors(8, 0, 0xFFFFFF, 0, 0xFFFFFF);
-		fill8Colors(16, 0x010101, 0x7F7F7F, 0x808080, 0xFEFEFE);
-		fill8Colors(24, 0x808080, 0xFEFEFE, 0x010101, 0x7F7F7F);
+		fill16Colors(0, 0x657b83, 0xfdf6e3);
+		fill16Colors(16, 0, 0xFFFFFF);
 		int idx = 32;
 		// add some grays
 		for (int i = 0; i < 8; i++) {
@@ -87,13 +85,33 @@ public class ImageMemory {
 		}
 	}
 
-	private void fill8Colors(int start, int black, int white, int iwhite, int iblack) {
-		int mask = 0xFF000000;
-		for (int i = 0; i < 4; i++) {
-			palette[start + i * 2] = white & mask | black & ~mask;
-			palette[start + i * 2 + 1] = iwhite & mask | iblack & ~mask;
-			mask >>>= 8;
+	private void fill16Colors(int start, int black, int white) {
+		int dim = black + multDivColor(white-black, 1, 2);
+		fill8Colors(start, black, dim);
+		fill8Colors(start+8, black, white);
+		palette[start + 8] = black + multDivColor(white-black, 3, 4);
+	}
+
+	private void fill8Colors(int start, int black, int white) {
+		for (int i = 0; i < 8; i++) {
+			palette[start + i] = 0;
+			for(int j=0; j<3; j++) {
+				int mask = 0xFF << (j*8);
+				if ((i & (1<<j)) != 0) {
+					palette[start+i] |= white & mask;
+				} else {
+					palette[start+i] |= black & mask;
+				}
+			}
 		}
+	}
+
+	private int multDivColor(int color, int mul, int div) {
+		int result = 0;
+		for(int i=0; i<3; i++) {
+			result |= (((color >>> (i*8)) & 0xFF) * mul / div) << (i*8);
+		}
+		return result;
 	}
 
 	public int readWord(int wordAddress) {
