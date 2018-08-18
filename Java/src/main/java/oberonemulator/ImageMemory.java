@@ -207,8 +207,8 @@ public class ImageMemory {
 		if (slidingWindowBase == -1) {
 			if (palette != null) {
 				palette = null;
-				if (baseAddress == 0x9FF00 / 4) {
-					baseAddress = 0xE7F00 / 4;
+				if ((baseAddress & 0x3FFFF) == 0x9FF00 / 4) {
+					baseAddress = (baseAddress & 0xFFFC0000) | 0xE7F00 / 4;
 				}
 			}
 			if (span != -128) {
