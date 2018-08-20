@@ -1,1 +1,1 @@
-{"images": ["MinimalDiskImage", "FullDiskImage", "VanillaDiskImage", "ExperimentalOberonDiskImage"]}
+{"images": ["MinimalDiskImage", "FullDiskImage", "VanillaDiskImage", "ExperimentalOberonDiskImage", "ColorDiskImage", "ColorBigmemDiskImage"]}

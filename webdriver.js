@@ -71,6 +71,7 @@ function WebDriver(imageName, width, height) {
 	$proto.transferHistory = null;
 	$proto.waitMillis = 0;
 	$proto.width = 0;
+	$proto.autosave = false;
 
 	$proto.setDimensions = function(width, height, resizeControlBar) {
 		this.width = width || 1024;
@@ -90,6 +91,9 @@ function WebDriver(imageName, width, height) {
 
 	$proto.useConfiguration = function(config) {
 		var images = config.images;
+		if (window.localStorage.getItem("AUTOSAVE") !== null) {
+			this.ui.addSystemItem("(Autosaved)");
+		}
 		for (var i = 0; i < images.length; ++i) {
 			this.ui.addSystemItem(images[i]);
 		}
@@ -102,7 +106,19 @@ function WebDriver(imageName, width, height) {
 		this.ui.markLoading();
 		this.ui.closeOpenPopups();
 		var item = this.ui.selectItem(this.ui.systemButton, "diskimage", name);
-		if (item !== null) {
+		if (name == "(Autosaved)") {
+			var contents = [];
+			var size = window.localStorage.getItem("AUTOSAVE")-0;
+			var arr = Uint8Array.from(atob(window.localStorage.getItem("AUTOSAVE-ROM")), function(c) { return c.charCodeAt(0)});
+			contents[0] = new Int32Array(arr.buffer);
+			for (var i = 0; i < size; i++) {
+				var arr = Uint8Array.from(atob(window.localStorage.getItem("AUTOSAVE-"+i)), function(c) { return c.charCodeAt(0)});
+				contents[i+1] = new Int32Array(arr.buffer);
+			}
+			this.useSystemImage("(Autosaved)", contents);
+			this.autosave = true;
+			this.ui.autosaveToggle.classList.add("checked");
+		} else if (item !== null) {
 			// It's one of our premade images, not user supplied.
 			this.reader = new PNGImageReader(name);
 			this.reader.prepareContentsThenNotify(this);
@@ -118,6 +134,10 @@ function WebDriver(imageName, width, height) {
 	// unless we've already booted once before, in which case we use whatever
 	// is already "burned in".
 	$proto.useSystemImage = function(name, contents, rom) {
+		if (this.autosave) {
+			this.autosave = false;
+			this.ui.autosaveToggle.classList.remove("checked");
+		}
 		this.ui.markLoading();
 		this.imageName = name;
 		if (rom === undefined) {
@@ -211,7 +231,23 @@ function WebDriver(imageName, width, height) {
 		return Date.now() - this.startMillis;
 	};
 
-	$proto.registerVideoChange = function(offset, value) {
+	$proto.registerVideoChange = function(offset, value, palette) {
+		if (palette != null) {
+			var x = (offset % 128) * 8;
+			var y = this.screen.height - 1 - (offset / 128 | 0);
+			if (y < 0 || x >= this.screen.width) return;
+			var base = (y * this.screen.width + x) * 4;
+			var data = this.screenUpdater.backBuffer.data;
+			for (var i = 0; i < 8; i++) {
+				var col = palette[(value >>> (i*4)) & 0xF];
+				data[base++] = col >>> 16;
+				data[base++] = (col >>> 8) & 0xFF;
+				data[base++] = col & 0xFF;
+				data[base++] = 255;
+			}
+			this.screenUpdater.mark(x, y);
+			return;
+		}
 		var x = (offset % 32) * 32;
 		var y = this.screen.height - 1 - (offset / 32 | 0);
 		if (y < 0 || x >= this.screen.width) return;
@@ -285,6 +321,10 @@ function WebDriver(imageName, width, height) {
 			var sector = new Int32Array(256);
 			sector.set(memory.subarray(address, address + 256));
 			this.disk[sectorNumber - 1] = sector;
+			if (this.autosave) {
+				window.localStorage.setItem("AUTOSAVE", this.disk.length);
+				window.localStorage.setItem("AUTOSAVE-"+(sectorNumber-1), btoa(String.fromCharCode.apply(null, new Uint8Array(this.disk[sectorNumber-1].buffer))));
+			}
 			return;
 		}
 	};
@@ -325,6 +365,21 @@ function WebDriver(imageName, width, height) {
 	$proto.exportDiskImage = function() {
 		this.save("oberon.dsk", this.disk);
 	};
+
+	$proto.toggleAutoSave = function() {
+		this.autosave = !this.autosave;
+		this.ui.closeOpenPopups();
+		this.ui.autosaveToggle.classList.toggle("checked");
+		if (this.autosave) {
+			window.localStorage.setItem("AUTOSAVE", this.disk.length);
+			window.localStorage.setItem("AUTOSAVE-ROM", btoa(String.fromCharCode.apply(null, new Uint8Array(this.machine.bootROM.buffer))));
+			for(var i = 0; i < this.disk.length; i++) {
+				window.localStorage.setItem("AUTOSAVE-"+i, btoa(String.fromCharCode.apply(null, new Uint8Array(this.disk[i].buffer))));
+			}
+		} else if (confirm("Delete existing autosave image?")) {
+			window.localStorage.clear();
+		}
+	}
 
 	$proto.dumpROM = function() {
 		this.save("boot.rom", [ this.machine.bootROM ]);
@@ -448,6 +503,7 @@ function ControlBarUI(emulator) {
 	$proto.clickRight = null;
 	$proto.clipboardInput = null;
 	$proto.clipboardToggle = null;
+	$proto.autosaveToggle = null;
 	$proto.controlBarBox = null;
 	$proto.diskFileInput = null;
 	$proto.diskImportButton = null;
@@ -458,7 +514,7 @@ function ControlBarUI(emulator) {
 	$proto.settingsButton = null;
 	$proto.systemButton = null;
 
-	$proto._initWidgets = function(width, height) {
+	$proto._initWidgets = function() {
 		var $ = document.getElementById.bind(document);
 		this.leds = [
 			$("led0"), $("led1"), $("led2"), $("led3"),
@@ -468,6 +524,7 @@ function ControlBarUI(emulator) {
 		this.buttonBox = $("buttonbox");
 		this.clipboardInput = $("clipboardinput");
 		this.clipboardToggle = $("clipboardToggle");
+		this.autosaveToggle = $("autosaveToggle");
 		this.controlBarBox = $("controlbar");
 		this.settingsButton = $("settingsbutton");
 		this.systemButton = $("systembutton");

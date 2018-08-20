@@ -163,6 +163,10 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
       <button id="diskexportbutton" class="menuitem"
               onclick="emulator.exportDiskImage();"
               title="Export disk image">Save…</button>
+
+      <button id="autosaveToggle" class="checkable menuitem autosave"
+              onclick="emulator.toggleAutoSave();"
+              title="Autosave to local storage">Autosave</button>
     </div>
   </div>
   <div class="endcontrols">

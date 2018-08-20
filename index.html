@@ -45,6 +45,8 @@ You also need a fairly fast PC or some patience during the boot process.</p>
 		<option>FullDiskImage</option>
 		<option>VanillaDiskImage</option>
 		<option>ExperimentalOberonDiskImage</option>
+		<option>ColorDiskImage</option>
+		<option>ColorBigmemDiskImage</option>
 	</select>
 	<input type="Button" value="Start" onclick="startEmu()">
 	<label><input type="checkbox" name="oldemu" value="false">Use old (ugly) emulator</label>
@@ -63,6 +65,10 @@ try {
 }
 
 function startEmu() {
+	if (document.forms.emuform.oldemu.checked && document.forms.emuform.image.value.indexOf("Color") == 0) {
+		alert("Old emulator does not support color!")
+		return;
+	}
 	if (document.forms.emuform.oldemu.checked) {
 		var size = document.forms.emuform.size.value;
 		var image = document.forms.emuform.image.value;

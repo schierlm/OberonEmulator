@@ -2,6 +2,18 @@ function RISCMachine(romWords) {
 	this.registers = new Int32Array(
 		this.GeneralRegisterCount + this.SpecialRegisterCount
 	);
+	if ((romWords[255] & 0xFFFFFF) == 0x3D424D) {
+		var mb = (romWords[255] >>> 24) & 0xF;
+		this.MemSize = 0x100000 * mb;
+		this.MemWords = (this.MemSize / 4);
+		console.log(this.MemWords);
+		var offset = (mb - 1) * 0x100000;
+		this.DisplayStart += offset;
+		console.log(this.DisplayStart.toString(16));
+		this.ROMStart += offset;
+		this.PaletteStart += offset;
+		this.IOStart += offset;
+	}
 	this.mainMemory = new Int32Array(this.MemWords);
 	this.flag_Z = false, this.flag_N = false;
 	this.flag_C = false, this.flag_V = false;
@@ -18,9 +30,11 @@ function RISCMachine(romWords) {
 
 	RISCMachine.DisplayStart = $proto.DisplayStart = 0x0E7F00;
 	RISCMachine.ROMStart = $proto.ROMStart = 0x0FE000;
+	RISCMachine.PaletteStart = $proto.PaletteStart = 0x0FFF80;
 	RISCMachine.IOStart = $proto.IOStart = 0x0FFFC0;
 	RISCMachine.MemSize = $proto.MemSize = 0x100000;
 	RISCMachine.MemWords = $proto.MemWords = (RISCMachine.MemSize / 4);
+	$proto.palette = null;
 
 	$proto.cpuRegisterSlot = function(id) {
 		if (id < 0 && -id <= this.SpecialRegisterCount) {
@@ -50,6 +64,8 @@ function RISCMachine(romWords) {
 			return this.bootROM[(address - this.ROMStart) / 4 | 0];
 		} else if (address >= this.IOStart) {
 			return this.memReadIO(address);
+		} else if (address >= this.PaletteStart) {
+			return this.memReadPalette(address);
 		} else {
 			return this.mainMemory[address / 4 | 0];
 		}
@@ -58,10 +74,33 @@ function RISCMachine(romWords) {
 	$proto.memWriteWord = function(address, value) {
 		if (address >= this.IOStart) {
 			this.memWriteIO(address, value);
+		} else if (address >= this.PaletteStart) {
+			this.memWritePalette(address, value);
 		} else if (address >= this.DisplayStart) {
 			this.memWriteVideo(address, value);
 		} else {
 			this.mainMemory[address / 4 | 0] = value;
+		}
+	}
+
+	$proto.memReadPalette = function(address) {
+		if (this.palette == null) {
+			this.DisplayStart = 0x09FF00 + this.MemSize - 0x100000;
+			this.palette = [
+				0x000000, 0x000080, 0x008000, 0x008080,	0x800000, 0x800080, 0x808000, 0x808080,
+				0xc0c0c0, 0x0000ff, 0x00ff00, 0x00ffff,	0xff0000, 0xff00ff, 0xffff00, 0xffffff
+			];
+		}
+		return this.palette[(address - this.PaletteStart) / 4 | 0];
+	}
+
+	$proto.memWritePalette = function(address, val) {
+		if (this.palette != null) {
+			var col = (address - this.PaletteStart) / 4 | 0;
+			this.palette[col] = val & 0xFFFFFF;
+			for(var i = this.DisplayStart / 4 | 0; i < this.mainMemory.length; i++) {
+				emulator.registerVideoChange((i * 4 - this.DisplayStart) / 4, this.mainMemory[i], this.palette);
+			}
 		}
 	}
 
@@ -92,7 +131,7 @@ function RISCMachine(romWords) {
 	$proto.memWriteVideo = function(address, val) {
 		this.mainMemory[address / 4 | 0] = val;
 		var offset = (address - this.DisplayStart) / 4;
-		emulator.registerVideoChange(offset, val);
+		emulator.registerVideoChange(offset, val, this.palette);
 	}
 
 	$proto.cpuReset = function(cold) {
@@ -240,7 +279,7 @@ function RISCMachine(romWords) {
 		else if ((ir & qbit) == 0) {
 			var a = (ir & 0x0F000000) >> 24;
 			var b = (ir & 0x00F00000) >> 20;
-			var off = ir & 0x000FFFFF;
+			var off = (ir & 0x000FFFFF) << 12 >> 12;
 
 			var address =
 				(((this.cpuGetRegister(b) >>>0) + (off >>>0)) % this.MemSize) |
