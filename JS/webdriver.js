@@ -1210,7 +1210,6 @@ function PNGImageReader(name) {
 	var $proto = PNGImageReader.prototype;
 
 	$proto.prepareContentsThenNotify = function(listener) {
-		console.trace();
 		this.listener = listener;
 		this.container = new Image();
 		this.container.addEventListener("load", this);
@@ -1276,7 +1275,6 @@ function DiskFileReader(file) {
 	};
 
 	$proto.prepareContentsThenNotify = function(listener) {
-		console.trace();
 		this.listener = listener;
 		var reader = new FileReader();
 		reader.addEventListener("loadend", this);
@@ -1303,7 +1301,6 @@ function ROMFileReader(uri, disk, name) {
 	var $proto = ROMFileReader.prototype;
 
 	$proto.prepareContentsThenNotify = function(listener) {
-		console.trace();
 		this.listener = listener;
 		var request = new XMLHttpRequest();
 		request.addEventListener("load", this);
