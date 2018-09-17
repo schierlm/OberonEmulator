@@ -95,13 +95,16 @@ CompatibleBootLoad, CompatibleBigBootLoad, CompatibleDiskImage:
   uses the 1MB address space, but both will only use 928KB of memory for
   applications.
 
-BigBootLoad<X>MB, BigDiskImage:
+BigBootLoad<X>MB, BigDiskImage, BigHostFSDiskImage:
   These images use all the features of this emulator, like paravirtualized
   hardware devices, color graphics and custom address space layouts. The
   boot loader determines the amount of usable memory (half of it for modules
   and the stack, the other half for the heap). In case you want a different
   memory limit or splitting, you can compile and run BootLoadBigMemoryConfig
-  inside the emulator to create a custom boot loader ROM.
+  inside the emulator to create a custom boot loader ROM. To use the HostFS
+  image, first boot the normal image and use PCLink's globbing feature to
+  copy all files (*) into a directory of the host. Then you can run
+  BigHostFSDiskImage with HostFS pointing to the same directory.
 
 License
 ~~~~~~~

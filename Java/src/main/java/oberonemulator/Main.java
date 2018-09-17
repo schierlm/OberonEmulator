@@ -28,11 +28,10 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.util.Arrays;
 
-import oberonemulator.Keyboard.VirtualKeyboard;
-
 public class Main {
 
 	private static Keyboard keyboard = new Keyboard.VirtualKeyboard(true);
+	private static File hostFsDirectory = null;
 
 	public static void main(String[] args) throws Exception {
 		if (args.length == 3 && args[0].equals("PCLink")) {
@@ -67,6 +66,9 @@ public class Main {
 			default:
 				throw new Exception("Unsupported keyboard type: " + args[1]);
 			}
+			main(Arrays.copyOfRange(args, 2, args.length));
+		} else if (args.length > 2 && args[0].equals("HostFS")) {
+			hostFsDirectory = new File(args[1]);
 			main(Arrays.copyOfRange(args, 2, args.length));
 		} else if (args.length >= 4 && args.length <= 6) {
 			int[] bootloader;
@@ -130,7 +132,7 @@ public class Main {
 					net = new InetSocketAddress(InetAddress.getByName(host), port);
 				}
 			}
-			MemoryMappedIO mmio = new MemoryMappedIO(args[2], rs232, net);
+			MemoryMappedIO mmio = new MemoryMappedIO(args[2], rs232, net, hostFsDirectory);
 			ImageMemory imgmem = new ImageMemory(span, img, (int)((displayStart & 0xFFFFFFFFL) / 4));
 			Memory mem = new Memory(imgmem, bootloader, mmio, largeAddressSpace, memSize, displayStart, romStart);
 			keyboard.setMMIO(mmio);
@@ -147,10 +149,12 @@ public class Main {
 			System.out.println("       java -jar OberonEmulator.jar NativeFloatingPoint ...");
 			System.out.println("       java -jar OberonEmulator.jar LimitFeatures <base>[+<feature>|-<feature>]* ...");
 			System.out.println("       java -jar OberonEmulator.jar KeyboardEmulation <kbdtype> ...");
+			System.out.println("       java -jar OberonEmulator.jar HostFS <hostfspath> ...");
 			System.out.println();
 			System.out.println("<rs232> can be a TCP port number, the word 'PCLink' to run PCLink over virtual RS232, or '-' to ignore.");
 			System.out.println("<net> is a broadcast IP address, in the form <host>[:<port>]. Default port is 48654 (0BE0Eh, for 0BEr0nnEt).");
 			System.out.println("<kbdtype> is one of Virtual, ParaVirtual, NoParaVirtual, Native, Hybrid.");
+			System.out.println("<hostfspath> is a path of a directory on the host, which is used as HostFS.");
 		}
 	}
 }

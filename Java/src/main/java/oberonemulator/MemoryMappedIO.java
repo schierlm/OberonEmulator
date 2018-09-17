@@ -3,6 +3,7 @@ package oberonemulator;
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -28,16 +29,20 @@ public class MemoryMappedIO {
 
 	private Network net;
 
+	private final HostFS hostfs;
+
 	private int mouse;
 
 	private Memory mem;
 
 	private CharBuffer clipboardData;
 
-	public MemoryMappedIO(String disk_file, final ServerSocket ss, InetSocketAddress netAddr) throws IOException {
+	public MemoryMappedIO(String disk_file, final ServerSocket ss, InetSocketAddress netAddr, File hostFsDirectory) throws IOException {
 		if (netAddr != null) Feature.SPI_NETWORK.use();
+		if (hostFsDirectory != null) Feature.HOST_FILESYSTEM.use();
 		sdCard = disk_file == null ? null : new Disk(disk_file);
 		net = netAddr == null ? null : new Network(netAddr);
+		hostfs = hostFsDirectory == null ? null : new HostFS(hostFsDirectory);
 		if (ss == null)
 			return;
 		Feature.SERIAL.use();
@@ -241,6 +246,13 @@ public class MemoryMappedIO {
 			// Other bits unused
 			Feature.SPI.use();
 			spiSelected = value & 3;
+			break;
+		}
+		case 32: {
+			// host filesystem
+			Feature.HOST_FILESYSTEM.use();
+			if (hostfs != null)
+				hostfs.handleCommand(value/4, mem.getRAM());
 			break;
 		}
 		case 36: {

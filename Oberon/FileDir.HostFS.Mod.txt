@@ -1,0 +1,112 @@
+MODULE FileDir;   (*NW 12.1.86 / 23.8.90 / 15.8.2013*)
+  IMPORT SYSTEM, Kernel;
+
+  CONST FnLength*    = 32;
+        SecTabSize*   = 64;
+        ExTabSize*   = 12;
+        SectorSize*   = 1024;
+        IndexSize*   = SectorSize DIV 4;
+        HeaderSize*  = 352;
+        DirRootAdr*  = 29;
+        DirPgSize*   = 24;
+        DirMark*    = 9B1EA38DH;
+        HeaderMark* = 9BA71D86H;
+        FillerSize = 52;
+
+  TYPE DiskAdr      = INTEGER;
+    FileName*       = ARRAY FnLength OF CHAR;
+    SectorTable*    = ARRAY SecTabSize OF DiskAdr;
+    ExtensionTable* = ARRAY ExTabSize OF DiskAdr;
+    EntryHandler*   = PROCEDURE (name: FileName; sec: DiskAdr; VAR continue: BOOLEAN);
+
+    FileHeader* =
+      RECORD (*first page of each file on disk*)
+        mark*: INTEGER;
+        name*: FileName;
+        aleng*, bleng*, date*: INTEGER;
+        ext*:  ExtensionTable;
+        sec*: SectorTable;
+        fill: ARRAY SectorSize - HeaderSize OF BYTE;
+      END ;
+
+    FileHd* = POINTER TO FileHeader;
+    IndexSector* = ARRAY IndexSize OF DiskAdr;
+    DataSector* = ARRAY SectorSize OF BYTE;
+
+    DirEntry* =  (*B-tree node*)
+      RECORD
+        name*: FileName;
+        adr*:  DiskAdr; (*sec no of file header*)
+        p*:    DiskAdr  (*sec no of descendant in directory*)
+      END ;
+
+    DirPage*  =
+      RECORD mark*:  INTEGER;
+        m*:     INTEGER;
+        p0*:    DiskAdr;  (*sec no of left descendant in directory*)
+        fill:  ARRAY FillerSize OF BYTE;
+        e*:  ARRAY DirPgSize OF DirEntry
+      END ;
+
+  (*Exported procedures: Search, Insert, Delete, Enumerate, Init*)
+
+  PROCEDURE Search*(name: FileName; VAR A: DiskAdr);
+    TYPE blobType = RECORD op, adr: INTEGER; name: FileName END;
+    VAR continue: BOOLEAN; blob: blobType;
+  BEGIN blob.op := 0;
+    blob.name := name;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    A := blob.adr
+  END Search;
+
+  PROCEDURE Insert*(name: FileName; fad: DiskAdr);
+    TYPE blobType = RECORD op, adr: INTEGER; name: FileName END;
+    VAR blob: blobType;
+  BEGIN blob.op := 4;
+    blob.adr := fad;
+    blob.name := name;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob))
+  END Insert;
+
+  PROCEDURE Delete*(name: FileName; VAR fad: DiskAdr);
+    TYPE blobType = RECORD op, adr: INTEGER; name: FileName END;
+    VAR blob: blobType;
+  BEGIN blob.op := 5;
+    blob.name := name;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    fad := blob.adr;
+  END Delete;
+
+  PROCEDURE Enumerate*(prefix: ARRAY OF CHAR; proc: EntryHandler);
+    TYPE blobType = RECORD op, adr: INTEGER; name: FileName END;
+    VAR continue: BOOLEAN; blob: blobType;
+  BEGIN continue := TRUE;
+    blob.op := 1;
+    blob.name := prefix;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    WHILE continue & (blob.adr # 0) DO
+      proc(blob.name, blob.adr, continue);
+      IF continue THEN
+        blob.op := 2;
+        SYSTEM.PUT(-32, SYSTEM.ADR(blob))
+      END
+    END;
+  END Enumerate;
+
+  PROCEDURE GetAttributes*(adr: INTEGER; VAR date, length: INTEGER);
+    TYPE blobType = RECORD op, adr, date, length: INTEGER END;
+    VAR hp: FileHeader; blob : blobType;
+  BEGIN blob.op := 3;
+    blob.adr := adr;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    date := blob.date;
+    length := blob.length
+  END GetAttributes;
+
+(* ----- initialization ----- *)
+
+  PROCEDURE Init*;
+  BEGIN ASSERT(FALSE)
+  END Init;
+
+END FileDir.

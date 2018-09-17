@@ -97,3 +97,17 @@ Batch.Run
 |> Batch.Collect |> Batch.VerifyLog 73F755ECH
 |> Batch.WriteLog 3 "*** FINISHED ***"
 ||
+
+>>> Build HostFS image <<<
+
+Batch.Run
+|> XORP.Compile ~
+|> Batch.ClearLog
+|> Batch.Collect |> XORP.Compile FileDir.HostFS.Mod Files.HostFS.Mod ~
+|> Batch.WriteLog * 1 "*** Building DiskImage.Bin ***"
+|> ImageTool.Init
+|> ImageORL.Link
+|> ImageTool.Close
+|> Batch.Collect |> Batch.VerifyLog 0CE5C1122H
+|> Batch.WriteLog 3 "*** FINISHED ***"
+||

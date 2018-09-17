@@ -17,6 +17,7 @@ Read/Write | -48 / -44 | Hardware, C, Java | **SPI**
 Read | -40 | Hardware, C, Java, JS | ** Mouse input / keyboard status **
 Read | -36 | Hardware, C, Java | **Keyboard input**:Return PS2 scancodes in least significant byte
 **Read** | **-36** | **Java, JS** | **Paravirtualized keyboard input**: The most significant byte, if not zero, denotes that the given character was typed. #13 is used for Return,  #26 for F1, rest is standard ASCII codes (including Backspace, Tab and Escape). Note that it is possible that one emulator (**Java**) returns both PS2 scancodes in least significant byte and paravirtualized input in most significant byte at the same time.
+**Write** | **-32** | **Java** | **HostFS: Write a pointer to a HostFS structure, which is then filled by the host**
 **Write** | **-28** | **Java, JS** | **Paravirtualized Disk**: When the two most significant bits are 00, remember the remaining bits as a (word-aligned) memory address. When they are 10, read the 1K sector denoted by the sector number in the remaining bits, and store it into the remembered memory address. When they are 11, read 1K from memory address and store it into the given sector number instead.
 **Read/Write** | **-24** | **C, Java, JS** | **Clipboard Control**
 **Read/Write** | **-20** | **C, Java, JS** | **Clipboard Data**
