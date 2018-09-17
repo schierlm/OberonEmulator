@@ -58,7 +58,7 @@
 									tofile="${project.basedir}/OberonEmulator.jar" />
 								<copy todir="${project.basedir}/target/dist/bin">
 									<fileset dir="${project.basedir}" includes="OberonEmulator.jar,README.txt,*.Bin" />
-									<fileset dir="${project.basedir}/.." includes="license.txt" />
+									<fileset dir="${project.basedir}/.." includes="LICENSE.txt" />
 								</copy>
 							</target>
 						</configuration>
