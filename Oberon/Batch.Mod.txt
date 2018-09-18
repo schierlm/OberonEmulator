@@ -6,6 +6,7 @@ MODULE Batch;
     BatchRunning = 1;
     BatchWaitGC = 2;
     BatchFailed = 3;
+    OberonVerifyVersion = "OR Compiler 22.7.2018";
 
   TYPE
     FileList = POINTER TO FileListDesc;
@@ -71,8 +72,9 @@ MODULE Batch;
       S: Texts.Scanner;
       R: Texts.Reader;
       W: Texts.Writer;
-        ch: CHAR;
-        csum, vcsum : INTEGER;
+      ch: CHAR;
+      csum, vcsum, vpos: INTEGER;
+      OberonVerifyVersionA: ARRAY 22 OF CHAR;
   BEGIN
     Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos);
     Texts.Scan(S);
@@ -80,15 +82,26 @@ MODULE Batch;
     Texts.OpenReader(R, Oberon.Log, 0);
     ch := 0X;
     csum := 0;
+    vpos := 0;
+    OberonVerifyVersionA := OberonVerifyVersion;
     WHILE ~ R.eot DO
       IF ch = "`" THEN
-        WHILE ((ch >= "0") & (ch <= "9")) OR ((ch >= "A") & (ch <= "F")) OR (ch = " ") OR (ch = "`") DO Texts.Read(R, ch) END
+        WHILE ((ch >= "0") & (ch <= "9")) OR ((ch >= "A") & (ch <= "F")) OR (ch = " ") OR (ch = ".") OR (ch = "`") DO Texts.Read(R, ch) END
       ELSIF ch = " " THEN
 	    WHILE ch = " " DO Texts.Read(R, ch) END
       ELSE
         Texts.Read(R, ch);
       END;
       csum := ROR(csum + ORD(ch), 13);
+      IF ch = OberonVerifyVersionA[vpos] THEN INC(vpos) ELSE vpos := 0 END;
+      IF vpos = 12 THEN
+        WHILE OberonVerifyVersionA[vpos] # 0X DO
+          csum := ROR(csum + ORD(OberonVerifyVersionA[vpos]), 13);
+          INC(vpos)
+        END;
+        ch := "`";
+        vpos := 0
+      END
     END;
     IF csum # vcsum THEN
       Texts.OpenWriter(W);
