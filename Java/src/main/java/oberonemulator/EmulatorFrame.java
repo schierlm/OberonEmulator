@@ -74,8 +74,12 @@ public class EmulatorFrame extends JFrame {
 				public void keyPressed(KeyEvent e) {
 					if (e.getKeyCode() == KeyEvent.VK_F12) {
 						cpu.reset(e.isShiftDown());
-						if (e.isShiftDown() && !cpu.isAlive()) {
+						if (!cpu.isAlive()) {
+							CPU oldCPU = cpu;
 							cpu = new CPU(mem, largeAddressSpace);
+							if (!e.isShiftDown()) {
+								cpu.copyRegisters(oldCPU);
+							}
 							cpu.start();
 						}
 					} else if (e.getKeyCode() == KeyEvent.VK_F1 || e.getKeyCode() == KeyEvent.VK_INSERT) {

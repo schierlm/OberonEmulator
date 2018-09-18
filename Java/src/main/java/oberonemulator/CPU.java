@@ -50,6 +50,14 @@ public class CPU extends Thread {
 		regPC = mem.getROMStart() >>> 2;
 	}
 
+	public void copyRegisters(CPU otherCPU) {
+		if (otherCPU.isAlive())
+			throw new IllegalStateException();
+		for (int i = 0; i < regR.length; i++) {
+			regR[i] = otherCPU.regR[i];
+		}
+	}
+
 	public void run() {
 		try {
 			while (running) {
