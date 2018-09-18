@@ -2,6 +2,7 @@
 set -e
 
 ./get-source.sh
+patch -d work <../ProposedPatches/fix-aliased-modules.patch
 patch -d work <detect-screen-size.patch
 
 patch -d work <paravirtualized-keyboard.patch
