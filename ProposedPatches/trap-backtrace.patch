@@ -65,6 +65,15 @@
      END ;
      IF x.type.base.form = ORB.NoTyp THEN (*procedure*) RH := 0
      ELSE (*function*)
+@@ -1021,7 +1021,7 @@
+ 
+   PROCEDURE Header*;
+   BEGIN entry := pc*4;
+-    IF version = 0 THEN code[0] := 0E7000000H-1 + pc;  Put1a(Mov, SP, 0, StkOrg0)  (*RISC-0*)
++    IF version = 0 THEN code[0] := 0E7000000H-1 + pc; Put0(Mov, 11, 0, SP); Put1a(Mov, SP, 0, StkOrg0)  (*RISC-0*)
+     ELSE Put1(Sub, SP, SP, 4); Put2(Str, LNK, SP, 0)
+     END
+   END Header;
 --- 1/System.Mod.txt
 +++ 2/System.Mod.txt
 @@ -393,6 +393,42 @@
