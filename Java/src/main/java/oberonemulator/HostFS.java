@@ -25,6 +25,12 @@ public class HostFS {
 		this.directory = directory;
 		if (!directory.exists() || !directory.isDirectory())
 			throw new IOException("HostFS directory does not exist: " + directory.getPath());
+		reset();
+	}
+
+	public void reset() {
+		allocatedNames.clear();
+		remainingSearchResults = null;
 		for (File file : directory.listFiles()) {
 			if (file.getName().startsWith("~"))
 				file.delete();
@@ -120,7 +126,7 @@ public class HostFS {
 							throw new IOException("Deleting temp file failed");
 						if (!new File(directory, fileName).renameTo(tmpFile))
 							throw new IOException("Renaming file to overwrite failed");
-						allocatedNames.set(sector, tmpFile.getName());
+						allocatedNames.set(pos, tmpFile.getName());
 					}
 				}
 				if (!new File(directory, allocatedNames.get(sector)).renameTo(new File(directory, fileName)))

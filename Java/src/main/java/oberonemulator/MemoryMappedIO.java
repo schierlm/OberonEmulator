@@ -346,6 +346,11 @@ public class MemoryMappedIO {
 		sdCard.free();
 	}
 
+	public void reset() {
+		if (hostfs != null)
+			hostfs.reset();
+	}
+
 	public String getLEDs() {
 		StringBuilder sb = new StringBuilder("[");
 		for (int i = 7; i >= 0; i--) {

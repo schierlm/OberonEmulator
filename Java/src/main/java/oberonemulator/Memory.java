@@ -69,6 +69,7 @@ public class Memory {
 
 	public void reset() {
 		imgio.reset();
+		mmio.reset();
 		setIRQEnabled(false);
 	}
 
