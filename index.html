@@ -88,7 +88,7 @@ Your browser does not support JavaScript or it is disabled.
 
 <h2>Java emulator</h2>
 
-<p><a href="java.zip">Download here</a> (581 KB)</p>
+<p><a href="java.zip">Download here</a> (598 KB)</p>
 
 <p>This emulator includes three different sets of disk images. First, the
 images also used in the JavaScript emulator. Second it contains a set
@@ -98,10 +98,14 @@ use any of the paravirtualized features and can therefore be used with
 <a href="https://github.com/pdewacht/oberon-risc-emu">Peter De Wachter's Oberon
 Emulator</a> or native as well. And last but not least a set of "big" disk and
 boot loader images that include all advanced features like color or different
-memory layouts.</p>
+memory layouts. The "big" images can also be used with HostFS so that the
+filesystem content is written to a directory of the host.</p>
 
-<p>The Oberon sources for <a href="oberonsource-compatible.zip">the compatible
-images</a> (160 KB) and the differences in <a href="oberonsource-big.zip">the
-"big" images</a> (15 KB) are also available.</p>
+<p>The <a href="oberonsource-compatible.zip">Oberon sources</a> (239 KB) are
+also available. Files that are the same in all sets are contained in the root
+directory, while files that are different can be found in "Compatible", "JS"
+and "Bigmem" subdirectories. The directory "ExperimentalOberonTools" contains
+tools used to build the Experimental Oberon disk image for the JavaScript
+emulator.</p>
 </body>
 </html>
