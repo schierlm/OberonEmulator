@@ -1,0 +1,60 @@
+--- 1/Display.Mod.16Colors.txt
++++ 2/Display.Mod.16Colors.txt
+@@ -1,7 +1,7 @@
+ MODULE Display;  (*NW 5.11.2013 / 3.7.2016*)
+   IMPORT SYSTEM;
+ 
+-  CONST black* = 0; white* = 15;  (*black = background*)
++  CONST black* = 0; white* = 1;  (*black = background*)
+     BPP = 4;          (* color bits per pixel, <=4 *)
+     COLORS = SYSTEM.VAL(INTEGER, {BPP});    (* nbr of colors, =LSL(1, BPP) *)
+     PP8 = 8 DIV BPP;        (* nbr of pixels per 8 bit *)
+@@ -40,7 +40,7 @@
+     IF mode = invert THEN
+       SYSTEM.PUT(a, pix / color)
+     ELSE (*mode = replace / paint*)
+-      SYSTEM.PUT(a, pix - SYSTEM.VAL(SET, LSL(white, x)) + color)
++      SYSTEM.PUT(a, pix - SYSTEM.VAL(SET, LSL(15, x)) + color)
+     END
+   END Dot;
+ 
+@@ -98,7 +98,7 @@
+         END
+       END;
+       (* stretch and shift pattern: every bit in pattern is stretched to BPP bits *)
+-      k := 0; s[0] := {}; mask := SYSTEM.VAL(SET, LSL(white, x * BPP));
++      k := 0; s[0] := {}; mask := SYSTEM.VAL(SET, LSL(15, x * BPP));
+       j := 0; len := PP32 - x; IF w < len THEN len := w END;
+       (* optimized stretching for small "w" *)
+       WHILE j < len DO
+@@ -107,7 +107,7 @@
+       END;
+       (* more general, slower stretching for larger "w" *)
+       WHILE j < w DO
+-        IF mask = SYSTEM.VAL(SET, white) THEN INC(k); s[k] := {} END;
++        IF mask = SYSTEM.VAL(SET, 15) THEN INC(k); s[k] := {} END;
+         IF j IN pat THEN s[k] := s[k] + mask END;
+         mask := ROR(mask, -BPP); INC(j)
+       END;
+@@ -116,7 +116,7 @@
+       IF mode = invert THEN
+         SYSTEM.PUT(scrAdr, pix / (color * s[0]) );
+         WHILE k > 0 DO SYSTEM.GET(k*4 + scrAdr, pix); SYSTEM.PUT(k*4 + scrAdr, pix / (color * s[k])); DEC(k) END
+-      ELSIF col = white THEN
++      ELSIF col = 15 THEN
+         SYSTEM.PUT(scrAdr, pix + s[0]);
+         WHILE k > 0 DO SYSTEM.GET(k*4 + scrAdr, pix); SYSTEM.PUT(k*4 + scrAdr, pix + s[k]); DEC(k) END
+       ELSE
+@@ -243,6 +243,12 @@
+     SYSTEM.GET(0E7F00H+8, Height);
+   END;
+   SYSTEM.GET(-128, arrow);
++  (* move color 1 to 3, 14 to 11, then copy 0 to 14 and 15 to 1 *)
++  SYSTEM.GET(-128+1*4, arrow); SYSTEM.PUT(-128+3*4,arrow);
++  SYSTEM.GET(-128+14*4, arrow); SYSTEM.PUT(-128+11*4,arrow);
++  SYSTEM.GET(-128+0*4, arrow); SYSTEM.PUT(-128+14*4,arrow);
++  SYSTEM.GET(-128+15*4, arrow); SYSTEM.PUT(-128+1*4,arrow);
++  (* now you cannot see any more that white is 1 instead of 15 *)
+   arrow := SYSTEM.ADR($0F0F 0060 0070 0038 001C 000E 0007 8003 C101 E300 7700 3F00 1F00 3F00 7F00 FF00$);
+   star := SYSTEM.ADR($0F0F 8000 8220 8410 8808 9004 A002 C001 7F7F C001 A002 9004 8808 8410 8220 8000$);
+   hook := SYSTEM.ADR($0C0C 070F 8707 C703 E701 F700 7F00 3F00 1F00 0F00 0700 0300 01$);

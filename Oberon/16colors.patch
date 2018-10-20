@@ -1,0 +1,29 @@
+--- 1/BootLoad.Mod.txt
++++ 2/BootLoad.Mod.txt
+@@ -1,7 +1,7 @@
+ MODULE* BootLoad;
+   IMPORT SYSTEM;
+   CONST MT = 12; SP = 14; LNK = 15;
+-    MTOrg = 20H; MemLim = 0E7EF0H; stackOrg = 80000H;
++    MTOrg = 20H; MemLim = 09FEF0H; stackOrg = 60000H;
+     FSoffset = 80000H;   (*block offset*)
+ 
+   PROCEDURE LoadFromDisk;
+--- 1/ColorPalette.Mod.txt
++++ 2/ColorPalette.Mod.txt
+@@ -7,11 +7,11 @@
+     VAR s, w, x, y: INTEGER;
+   BEGIN
+     IF F.W < F.H THEN w := F.W ELSE w := F.H END ;
+-    s := w DIV 16;
++    s := w DIV 4;
+     Display.ReplConst(Display.black, F.X, F.Y, F.W, F.H, Display.replace);
+-    FOR x := 0 TO 15 DO
+-      FOR y := 0 TO 15 DO
+-        Display.ReplConst((15-y) * 16 + x, F.X + x * s, F.Y + y * s, s, s, Display.replace);
++    FOR x := 0 TO 3 DO
++      FOR y := 0 TO 3 DO
++        Display.ReplConst((3-y) * 4 + x, F.X + x * s, F.Y + y * s, s, s, Display.replace);
+       END
+     END
+   END DrawPalette;
