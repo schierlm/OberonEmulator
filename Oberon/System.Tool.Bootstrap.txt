@@ -1,0 +1,9 @@
+R5Clipboard.Paste  R5Clipboard.CopySelection  R5Clipboard.CopyViewer
+
+R5System.Open ^  R5System.Recall  R5System.Watch  R5System.Collect
+R5Edit.Open ^  R5Edit.Recall
+
+R5System.Directory ^
+  *.Mod  *.Bak  *.Tool  *.Text  *.Scn.Fnt  *.smb  *.rsc
+
+R5ORP.Compile @  R5ORP.Compile @/s  R5ORP.Compile name~

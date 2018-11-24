@@ -1,4 +1,5 @@
 MODULE Display;  (*NW 5.11.2013 / 3.7.2016*)
+  (* based on the 16-bit version by Joerg Straube *)
   IMPORT SYSTEM;
 
   CONST black* = 0; white* = 15;  (*black = background*)

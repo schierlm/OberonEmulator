@@ -1,0 +1,91 @@
+--- /dev/null
++++ R5Bootstrap.Mod.txt
+@@ -0,0 +1,8 @@
++MODULE R5Bootstrap;
++  IMPORT Modules := R5Modules;
++
++  VAR
++    Mod: Modules.Module;
++ 
++BEGIN Modules.Load("R5Oberon", Mod); Mod := NIL
++END R5Bootstrap.
+--- R5Edit.Mod.txt
++++ R5Edit.Mod.txt
+@@ -2,7 +2,7 @@
+   IMPORT Files := R5Files, Fonts := R5Fonts, Texts := R5Texts, Display := R5Display, Viewers := R5Viewers, Oberon := R5Oberon, MenuViewers := R5MenuViewers, TextFrames := R5TextFrames;
+ 
+   CONST CR = 0DX; maxlen = 32;
+-    StandardMenu = "System.Close System.Copy System.Grow Edit.Search Edit.Store";
++    StandardMenu = "R5System.Close R5System.Copy R5System.Grow R5Edit.Search R5Edit.Store";
+ 
+   VAR W: Texts.Writer;
+     time: LONGINT;
+--- R5Modules.Mod.txt
++++ R5Modules.Mod.txt
+@@ -220,6 +220,6 @@
+     SYSTEM.GET(16, AllocPtr); SYSTEM.GET(20, root); SYSTEM.GET(24, limit); DEC(limit, 8000H)
+   END Init;
+ 
+-BEGIN Init; Load("Oberon", M);
++BEGIN Init; Load("R5Bootstrap", M);
+     LED(res); REPEAT UNTIL FALSE  (*only if load fails*)
+ END R5Modules.
+--- R5System.Mod.txt	Sat Nov 24 21:24:40 2018
++++ R5System.Mod.txt	Sat Nov 24 21:30:57 2018
+@@ -1,10 +1,10 @@
+ MODULE R5System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016*)
+   IMPORT SYSTEM, Kernel := R5Kernel, FileDir := R5FileDir, Files := R5Files, Modules := R5Modules,
+-    Input, Display, Viewers, Fonts, Texts, Oberon, MenuViewers, TextFrames;
++    Input := R5Input, Display := R5Display, Viewers := R5Viewers, Fonts := R5Fonts, Texts := R5Texts, Oberon := R5Oberon, MenuViewers := R5MenuViewers, TextFrames := R5TextFrames;
+ 
+   CONST
+-    StandardMenu = "System.Close System.Copy System.Grow Edit.Search Edit.Store";
+-    LogMenu = "Edit.Locate Edit.Search System.Copy System.Grow System.Clear";
++    StandardMenu = "R5System.Close R5System.Copy R5System.Grow R5Edit.Search R5Edit.Store";
++    LogMenu = "R5Edit.Locate R5Edit.Search R5System.Copy R5System.Grow R5System.Clear";
+ 
+   VAR W: Texts.Writer;
+     pat: ARRAY 32 OF CHAR;
+@@ -372,8 +372,8 @@
+     main := TextFrames.NewText(Oberon.Log, 0);
+     logV := MenuViewers.New(menu, main, TextFrames.menuH, X, Y);
+     Oberon.AllocateSystemViewer(0, X, Y);
+-    menu := TextFrames.NewMenu("System.Tool", StandardMenu);
++    menu := TextFrames.NewMenu("R5System.Tool", StandardMenu);
+-    main := TextFrames.NewText(TextFrames.Text("System.Tool"), 0);
++    main := TextFrames.NewText(TextFrames.Text("R5System.Tool"), 0);
+     toolV := MenuViewers.New(menu, main, TextFrames.menuH, X, Y)
+   END OpenViewers;
+ 
+--- R5ORS.Mod.txt
++++ R5ORS.Mod.txt
+@@ -302,7 +302,7 @@
+   EnterKW(record, "RECORD");
+   EnterKW(repeat, "REPEAT");
+   EnterKW(return, "RETURN");
+-  EnterKW(import := R5import, "IMPORT");
++  EnterKW(import, "IMPORT");
+   EnterKW(module, "MODULE");
+   KWX[6] := k;
+   EnterKW(pointer, "POINTER");
+--- ImageORL.Mod.txt
++++ ImageORL.Mod.txt
+@@ -213,7 +213,7 @@
+     NILMOD := SYSTEM.VAL(Module, ImageOffset); (* NIL *)
+     root := NILMOD;
+     limit := 40000H;
+-    Load("Modules", newmod); NILMOD := NIL;
++    Load("R5Modules", newmod); NILMOD := NIL;
+     SYSTEM.PUT(ImageOffset + 10H, AllocPtr);
+     SYSTEM.PUT(ImageOffset + 14H, SYSTEM.VAL(INTEGER, root) - ImageOffset);
+     SYSTEM.PUT(ImageOffset + 18H, limit); root := NIL;
+--- R5Oberon.Mod.txt
++++ R5Oberon.Mod.txt
+@@ -426,5 +426,5 @@
+   CurFnt := Fonts.Default; CurCol := Display.white; CurOff := 0;
+ 
+   ActCnt := 0; CurTask := NewTask(GC, 1000); Install(CurTask);
+-  Modules.Load("System", Mod); Mod := NIL; Loop
++  Modules.Load("R5System", Mod); Mod := NIL; Loop
+ END R5Oberon.
+\ No newline at end of file
