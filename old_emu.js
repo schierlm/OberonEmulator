@@ -73,7 +73,7 @@ var clipboard;
 		screen.tabIndex = 1000;
 		screen.style.outline = "none";
 		screen.onkeydown = function(e) {
-			if (e.keyCode == 18 && !e.ctrlKey) {
+			if (e.keyCode == 18 && !e.ctrlKey && e.key != "AltGraph") {
 				hwMouseButton(2, true);
 				e.preventDefault();
 			} else if (e.keyCode == 8 || e.keyCode == 9 || e.keyCode == 27 || e.keyCode == 13) {
@@ -85,7 +85,7 @@ var clipboard;
 			}
 		};
 		screen.onkeyup = function(e) {
-			if (e.keyCode == 18 && !e.ctrlKey) {
+			if (e.keyCode == 18 && !e.ctrlKey && e.key != "AltGraph") {
 				hwMouseButton(2, false);
 				e.preventDefault();
 			}
@@ -103,6 +103,11 @@ var clipboard;
 				hwKeyboardInput(charCode|0);
 				e.preventDefault();
 			}
+		};
+		screen.onblur = function(e) {
+			hwMouseButton(1, false);
+			hwMouseButton(2, false);
+			hwMouseButton(3, false);
 		};
 		screen.onmousemove = function(e) {
 			hwMouseMoved(e.clientX - screen.offsetLeft + document.body.scrollLeft,

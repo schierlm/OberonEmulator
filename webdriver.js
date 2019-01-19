@@ -330,7 +330,7 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.registerKey = function(keyCode) {
-		this.keyBuffer.push(keyCode << 24);
+		this.keyBuffer.push((keyCode << 24) | (keyCode >>> 8 << 16));
 		this.wait(-1);
 		this.reschedule();
 	};
@@ -854,7 +854,7 @@ function VirtualKeyboard(screen, emulator) {
 			return;
 		}
 		// Alt
-		if (code === 18 && !event.ctrlKey) {
+		if (code === 18 && !event.ctrlKey && event.key != "AltGraph") {
 			event.preventDefault();
 			emulator.registerMouseButton(2, true);
 			return;
@@ -862,7 +862,7 @@ function VirtualKeyboard(screen, emulator) {
 	});
 	screen.addEventListener("keyup", function(event) {
 		// Alt
-		if (event.keyCode === 18 && !event.ctrlKey) {
+		if (event.keyCode === 18 && !event.ctrlKey && event.key != "AltGraph") {
 			event.preventDefault();
 			emulator.registerMouseButton(2, false);
 			return;
@@ -888,6 +888,11 @@ function VirtualKeyboard(screen, emulator) {
 			emulator.registerKey(event.charCode | 0);
 			return;
 		}
+	});
+	screen.addEventListener("blur", function(event) {
+		emulator.registerMouseButton(1, false);
+		emulator.registerMouseButton(2, false);
+		emulator.registerMouseButton(3, false);
 	});
 }
 

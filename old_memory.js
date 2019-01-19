@@ -153,7 +153,7 @@ function hwMouseButton(button, down) {
 }
 
 function hwKeyboardInput(keyChar) {
-	keyBuf.push(keyChar << 24);
+	keyBuf.push((keyChar << 24) | (keyChar >>> 8 << 16));
 	waitMillis = -1;
 	cpuResume();
 }
