@@ -13,4 +13,3 @@ cp OberonFromScratch.Tool.Bootstrap.txt work/OberonFromScratch.Tool.txt
 cp System.Tool.Bootstrap.txt work/R5System.Tool.txt
 
 patch -d work <bootstrap-renames.patch
-# TODO apply patch

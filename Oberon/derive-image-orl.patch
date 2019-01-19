@@ -1,7 +1,7 @@
 --- 1/ImageORL.Mod.txt
 +++ 2/ImageORL.Mod.txt
 @@ -1,5 +1,5 @@
--MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 9.4.2016*)
+-MODULE Modules;  (*Link and load on RISC; NW 20.10.2013 / 8.1.2019*)
 -  IMPORT SYSTEM, Files;
 +MODULE ImageORL;
 +  IMPORT SYSTEM, Kernel, Files;
@@ -52,7 +52,7 @@
        name1, impname: ModuleName;
        F: Files.File; R: Files.Rider;
        import: ARRAY 16 OF Module;
-   BEGIN mod := root; res := 0; nofimps := 0;
+   BEGIN mod := root; error(0, name); nofimps := 0;
 -    WHILE (mod # NIL) & (name # mod.name) DO mod := mod.next END ;
 -    IF mod = NIL THEN (*load*)
 +    WHILE (mod # NILMOD) & (name # mod.name) DO mod := SYSTEM.VAL(Module, ImageOffset + mod.next) END ;
@@ -111,7 +111,7 @@
          END ;
 -        body   (*initialize module*)
 +        SYSTEM.PUT(ImageOffset, 0E7000000H + body DIV 4 -1);
-       ELSIF res = 3 THEN importing := name;
+       ELSIF res >= 3 THEN importing := name;
          WHILE nofimps > 0 DO DEC(nofimps); DEC(import[nofimps].refcnt) END
        END 
 @@ -185,6 +200,106 @@
@@ -228,4 +228,3 @@
 +*)
 +
 +END ImageORL.
-\ No newline at end of file

@@ -60,13 +60,13 @@
    PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
 -    VAR a, a0, pwd: INTEGER;
 +    VAR a0, pwd, i: INTEGER;
-       w, h, pbt: BYTE; pix: SET;
+       w, h, pbt: BYTE; pix, mask: SET;
    BEGIN SYSTEM.GET(patadr, w); SYSTEM.GET(patadr+1, h); INC(patadr, 2);
--    a := base + (x DIV 32)*4 + y*128; 
+-    a := base + (x DIV 32)*4 + y*128; x := x MOD 32; mask := SYSTEM.VAL(SET, ASR(7FFFFFFFH, 31-x));
 -    FOR a0 := a TO a + (h-1)*128 BY 128 DO
-+    a0 := base + (x DIV 32)*4 + y*Span;
++    a0 := base + (x DIV 32)*4 + y*Span; x := x MOD 32; mask := SYSTEM.VAL(SET, ASR(7FFFFFFFH, 31-x));
 +    FOR i := 1 TO h DO
-       (*build pattern line; w < 32*)
+       (*build pattern line; w <= 32*)
        SYSTEM.GET(patadr, pbt); INC(patadr); pwd := pbt;
        IF w > 8 THEN SYSTEM.GET(patadr, pbt); INC(patadr); pwd := pbt*100H + pwd;
 @@ -93,6 +96,7 @@

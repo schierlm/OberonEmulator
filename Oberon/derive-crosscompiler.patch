@@ -1,8 +1,8 @@
 --- 1/XORB.Mod.txt
 +++ 2/XORB.Mod.txt
 @@ -1,4 +1,4 @@
--MODULE ORB;   (*NW 25.6.2014  / 11.9.2018  in Oberon-07*)
-+MODULE XORB;   (*NW 25.6.2014  / 11.9.2018  in Oberon-07*)
+-MODULE ORB;   (*NW 25.6.2014  / 1.12.2018  in Oberon-07*)
++MODULE XORB;   (*NW 25.6.2014  / 1.12.2018  in Oberon-07*)
    IMPORT Files, ORS;
    (*Definition of data types Object and Type, which together form the data structure
      called "symbol table". Contains procedures for creation of Objects, and for search:
@@ -33,10 +33,10 @@
 --- 1/XORG.Mod.txt
 +++ 2/XORG.Mod.txt
 @@ -1,5 +1,5 @@
--MODULE ORG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 11.9.2018  Oberon compiler; code generator for RISC*)
--  IMPORT SYSTEM, Files,  ORS, ORB;
-+MODULE XORG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 11.9.2018  Oberon compiler; code generator for RISC*)
-+  IMPORT SYSTEM, Files,  ORS, ORB := XORB;
+-MODULE ORG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 17.9.2018  Oberon compiler; code generator for RISC*)
+-  IMPORT SYSTEM, Files, ORS, ORB;
++MODULE XORG; (* N.Wirth, 16.4.2016 / 4.4.2017 / 17.9.2018  Oberon compiler; code generator for RISC*)
++  IMPORT SYSTEM, Files, ORS, ORB := XORB;
    (*Code generator for Oberon compiler for RISC processor.
       Procedural interface to Parser OSAP; result in array "code".
       Procedure Close writes code-files*)
@@ -57,9 +57,9 @@
 --- 1/XORP.Mod.txt
 +++ 2/XORP.Mod.txt
 @@ -1,5 +1,5 @@
--MODULE ORP; (*N. Wirth 1.7.97 / 11.9.2018  Oberon compiler for RISC in Oberon-07*)
+-MODULE ORP; (*N. Wirth 1.7.97 / 17.9.2018  Oberon compiler for RISC in Oberon-07*)
 -  IMPORT Texts, Oberon, ORS, ORB, ORG;
-+MODULE XORP; (*N. Wirth 1.7.97 / 11.9.2018  Oberon compiler for RISC in Oberon-07*)
++MODULE XORP; (*N. Wirth 1.7.97 / 17.9.2018  Oberon compiler for RISC in Oberon-07*)
 +  IMPORT Texts, Oberon, ORS, ORB := XORB, ORG := XORG;
    (*Author: Niklaus Wirth, 2014.
      Parser of Oberon-RISC compiler. Uses Scanner ORS to obtain symbols (tokens),
