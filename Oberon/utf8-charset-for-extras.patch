@@ -1,0 +1,306 @@
+--- 1/Calc.Mod.txt
++++ 2/Calc.Mod.txt
+@@ -11,47 +11,47 @@
+       t: Texts.Text;
+   BEGIN
+     Texts.Scan(s);
+-    IF (s.class = Texts.Char) & (s.c = "^") THEN
++    IF (s.class = Texts.Char) & (s.codepoint = ORD("^")) THEN
+       Oberon.GetSelection(t, beg, end, time);
+       IF time >= 0 THEN
+         Texts.OpenScanner(s, t, beg); Texts.Scan(s);
+       END
+     END;
+     IF s.class = Texts.Char THEN
+-      IF s.c = "+" THEN
++      IF s.codepoint = ORD("+") THEN
+         val := ReadInt() + ReadInt();
+-      ELSIF s.c = "-" THEN
++      ELSIF s.codepoint = ORD("-") THEN
+         val := ReadInt() - ReadInt();
+-      ELSIF s.c = "~" THEN
++      ELSIF s.codepoint = ORD("~") THEN
+         val := -ReadInt();
+-      ELSIF s.c = "*" THEN
++      ELSIF s.codepoint = ORD("*") THEN
+         val := ReadInt() * ReadInt();
+-      ELSIF s.c = "/" THEN
++      ELSIF s.codepoint = ORD("/") THEN
+         val := ReadInt() DIV ReadInt();
+-      ELSIF s.c = "%" THEN
++      ELSIF s.codepoint = ORD("%") THEN
+         val := ReadInt() MOD ReadInt();
+-      ELSIF s.c = "&" THEN
++      ELSIF s.codepoint = ORD("&") THEN
+         val := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET, ReadInt()) * SYSTEM.VAL(SET, ReadInt()));
+-      ELSIF s.c = "|" THEN
++      ELSIF s.codepoint = ORD("|") THEN
+         val := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET, ReadInt()) + SYSTEM.VAL(SET, ReadInt()));
+-      ELSIF s.c = ":" THEN
++      ELSIF s.codepoint = ORD(":") THEN
+         val := SYSTEM.VAL(INTEGER, SYSTEM.VAL(SET, ReadInt()) / SYSTEM.VAL(SET, ReadInt()));
+-      ELSIF s.c = "!" THEN
++      ELSIF s.codepoint = ORD("!") THEN
+         val := SYSTEM.VAL(INTEGER, -SYSTEM.VAL(SET, ReadInt()));
+-      ELSIF s.c = "#" THEN
++      ELSIF s.codepoint = ORD("#") THEN
+         val := ABS(ReadInt());
+-      ELSIF s.c = "?" THEN
++      ELSIF s.codepoint = ORD("?") THEN
+         val := ORD(ODD(ReadInt()));
+-      ELSIF s.c = "<" THEN
++      ELSIF s.codepoint = ORD("<") THEN
+         val := LSL(ReadInt(), ReadInt());
+-      ELSIF s.c = ">" THEN
++      ELSIF s.codepoint = ORD(">") THEN
+         val := ASR(ReadInt(), ReadInt());
+-      ELSIF s.c = "=" THEN
++      ELSIF s.codepoint = ORD("=") THEN
+         val := ROR (ReadInt(), ReadInt());
+       ELSE
+         val := 0;
+         Texts.WriteString(log, "Invalid operator ");
+-        Texts.Write(log, s.c);
++        Texts.WriteUnicode(log, s.codepoint);
+         Texts.WriteLn(log);
+       END
+     ELSIF s.class = Texts.Int THEN
+--- 1/Clipboard.Mod.txt
++++ 2/Clipboard.Mod.txt
+@@ -5,14 +5,21 @@
+ 
+   PROCEDURE Copy(T: Texts.Text; beg, end: INTEGER);
+     VAR R: Texts.Reader;
+-      ch: CHAR;
++      beg0, len, codepoint: INTEGER;
+   BEGIN
++    len := 0; beg0 := beg;
++    Texts.OpenReader(R, T, beg);
++    WHILE beg0 < end DO
++      Texts.ReadUnicode(R, codepoint);
++      INC(beg0, Texts.UnicodeWidth(codepoint));
++      INC(len);
++    END;
++    SYSTEM.PUT(control, len);
+     Texts.OpenReader(R, T, beg);
+-    SYSTEM.PUT(control, end - beg);
+     WHILE beg < end DO
+-      Texts.Read(R, ch);
+-      SYSTEM.PUT(data, ch);
+-      beg := beg + 1
++      Texts.ReadUnicode(R, codepoint);
++      SYSTEM.PUT(data, codepoint);
++      INC(beg, Texts.UnicodeWidth(codepoint));
+     END
+   END Copy;
+ 
+@@ -39,21 +46,22 @@
+     VAR W: Texts.Writer;
+       V: Viewers.Viewer;
+       F: TextFrames.Frame;
+-      len, i: INTEGER;
+-      ch: CHAR;
++      len, bytelen, i, codepoint: INTEGER;
+   BEGIN
+     V := Oberon.FocusViewer;
+     IF (V # NIL) & (V.dsc # NIL) & (V.dsc.next IS TextFrames.Frame) THEN
+       SYSTEM.GET(control, len);
++      bytelen := 0;
+       IF len > 0 THEN
+         Texts.OpenWriter(W);
+         FOR i := 1 TO len DO
+-          SYSTEM.GET(data, ch);
+-          Texts.Write(W, ch)
++          SYSTEM.GET(data, codepoint);
++	  INC(bytelen, Texts.UnicodeWidth(codepoint));
++          Texts.WriteUnicode(W, codepoint)
+         END;
+         F := V.dsc.next(TextFrames.Frame);
+         Texts.Insert(F.text, F.carloc.pos, W.buf);
+-        TextFrames.SetCaret(F, F.carloc.pos + len)
++        TextFrames.SetCaret(F, F.carloc.pos + bytelen)
+       END
+     END
+   END Paste;
+--- 1/KeyTester.Mod.txt
++++ 2/KeyTester.Mod.txt
+@@ -1,5 +1,5 @@
+ MODULE KeyTester;
+-  IMPORT SYSTEM, Kernel, Modules, Display, Fonts, Viewers, Oberon, MenuViewers, TextFrames;
++  IMPORT SYSTEM, Kernel, Modules, Display, Fonts, Texts, Viewers, Oberon, MenuViewers, TextFrames;
+ 
+   CONST
+     Menu = "System.Close  System.Copy  System.Grow  KeyTester.Start  KeyTester.Delay0  KeyTester.Delay100  KeyTester.Delay500";
+@@ -9,7 +9,7 @@
+   TYPE
+     KeyInfo = RECORD
+         x, y, w, h: INTEGER;
+-        label: ARRAY 7 OF CHAR;
++        label: ARRAY 10 OF CHAR;
+         pressed: BOOLEAN;
+       END;
+ 
+@@ -17,18 +17,28 @@
+     keys: ARRAY KeyCount OF KeyInfo;
+     keylookup: ARRAY 3*256 OF INTEGER;
+     delay: INTEGER;
++    T: Texts.Text;
++    W: Texts.Writer;
+ 
+   PROCEDURE DrawText(text: ARRAY OF CHAR; x, y: INTEGER);
+   VAR
+-    dx, xx, yy, ww, hh, patAdr, i: INTEGER;
+-  BEGIN
+-    i := 0;
+-    WHILE text[i] # 0X DO
+-      Fonts.GetPat(Fonts.Default, text[i], dx, xx, yy, ww, hh, patAdr);
+-      Display.CopyPattern(Display.white, patAdr, x+xx, y+yy, Display.invert);
+-      INC(x, dx);
+-      INC(i)
+-    END
++    dx, xx, yy, ww, hh, patAdr, codepoint: INTEGER;
++    R: Texts.Reader;
++    buf: Texts.Buffer;
++  BEGIN
++    Texts.WriteString(W, text);
++    Texts.Append(T, W.buf);
++    Texts.OpenReader(R, T, 0);
++    WHILE ~R.eot DO
++      Texts.ReadUnicode(R, codepoint);
++      IF codepoint # 0 THEN
++        Fonts.GetUniPat(Fonts.Default, codepoint, dx, xx, yy, ww, hh, patAdr);
++        Display.CopyPattern(Display.white, patAdr, x+xx, y+yy, Display.invert);
++        INC(x, dx);
++      END
++    END;
++    NEW(buf); Texts.OpenBuf(buf);
++    Texts.Delete(T, 0, T.len, buf)
+   END DrawText;
+ 
+   PROCEDURE DrawKey(F: Display.Frame; i: INTEGER);
+@@ -153,6 +163,8 @@
+   VAR
+     x, y, ctr: INTEGER;
+   BEGIN
++    Texts.OpenWriter(W);
++    T := TextFrames.Text("");
+     FOR ctr := 0 TO 3*256-1 DO keylookup[ctr] := -1 END;
+ 
+     x := 0; y := 0; ctr := 0;
+@@ -252,20 +264,20 @@
+     x :=5; y:= 34;
+     AddKey("Ins", 1, 70H, ctr, x, y);
+     AddKey("Home", 1, 6CH, ctr, x, y);
+-    AddKey("PgUp", 1, 7DH, ctr, x, y);
++    AddKey("Pg↑", 1, 7DH, ctr, x, y);
+ 
+     x :=5; y:= 38;
+     AddKey("Del", 1, 71H, ctr, x, y);
+     AddKey("End", 1, 69H, ctr, x, y);
+-    AddKey("PgDn", 1, 7AH, ctr, x, y);
++    AddKey("Pg↓", 1, 7AH, ctr, x, y);
+ 
+     x :=9; y:= 46;
+-    AddKey("Up", 1, 75H, ctr, x, y);
++    AddKey("↑", 1, 75H, ctr, x, y);
+ 
+     x :=5; y:= 50;
+-    AddKey("<-", 1, 6BH, ctr, x, y);
+-    AddKey("Dn", 1, 72H, ctr, x, y);
+-    AddKey("->", 1, 74H, ctr, x, y);
++    AddKey("←", 1, 6BH, ctr, x, y);
++    AddKey("↓", 1, 72H, ctr, x, y);
++    AddKey("→", 1, 74H, ctr, x, y);
+ 
+     x :=20; y:= 34;
+     AddKey("Num", 0, 77H, ctr, x, y);
+@@ -316,8 +328,8 @@
+     AddKey("Stop", 1, 28H, ctr, x, y);
+ 
+     x := 40; y := 46; (* Multimedia keys *)
+-    AddKey("VlDn", 1, 21H, ctr, x, y);
+-    AddKey("VlUp", 1, 32H, ctr, x, y);
++    AddKey("Vol↓", 1, 21H, ctr, x, y);
++    AddKey("Vol↑", 1, 32H, ctr, x, y);
+     AddKey("Mute", 1, 23H, ctr, x, y);
+     AddKey("Media", 1, 50H, ctr, x, y);
+ 
+--- 1/RealCalc.Mod.txt
++++ 2/RealCalc.Mod.txt
+@@ -12,31 +12,31 @@
+       t: Texts.Text;
+   BEGIN
+     Texts.Scan(s);
+-    IF (s.class = Texts.Char) & (s.c = "^") THEN
++    IF (s.class = Texts.Char) & (s.codepoint = ORD("^")) THEN
+       Oberon.GetSelection(t, beg, end, time);
+       IF time >= 0 THEN
+         Texts.OpenScanner(s, t, beg); Texts.Scan(s);
+       END
+     END;
+     IF s.class = Texts.Char THEN
+-      IF s.c = "+" THEN
++      IF s.codepoint = ORD("+") THEN
+         val := ReadReal() + ReadReal();
+-      ELSIF s.c = "-" THEN
++      ELSIF s.codepoint = ORD("-") THEN
+         val := ReadReal() - ReadReal();
+-      ELSIF s.c = "~" THEN
++      ELSIF s.codepoint = ORD("~") THEN
+         val := - ReadReal();
+-      ELSIF s.c = "*" THEN
++      ELSIF s.codepoint = ORD("*") THEN
+         val := ReadReal() * ReadReal();
+-      ELSIF s.c = "/" THEN
++      ELSIF s.codepoint = ORD("/") THEN
+         val := ReadReal() / ReadReal();
+-      ELSIF s.c = "#" THEN
++      ELSIF s.codepoint = ORD("#") THEN
+         val := ABS(ReadReal());
+-      ELSIF s.c = "<" THEN
++      ELSIF s.codepoint = ORD("<") THEN
+         val := FLT(FLOOR(ReadReal()));
+       ELSE
+         val := 0.0;
+         Texts.WriteString(log, "Invalid operator ");
+-        Texts.Write(log, s.c);
++        Texts.WriteUnicode(log, s.codepoint);
+         Texts.WriteLn(log);
+       END
+     ELSIF s.class = Texts.Int THEN
+--- 1/ResourceMonitor.Mod.txt
++++ 2/ResourceMonitor.Mod.txt
+@@ -12,7 +12,7 @@
+   BEGIN
+     i := 0;
+     WHILE text[i] # 0X DO
+-      Fonts.GetPat(Fonts.Default, text[i], dx, t1, t2, t3, t4, patAdr);
++      Fonts.GetUniPat(Fonts.Default, ORD(text[i]), dx, t1, t2, t3, t4, patAdr);
+       Display.CopyPattern(Display.white, patAdr, x, y, Display.replace);
+       INC(x, dx);
+       INC(i)
+--- 1/Batch.Mod.txt
++++ 2/Batch.Mod.txt
+@@ -47,9 +47,9 @@
+     Texts.OpenWriter(W);
+     WHILE go DO
+       Texts.Scan(S);
+-      IF (S.class = Texts.Char) & (S.c = "\") THEN
++      IF (S.class = Texts.Char) & (S.codepoint = ORD("\")) THEN
+         nl := FALSE
+-      ELSIF (S.class = Texts.Char) & (S.c = "*") THEN
++      ELSIF (S.class = Texts.Char) & (S.codepoint = ORD("*")) THEN
+         V := Viewers.This(Display.Width - 10, Display.Height - 10);
+         TextFrames.Show(V.dsc.next(TextFrames.Frame), Oberon.Log.len);
+       ELSIF S.class = Texts.Int THEN
+--- 1/ImageTool.Mod.txt
++++ 2/ImageTool.Mod.txt
+@@ -44,7 +44,7 @@
+   BEGIN
+     Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos);
+     Texts.Scan(S);
+-    IF (S.class = Texts.Char) & (S.c = "^") THEN
++    IF (S.class = Texts.Char) & (S.codepoint = ORD("^")) THEN
+       Oberon.GetSelection(T, beg, end, time);
+       IF time >= 0 THEN Texts.OpenScanner(S, T, beg); Texts.Scan(S) END
+     END;

@@ -196,7 +196,7 @@ public class PS2 {
 		int[] scancodes;
 		if (ch == '\n')
 			ch = '\r';
-		int hintValue = hint ? (ch << 24) : 0;
+		int hintValue = hint ? ((ch << 24) | (ch >>> 8 << 16)) : 0;
 		byte scancode = decode(ch);
 		if (scancode == 0) {
 			// type "x" with character hint

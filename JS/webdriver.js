@@ -330,7 +330,7 @@ function WebDriver(imageName, width, height) {
 	};
 
 	$proto.registerKey = function(keyCode) {
-		this.keyBuffer.push(keyCode << 24);
+		this.keyBuffer.push((keyCode << 24) | (keyCode >>> 8 << 16));
 		this.wait(-1);
 		this.reschedule();
 	};

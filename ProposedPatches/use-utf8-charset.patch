@@ -1,0 +1,978 @@
+--- 1/Draw.Mod.txt
++++ 2/Draw.Mod.txt
+@@ -21,7 +21,7 @@
+       S: Texts.Scanner;
+       text: Texts.Text;
+   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
+-    IF (S.class = Texts.Char) & (S.c = "^") THEN
++    IF (S.class = Texts.Char) & (S.codepoint = ORD("^")) THEN
+       Oberon.GetSelection(text, beg, end, t);
+       IF t >= 0 THEN Texts.OpenScanner(S, text, beg); Texts.Scan(S) END
+     END ;
+@@ -45,7 +45,7 @@
+   PROCEDURE GetArg(VAR S: Texts.Scanner);
+     VAR T: Texts.Text; beg, end, time: LONGINT;
+   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
+-    IF (S.class = Texts.Char) & (S.c = "^") THEN
++    IF (S.class = Texts.Char) & (S.codepoint = ORD("^")) THEN
+       Oberon.GetSelection(T, beg, end, time);
+       IF time >= 0 THEN Texts.OpenScanner(S, T, beg); Texts.Scan(S) END
+     END
+--- 1/Edit.Mod.txt
++++ 2/Edit.Mod.txt
+@@ -23,7 +23,7 @@
+     X, Y: INTEGER;
+     beg, end, time: LONGINT;
+   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
+-    IF (S.class = Texts.Char) & (S.c = "^") OR (S.line # 0) THEN
++    IF (S.class = Texts.Char) & (S.codepoint = ORD("^")) OR (S.line # 0) THEN
+       Oberon.GetSelection(T, beg, end, time);
+       IF time >= 0 THEN Texts.OpenScanner(S, T, beg); Texts.Scan(S) END
+     END;
+@@ -58,7 +58,7 @@
+     ELSE V := Oberon.MarkedViewer(); Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos)
+     END;
+     Texts.Scan(S);
+-    IF (S.class = Texts.Char) & (S.c = "^") THEN
++    IF (S.class = Texts.Char) & (S.codepoint = ORD("^")) THEN
+       Oberon.GetSelection(T, beg, end, time);
+       IF time >= 0 THEN Texts.OpenScanner(S, T, beg); Texts.Scan(S) END
+     END;
+@@ -244,6 +244,22 @@
+       END
+     END
+   END Recall;
++
++  PROCEDURE InsertUnicode*;
++    VAR S: Texts.Scanner;
++      W: Texts.Writer;
++      T: Texts.Text;
++      F: TextFrames.Frame;
++      codepoint: INTEGER;
++  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
++    IF S.class = Texts.Int THEN
++      Texts.OpenWriter(W);
++      Texts.WriteUnicode(W, S.i);
++      F := Oberon.FocusViewer.dsc.next(TextFrames.Frame);
++      Texts.Insert(F.text, F.carloc.pos, W.buf);
++      TextFrames.SetCaret(F, F.carloc.pos + Texts.UnicodeWidth(S.i));
++    END
++  END InsertUnicode;
+ 
+ BEGIN Texts.OpenWriter(W)
+ END Edit.
+--- 1/Fonts.Mod.txt
++++ 2/Fonts.Mod.txt
+@@ -4,49 +4,181 @@
+   CONST FontFileId = 0DBH;
+ 
+   TYPE Font* = POINTER TO FontDesc;
++    RasterBlock = POINTER TO RasterBlockDesc;
+     FontDesc* = RECORD
+       name*: ARRAY 32 OF CHAR;
+       height*, minX*, maxX*, minY*, maxY*: INTEGER;
+       next*: Font;
+-      T: ARRAY 128 OF INTEGER;
+-      raster: ARRAY 2360 OF BYTE
+-    END ;
+-
+-    LargeFontDesc = RECORD (FontDesc) ext: ARRAY 2560 OF BYTE END ;
+-    LargeFont = POINTER TO LargeFontDesc;
+-    RunRec = RECORD beg, end: BYTE END ;
+-    BoxRec = RECORD dx, x, y, w, h: BYTE END ;
++      T1: ARRAY 16 OF INTEGER;
++      block: RasterBlock;
++    END;
++
++    RasterBlockDesc = RECORD
++      next: RasterBlock;
++      offs: INTEGER;
++      raster: ARRAY 1000 OF BYTE;
++    END;
+     
+-  (* raster sizes: Syntax8 1367, Syntax10 1628, Syntax12 1688, Syntax14 1843, Syntax14b 1983,
+-      Syntax16 2271, Syntax20 3034, Syntac24 4274, Syntax24b 4302  *)
+-
+ VAR Default*, root*: Font;
++  FallbackPat: ARRAY 35 OF BYTE;
+ 
+-PROCEDURE GetPat*(fnt: Font; ch: CHAR; VAR dx, x, y, w, h, patadr: INTEGER);
+-  VAR pa: INTEGER;  dxb, xb, yb, wb, hb: BYTE;
+-BEGIN pa := fnt.T[ORD(ch) MOD 80H]; patadr := pa;
+-  SYSTEM.GET(pa-3, dxb); SYSTEM.GET(pa-2, xb); SYSTEM.GET(pa-1, yb); SYSTEM.GET(pa, wb); SYSTEM.GET(pa+1, hb);
+-  dx := dxb; x := xb; y := yb; w := wb; h := hb;
+-  IF yb < 128 THEN y := yb ELSE y := yb - 256 END
+-END GetPat;
++PROCEDURE ReadInt16(VAR R: Files.Rider; VAR r: INTEGER);
++  VAR b0, b1: BYTE;
++BEGIN Files.ReadByte(R, b0); Files.ReadByte(R, b1); r := b1 * 100H + b0;
++END ReadInt16;
++
++PROCEDURE RdInt16(VAR R: Files.Rider; VAR b0: BYTE);
++  VAR b1: BYTE;
++BEGIN Files.ReadByte(R, b0); Files.ReadByte(R, b1)
++END RdInt16;
++
++PROCEDURE FindSpace(B: RasterBlock; size, align: INTEGER): INTEGER;
++VAR result: INTEGER;
++BEGIN
++  WHILE (B.offs + size + align - 1 > 1000) DO
++    IF (B.next = NIL) THEN NEW(B.next) END;
++    B := B.next
++  END;
++  WHILE (B.offs MOD align # 0) DO
++    INC(B.offs);
++  END;
++  result := SYSTEM.ADR(B.raster[B.offs]);
++  INC(B.offs, size);
++  RETURN result
++END FindSpace;
++
++PROCEDURE LoadRange(F: Font; rangeStart: INTEGER);
++TYPE RunRec = RECORD beg, end: INTEGER END;
++VAR rangeEnd, skipBytes, skipBoxesBefore, skipBoxesAfter, usedRuns, totalRuns, beg, end, i, j, k, n, a, a1: INTEGER;
++  f: Files.File; R: Files.Rider;
++  b, dx, x, y, w, h: BYTE;
++  run: ARRAY 32 OF RunRec;
++BEGIN
++  a := FindSpace(F.block, 256, 4);
++  SYSTEM.PUT(F.T1[rangeStart DIV 1000H] + (rangeStart DIV 40H MOD 40H) * 4, a);
++  rangeEnd := rangeStart + 64; skipBytes := 0; skipBoxesBefore := 0; skipBoxesAfter := 0;
++  f := Files.Old(F.name);
++  Files.Set(R, f, 14); ReadInt16(R, totalRuns);
++  i := 0; usedRuns := 0;
++  WHILE i # totalRuns DO
++    ReadInt16(R, beg); ReadInt16(R, end);
++    IF end > rangeEnd THEN skipBoxesAfter := skipBoxesAfter + end - rangeEnd; end := rangeEnd END;
++    IF beg < rangeStart THEN skipBoxesBefore := skipBoxesBefore + rangeStart - beg; beg := rangeStart END;
++    IF end <= rangeStart THEN
++      skipBoxesBefore := skipBoxesBefore + end - beg;
++    ELSIF beg >= rangeEnd THEN
++      skipBoxesAfter := skipBoxesAfter + end - beg;
++    ELSE
++      run[usedRuns].beg := beg; run[usedRuns].end := end;
++      INC(usedRuns);
++    END;
++    INC(i)
++  END;
++  i := 0;
++  WHILE i # skipBoxesBefore DO
++    RdInt16(R, dx); RdInt16(R, x); RdInt16(R, y);
++    RdInt16(R, w); RdInt16(R, h);
++    skipBytes := skipBytes + (w + 7) DIV 8 * h;
++    INC(i)
++  END;
++  i := 0; j := 0;
++  WHILE i < usedRuns DO
++    j := run[i].beg;
++    WHILE (j < run[i].end) DO
++      RdInt16(R, dx); RdInt16(R, x); RdInt16(R, y);
++      RdInt16(R, w); RdInt16(R, h);
++      IF (dx # 0) OR (w # 0) OR (h # 0) THEN
++        n := (w + 7) DIV 8 * h;
++        a1 := FindSpace(F.block, n+5, 1);
++        SYSTEM.PUT(a + (j - rangeStart) * 4, a1 + 3);
++        SYSTEM.PUT(a1, dx); SYSTEM.PUT(a1+1, x); SYSTEM.PUT(a1+2, y);
++        SYSTEM.PUT(a1+3, w); SYSTEM.PUT(a1+4, h);
++      END;
++      INC(j)
++    END;
++    INC(i)
++  END;
++  i := 0;
++  WHILE i # skipBoxesAfter DO
++    RdInt16(R, b); RdInt16(R, b); RdInt16(R, b);
++    RdInt16(R, b); RdInt16(R, b);
++    INC(i)
++  END;
++  i := 0;
++  WHILE i < skipBytes DO Files.ReadByte(R, b); INC(i) END;
++  i := 0; j := 0;
++  WHILE i < usedRuns DO
++    j := run[i].beg;
++    WHILE (j < run[i].end) DO
++      SYSTEM.GET(a + (j - rangeStart) * 4, a1);
++      IF (a1 # 0) THEN
++        SYSTEM.GET(a1, w); SYSTEM.GET(a1+1, h);
++        n := (w + 7) DIV 8 * h;
++        INC(a1, 2);
++        WHILE n # 0 DO DEC(n); Files.ReadByte(R, b); SYSTEM.PUT(a1, b); INC(a1) END;
++      END;
++      INC(j)
++    END;
++    INC(i)
++  END
++END LoadRange;
++
++PROCEDURE PatDot(x,y: INTEGER);
++  VAR s : SET; i : INTEGER;
++BEGIN
++  i := FallbackPat[y * 3 + (x DIV 8) + 2];
++  s := SYSTEM.VAL(SET, i);
++  s := s + {x MOD 8};
++  i := SYSTEM.VAL(INTEGER, s);
++  FallbackPat[y * 3 + (x DIV 8) + 2] := i
++END PatDot;
++
++PROCEDURE GetUniPat*(fnt: Font; codepoint: INTEGER; VAR dx, x, y, w, h, patadr: INTEGER);
++  VAR pa, i1, i2, i3: INTEGER;  dxb, xb, yb, wb, hb: BYTE;
++BEGIN
++  i1 := codepoint DIV 1000H;
++  i2 := codepoint DIV 40H MOD 40H;
++  i3 := codepoint MOD 40H;
++  pa := fnt.T1[i1];
++  IF pa # 0 THEN
++    SYSTEM.GET(pa + i2 * 4, pa);
++    IF pa = 1 THEN
++      LoadRange(fnt, codepoint DIV 40H * 40H);
++      SYSTEM.GET(fnt.T1[i1] + i2 * 4, pa)
++    END
++  END;
++  IF pa # 0 THEN SYSTEM.GET(pa + i3 * 4, pa) END;
++  IF pa # 0 THEN
++    patadr := pa;
++    SYSTEM.GET(pa-3, dxb); SYSTEM.GET(pa-2, xb); SYSTEM.GET(pa-1, yb); SYSTEM.GET(pa, wb); SYSTEM.GET(pa+1, hb);
++    dx := dxb; x := xb; y := yb; w := wb; h := hb;
++    IF yb < 128 THEN y := yb ELSE y := yb - 256 END
++  ELSE
++    FallbackPat[0] := 23; FallbackPat[1] := 11;
++    FallbackPat[2] := 0FFH; FallbackPat[3] := 0FFH; FallbackPat[4] := 07FH;
++    FOR y := 0 TO 8 DO FallbackPat[5+y*3] := 1; FallbackPat[6+y*3] := 0; FallbackPat[7+y*3] := 40H END;
++    FallbackPat[32] := 0FFH; FallbackPat[33] := 0FFH; FallbackPat[34] := 07FH;
++    w := codepoint;
++    FOR x := 15 TO 0 BY -5 DO
++      h := w MOD 16; w := w DIV 16;
++      IF (h # 1) & (h # 4) & (h # 0BH) & (h # 0DH) THEN PatDot(x+3, 8); PatDot(x+4, 8) END;
++      IF (h # 1) & (h # 2) & (h # 3) & (h # 7) & (h # 0DH) THEN PatDot(x+2, 7); PatDot(x+2, 6) END;
++      IF (h # 5) & (h # 6) & (h # 0BH) & (h # 0CH) & (h # 0EH) & (h # 0FH) THEN PatDot(x+5, 7); PatDot(x+5, 6) END;
++      IF (h # 0) & (h # 1) & (h # 7) & (h # 0CH) THEN PatDot(x+3, 5); PatDot(x+4, 5) END;
++      IF (h = 0) OR (h = 2) OR (h = 6) OR (h = 8) OR (h > 9) THEN PatDot(x+2, 4); PatDot(x+2, 3) END;
++      IF (h # 2) & (h # 0CH) & (h # 0EH) & (h # 0FH) THEN PatDot(x+5, 4); PatDot(x+5, 3) END;
++      IF (h # 1) & (h # 4) & (h # 7) & (h # 0AH) & (h # 0FH) THEN PatDot(x+3, 2); PatDot(x+4, 2) END
++    END;
++    dx := 24; x := 0; y := fnt.minY; w := 23; h := 11;
++    patadr := SYSTEM.ADR(FallbackPat)
++  END
++END GetUniPat;
+ 
+ PROCEDURE This*(name: ARRAY OF CHAR): Font;
+-  VAR F: Font; LF: LargeFont;
++  VAR F: Font;
+     f: Files.File; R: Files.Rider;
+-    NofRuns, NofBoxes: BYTE;
+-    NofBytes: INTEGER;
+-    height, minX, maxX, minY, maxY: BYTE;
+-    i, j, k, m, n: INTEGER;
+-    a, a0: INTEGER;
+-    b, beg, end: BYTE;
+-    run: ARRAY 16 OF RunRec;
+-    box: ARRAY 512 OF BoxRec;
+-
+-  PROCEDURE RdInt16(VAR R: Files.Rider; VAR b0: BYTE);
+-    VAR b1: BYTE;
+-  BEGIN Files.ReadByte(R, b0); Files.ReadByte(R, b1)
+-  END RdInt16;
+-
++    minY, b: BYTE;
++    a, beg, end, i, i1, i2, NofRuns, k: INTEGER;
+ BEGIN F := root;
+   WHILE (F # NIL) & (name # F.name) DO F := F.next END;
+   IF F = NIL THEN
+@@ -57,41 +189,28 @@
+         Files.ReadByte(R, b); (*abstraction*)
+         Files.ReadByte(R, b); (*family*)
+         Files.ReadByte(R, b); (*variant*)
+-        RdInt16(R, height); RdInt16(R, minX); RdInt16(R, maxX); RdInt16(R, minY); RdInt16(R, maxY); RdInt16(R, NofRuns);
+-        NofBoxes := 0; k := 0;
++        NEW(F); NEW(F.block); F.name := name;
++        ReadInt16(R, F.height); ReadInt16(R, F.minX); ReadInt16(R, F.maxX);
++	RdInt16(R, minY); ReadInt16(R, F.maxY); ReadInt16(R, NofRuns);
++        IF minY >= 80H THEN F.minY := minY - 100H ELSE F.minY := minY END;
++        k := 0;
+         WHILE k # NofRuns DO
+-          RdInt16(R, beg);
+-          run[k].beg := beg; RdInt16(R, end);
+-          run[k].end := end; NofBoxes := NofBoxes + end - beg; INC(k)
+-        END;
+-        NofBytes := 5; j := 0;
+-        WHILE j # NofBoxes DO
+-          RdInt16(R, box[j].dx); RdInt16(R, box[j].x); RdInt16(R, box[j].y);
+-          RdInt16(R, box[j].w); RdInt16(R, box[j].h);
+-          NofBytes := NofBytes + 5 + (box[j].w + 7) DIV 8 * box[j].h;
+-          INC(j)
+-        END;
+-        IF NofBytes < 2300 THEN NEW(F) ELSE NEW(LF); F := LF END ;
+-        F.name := name;
+-        F.height := height; F.minX := minX; F.maxX := maxX; F.maxY := maxY;
+-        IF minY >= 80H THEN F.minY := minY - 100H ELSE F.minY := minY END ;
+-        a0 := SYSTEM.ADR(F.raster);
+-        SYSTEM.PUT(a0, 0X); SYSTEM.PUT(a0+1, 0X); SYSTEM.PUT(a0+2, 0X); SYSTEM.PUT(a0+3, 0X); SYSTEM.PUT(a0+4, 0X);
+-        (*null pattern for characters not in a run*)
+-        INC(a0, 3); a := a0+2; j := 0; k := 0; m := 0;
+-        WHILE k < NofRuns DO
+-          WHILE (m < run[k].beg) & (m < 128) DO F.T[m] := a0; INC(m) END;
+-          WHILE (m < run[k].end) & (m < 128) DO
+-            F.T[m] := a+3;
+-            SYSTEM.PUT(a, box[j].dx); SYSTEM.PUT(a+1, box[j].x); SYSTEM.PUT(a+2, box[j].y);
+-            SYSTEM.PUT(a+3, box[j].w); SYSTEM.PUT(a+4, box[j].h); INC(a, 5);
+-            n := (box[j].w + 7) DIV 8 * box[j].h;
+-            WHILE n # 0 DO DEC(n); Files.ReadByte(R, b); SYSTEM.PUT(a, b); INC(a) END ;
+-            INC(j); INC(m)
+-          END;
++          ReadInt16(R, beg); ReadInt16(R, end); i := beg;
++	  WHILE i < end DO
++	    i1 := i DIV 1000H;
++	    i2 := i DIV 40H MOD 40H;
++	    IF F.T1[i1] = 0 THEN
++	      F.T1[i1] := FindSpace(F.block, 256, 4)
++	    END;
++	    SYSTEM.GET(F.T1[i1] + i2 * 4, a);
++	    IF a = 0 THEN
++	      a := 1;
++	      SYSTEM.PUT(F.T1[i1] + i2 * 4, a)
++	    END;
++	    INC(i, 40H)
++	  END;
+           INC(k)
+         END;
+-        WHILE m < 128 DO F.T[m] := a0; INC(m) END ;
+         F.next := root; root := F
+       ELSE (*bad file id*) F := Default
+       END
+--- 1/GraphicFrames.Mod.txt
++++ 2/GraphicFrames.Mod.txt
+@@ -208,19 +208,19 @@
+ 
+   PROCEDURE CaptionCopy(F: Frame;
+       x1, y1: INTEGER; T: Texts.Text; beg, end: LONGINT): Graphics.Caption;
+-    VAR ch: CHAR;
++    VAR codepoint: INTEGER;
+       dx, w, x2, y2, w1, h1: INTEGER;
+       cap: Graphics.Caption;
+       pat: INTEGER;
+       R: Texts.Reader;
+   BEGIN Texts.Write(W, 0DX);
+     NEW(cap); cap.len := end - beg;
+     cap.pos := Graphics.T.len + 1; cap.do := Graphics.CapMethod;
+-    Texts.OpenReader(R, T, beg); Texts.Read(R, ch); W.fnt := R.fnt; W.col := R.col; w := 0;
++    Texts.OpenReader(R, T, beg); Texts.ReadUnicode(R, codepoint); W.fnt := R.fnt; W.col := R.col; w := 0;
+     cap.x := x1 - F.x; cap.y := y1 - F.y + R.fnt.minY;
+     WHILE beg < end DO
+-      Fonts.GetPat(R.fnt, ch, dx, x2, y2, w1, h1, pat);
+-      INC(w, dx); INC(beg); Texts.Write(W, ch); Texts.Read(R, ch)
++      Fonts.GetUniPat(R.fnt, codepoint, dx, x2, y2, w1, h1, pat);
++      INC(w, dx); INC(beg); Texts.WriteUnicode(W, codepoint); Texts.ReadUnicode(R, codepoint)
+     END ;
+     cap.w := w; cap.h := W.fnt.height; cap.col := W.col;
+     Texts.Append(Graphics.T, W.buf); Graphics.Add(F.graph, cap);
+@@ -328,27 +328,33 @@
+     Graphics.Add(F.graph, newcap); W.fnt := font; ; Mark(F, 1)
+   END NewCaption;
+ 
+-  PROCEDURE InsertChar(F: Frame; ch: CHAR);
++  PROCEDURE InsertChar(F: Frame; codepoint: INTEGER);
+     VAR w1, h1: INTEGER; DM: DispMsg;
+   BEGIN DM.graph := F.graph;
+-    Fonts.GetPat(W.fnt, ch, DM.w, DM.x1, DM.y1, w1, h1, DM.pat); DEC(DM.y1, W.fnt.minY);
++    Fonts.GetUniPat(W.fnt, codepoint, DM.w, DM.x1, DM.y1, w1, h1, DM.pat); DEC(DM.y1, W.fnt.minY);
+     IF newcap.x + newcap.w + DM.w + F.x < F.X1 THEN
+-      Viewers.Broadcast(DM); INC(newcap.w, DM.w); INC(newcap.len); Texts.Write(W, ch)
++      Viewers.Broadcast(DM); INC(newcap.w, DM.w); INC(newcap.len, Texts.UnicodeWidth(codepoint)); Texts.WriteUnicode(W, codepoint)
+     END ;
+     Texts.Append(Graphics.T, W.buf)
+   END InsertChar;
+ 
+   PROCEDURE DeleteChar(F: Frame);
+-    VAR w1, h1: INTEGER; ch: CHAR; pos: LONGINT;
++    VAR w1, h1, charlen, codepoint, pos: INTEGER; ch: CHAR;
+       DM: DispMsg; R: Texts.Reader;
+   BEGIN DM.graph := F.graph;
+     IF newcap.len > 0 THEN
+-      pos := Graphics.T.len; Texts.OpenReader(R, Graphics.T, pos-1);  (*backspace*)
+-      Texts.Read(R, ch);
+-      IF ch >= " " THEN
+-        Fonts.GetPat(R.fnt, ch, DM.w, DM.x1, DM.y1, w1, h1, DM.pat);
+-        DEC(newcap.w, DM.w); DEC(newcap.len); DEC(DM.y1, R.fnt.minY);
+-        Viewers.Broadcast(DM); Texts.Delete(Graphics.T, pos-1, pos, TBuf)
++      charlen := 0; (*backspace*)
++      pos := Graphics.T.len;
++      REPEAT INC(charlen);
++        Texts.OpenReader(R, Graphics.T, pos-charlen);
++        Texts.Read(R, ch);
++      UNTIL (ch < 80X) OR (ch >= 0C0X); (* skip over continuation *)
++      Texts.OpenReader(R, Graphics.T, pos-charlen);
++      Texts.ReadUnicode(R, codepoint);
++      IF codepoint >= ORD(" ") THEN
++        Fonts.GetUniPat(R.fnt, codepoint, DM.w, DM.x1, DM.y1, w1, h1, DM.pat);
++        DEC(newcap.w, DM.w); DEC(newcap.len, charlen); DEC(DM.y1, R.fnt.minY);
++        Viewers.Broadcast(DM); Texts.Delete(Graphics.T, pos-charlen, pos, TBuf)
+       END
+     END
+   END DeleteChar;
+@@ -374,14 +380,14 @@
+           x := M.X - (M.X - G.x) MOD 4; y := M.Y - (M.Y - G.y) MOD 4;
+           IF M.keys # {} THEN Edit(G, x, y, M.keys) ELSE Oberon.DrawMouse(Crosshair, x, y) END
+         ELSIF M.id = Oberon.consume THEN
+-          IF M.ch = 7FX THEN (*DEL*)
++          IF M.codepoint = 7FH THEN (*DEL*)
+             Erase(G); Graphics.Delete(G.graph); Mark(G, 1)
+-          ELSIF (M.ch >= 20X) & (M.ch < 7FX) THEN
+-            IF newcap # NIL THEN InsertChar(G, M.ch); Mark(G, 1)
++          ELSIF (M.codepoint >= 20H) THEN
++            IF newcap # NIL THEN InsertChar(G, M.codepoint); Mark(G, 1)
+             ELSIF G.marked THEN
+-              Defocus(G); Deselect(G); NewCaption(G, M.col, M.fnt); InsertChar(G, M.ch)
++              Defocus(G); Deselect(G); NewCaption(G, M.col, M.fnt); InsertChar(G, M.codepoint)
+             END
+-          ELSIF (M.ch = 8X) & (newcap # NIL) THEN DeleteChar(G); Mark(G, 1)
++          ELSIF (M.codepoint = 8H) & (newcap # NIL) THEN DeleteChar(G); Mark(G, 1)
+           END
+         END
+       | UpdateMsg:
+@@ -465,25 +471,25 @@
+   END DrawLine;
+ 
+   PROCEDURE DrawCaption(obj: Graphics.Object; VAR M: Graphics.Msg);
+-    VAR x, y, dx, x0, x1, y0, y1, w, h, w1, h1, col: INTEGER;
++    VAR x, y, dx, x0, x1, y0, y1, w, h, w1, h1, col, codepoint: INTEGER;
+       f: Frame;
+-      ch: CHAR; pat: INTEGER; fnt: Fonts.Font;
++      pat: INTEGER; fnt: Fonts.Font;
+       R: Texts.Reader;
+   BEGIN
+     CASE M OF DrawMsg:
+       x := obj.x + M.x; y := obj.y + M.y; w := obj.w; h := obj.h; f := M.f;
+       IF (f.X <= x) & (x <= f.X1) & (f.Y <= y) & (y+h <= f.Y1) THEN
+         IF x+w > f.X1 THEN w := f.X1-x END ;
+-        Texts.OpenReader(R, Graphics.T, obj(Graphics.Caption).pos); Texts.Read(R, ch);
++        Texts.OpenReader(R, Graphics.T, obj(Graphics.Caption).pos); Texts.ReadUnicode(R, codepoint);
+         IF M.mode = 0 THEN
+-          IF ch >= " " THEN
++          IF codepoint >= ORD(" ") THEN
+             fnt := R.fnt; x0 := x; y0 := y - fnt.minY; col := obj.col;
+-            REPEAT Fonts.GetPat(fnt, ch, dx, x1, y1, w1, h1, pat);
++            REPEAT Fonts.GetUniPat(fnt, codepoint, dx, x1, y1, w1, h1, pat);
+               IF x0+x1+w1 <= f.X1 THEN
+-                Display.CopyPattern(col, pat, x0+x1, y0+y1, Display.paint); INC(x0, dx); Texts.Read(R, ch)
+-              ELSE ch := 0X
++                Display.CopyPattern(col, pat, x0+x1, y0+y1, Display.paint); INC(x0, dx); Texts.ReadUnicode(R, codepoint)
++              ELSE codepoint := 0
+               END
+-            UNTIL ch < " ";
++            UNTIL codepoint < ORD(" ");
+             IF obj.selected THEN ReplConst(f, Display.white, x, y, w, h, Display.invert) END
+           END
+         ELSIF M.mode IN {1, 2} THEN ReplConst(f, Display.white, x, y, w, h, Display.invert)
+--- 1/Graphics.Mod.txt
++++ 2/Graphics.Mod.txt
+@@ -546,28 +546,28 @@
+   END NewCaption;
+ 
+   PROCEDURE CopyCaption(src, dst: Object);
+-    VAR ch: CHAR; R: Texts.Reader;
++    VAR codepoint: INTEGER; R: Texts.Reader;
+   BEGIN
+     dst.x := src.x; dst.y := src.y; dst.w := src.w; dst.h := src.h; dst.col := src.col;
+     dst(Caption).pos := T.len + 1; dst(Caption).len := src(Caption).len;
+     Texts.Write(TW, 0DX); Texts.OpenReader(R, T, src(Caption).pos);
+-    Texts.Read(R, ch); TW.fnt := R.fnt;
+-    WHILE ch > 0DX DO Texts.Write(TW, ch); Texts.Read(R, ch) END ;
++    Texts.ReadUnicode(R, codepoint); TW.fnt := R.fnt;
++    WHILE codepoint > 0DH DO Texts.WriteUnicode(TW, codepoint); Texts.ReadUnicode(R, codepoint) END ;
+     Texts.Append(T, TW.buf)
+   END CopyCaption;
+ 
+   PROCEDURE ChangeCaption(obj: Object;  VAR M: Msg);
+     VAR dx, x1, dy, y1, w, w1, h1, len: INTEGER;
+       pos: LONGINT;
+-      ch: CHAR; patadr: INTEGER; fnt: Fonts.Font;
++      codepoint, patadr: INTEGER; fnt: Fonts.Font;
+       R: Texts.Reader;
+   BEGIN
+     CASE M OF
+     FontMsg: fnt := M(FontMsg).fnt; w := 0; len := 0; pos := obj(Caption).pos;
+-      Texts.OpenReader(R, T, pos); Texts.Read(R, ch); dy := R.fnt.minY;
+-      WHILE ch > 0DX DO
+-        Fonts.GetPat(fnt, ch, dx, x1, y1, w1, h1, patadr);
+-        INC(w, dx); INC(len); Texts.Read(R, ch)
++      Texts.OpenReader(R, T, pos); Texts.ReadUnicode(R, codepoint); dy := R.fnt.minY;
++      WHILE codepoint > 0DH DO
++        Fonts.GetUniPat(fnt, codepoint, dx, x1, y1, w1, h1, patadr);
++        INC(w, dx); INC(len); Texts.ReadUnicode(R, codepoint)
+       END ;
+       INC(obj.y, fnt.minY-dy); obj.w := w; obj.h := fnt.height;
+       Texts.ChangeLooks(T, pos, pos+len, {0}, fnt, 0 , 0) |
+--- 1/Input.Mod.txt
++++ 2/Input.Mod.txt
+@@ -32,15 +32,17 @@
+     RETURN ORD(Recd)
+   END Available;
+ 
+-  PROCEDURE Read*(VAR ch: CHAR);
++  PROCEDURE ReadUnicode*(VAR codepoint: INTEGER);
++  VAR ch: CHAR;
+   BEGIN
+     WHILE ~Recd DO Peek() END ;
+     IF Shift OR Ctrl THEN INC(kbdCode, 80H) END; (*ctrl implies shift*)
+   (* ch := kbdTab[kbdCode]; *)
+     SYSTEM.GET(KTabAdr + kbdCode, ch);
+     IF Ctrl THEN ch := CHR(ORD(ch) MOD 20H) END;
+-    Recd := FALSE
+-  END Read;
++    Recd := FALSE;
++    codepoint := ORD(ch);
++  END ReadUnicode;
+ 
+   PROCEDURE Mouse*(VAR keys: SET; VAR x, y: INTEGER);
+     VAR w: INTEGER;
+--- 1/Net.Mod.txt
++++ 2/Net.Mod.txt
+@@ -212,7 +212,7 @@
+   PROCEDURE GetPar(VAR S: Texts.Scanner; VAR end: LONGINT);
+     VAR T: Texts.Text; beg, tm: LONGINT;
+   BEGIN Texts.Scan(S);
+-    IF (S.class = Texts.Char) & (S.c = "^") THEN
++    IF (S.class = Texts.Char) & (S.codepoint = ORD("^")) THEN
+       Oberon.GetSelection(T, beg, end, tm);
+       IF tm >= 0 THEN Texts.OpenScanner(S, T, beg); Texts.Scan(S) END
+     ELSE end := Oberon.Par.text.len
+--- 1/Oberon.Mod.txt
++++ 2/Oberon.Mod.txt
+@@ -18,7 +18,7 @@
+       id*: INTEGER;
+       keys*: SET;
+       X*, Y*: INTEGER;
+-      ch*: CHAR;
++      codepoint*: INTEGER;
+       fnt*: Fonts.Font;
+       col*, voff*: INTEGER
+     END;
+@@ -360,15 +360,15 @@
+   PROCEDURE Loop*;
+     VAR V: Viewers.Viewer; M: InputMsg; N: ControlMsg;
+-       prevX, prevY, X, Y, t: INTEGER; keys: SET; ch: CHAR;
++       prevX, prevY, X, Y, t, codepoint: INTEGER; keys: SET;
+   BEGIN
+     REPEAT
+       Input.Mouse(keys, X, Y);
+-      IF Input.Available() > 0 THEN Input.Read(ch);
+-        IF ch = ESC THEN
++      IF Input.Available() > 0 THEN Input.ReadUnicode(codepoint);
++        IF codepoint = ORD(ESC) THEN
+           N.id := neutralize; Viewers.Broadcast(N); FadeCursor(Pointer); LED(0)
+-        ELSIF ch = SETSTAR THEN
++        ELSIF codepoint = ORD(SETSTAR) THEN
+           N.id := mark; N.X := X; N.Y := Y; V := Viewers.This(X, Y); V.handle(V, N)
+-        ELSE M.id := consume; M.ch := ch; M.fnt := CurFnt; M.col := CurCol; M.voff := CurOff;
++        ELSE M.id := consume; M.codepoint := codepoint; M.fnt := CurFnt; M.col := CurCol; M.voff := CurOff;
+           FocusViewer.handle(FocusViewer, M); DEC(ActCnt)
+         END
+       ELSIF keys # {} THEN
+--- 1/ORP.Mod.txt
++++ 2/ORP.Mod.txt
+@@ -964,10 +964,10 @@
+       S: Texts.Scanner;
+   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
+     IF S.class = Texts.Char THEN
+-      IF S.c = "@" THEN
++      IF S.codepoint = ORD("@") THEN
+         Option(S); Oberon.GetSelection(T, beg, end, time);
+         IF time >= 0 THEN ORS.Init(T, beg); Module END
+-      ELSIF S.c = "^" THEN
++      ELSIF S.codepoint = ORD("^") THEN
+         Option(S); Oberon.GetSelection(T, beg, end, time);
+         IF time >= 0 THEN
+           Texts.OpenScanner(S, T, beg); Texts.Scan(S);
+--- 1/System.Mod.txt
++++ 2/System.Mod.txt
+@@ -12,7 +12,7 @@
+   PROCEDURE GetArg(VAR S: Texts.Scanner);
+     VAR T: Texts.Text; beg, end, time: LONGINT;
+   BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
+-    IF (S.class = Texts.Char) & (S.c = "^") THEN
++    IF (S.class = Texts.Char) & (S.codepoint = ORD("^")) THEN
+       Oberon.GetSelection(T, beg, end, time);
+       IF time >= 0 THEN Texts.OpenScanner(S, T, beg); Texts.Scan(S) END
+     END
+@@ -25,13 +25,13 @@
+   (* ------------- Toolbox for system control ---------------*)
+ 
+   PROCEDURE SetUser*;
+-    VAR i: INTEGER; ch: CHAR;
++    VAR i, codepoint: INTEGER; ch: CHAR;
+       user: ARRAY 8 OF CHAR;
+       password: ARRAY 16 OF CHAR;
+-  BEGIN i := 0; Input.Read(ch);
+-    WHILE (ch # "/") & (i < 7) DO user[i] := ch; INC(i); Input.Read(ch) END;
+-    user[i] := 0X; i := 0; Input.Read(ch);
+-    WHILE (ch > " ") & (i < 15) DO password[i] := ch; INC(i); Input.Read(ch) END;
++  BEGIN i := 0; Input.ReadUnicode(codepoint); ch := CHR(codepoint MOD 80H);
++    WHILE (ch # "/") & (i < 7) DO user[i] := ch; INC(i); Input.ReadUnicode(codepoint); ch := CHR(codepoint MOD 80H) END;
++    user[i] := 0X; i := 0; Input.ReadUnicode(codepoint); ch := CHR(codepoint MOD 80H);
++    WHILE (ch > " ") & (i < 15) DO password[i] := ch; INC(i); Input.ReadUnicode(codepoint); ch := CHR(codepoint MOD 80H) END;
+     password[i] := 0X; Oberon.SetUser(user, password)
+   END SetUser;
+ 
+@@ -153,7 +153,7 @@
+       S: Texts.Scanner;
+   BEGIN Texts.WriteString(W, "System.Free"); EndLine;
+     Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
+-    IF (S.class = Texts.Char) & (S.c = "^") THEN
++    IF (S.class = Texts.Char) & (S.codepoint = ORD("^")) THEN
+       Oberon.GetSelection(T, beg, end, time);
+       IF time >= 0 THEN Texts.OpenScanner(S, T, beg); Texts.Scan(S);
+         IF S.class = Texts.Name THEN Free1(S) END
+@@ -238,8 +238,8 @@
+     Texts.WriteString(W, "System.CopyFiles"); EndLine;
+     WHILE S.class = Texts.Name DO
+       name := S.s; Texts.Scan(S);
+-      IF (S.class = Texts.Char) & (S.c = "=") THEN Texts.Scan(S);
+-        IF (S.class = Texts.Char) & (S.c = ">") THEN Texts.Scan(S);
++      IF (S.class = Texts.Char) & (S.codepoint = ORD("=")) THEN Texts.Scan(S);
++        IF (S.class = Texts.Char) & (S.codepoint = ORD(">")) THEN Texts.Scan(S);
+           IF S.class = Texts.Name THEN
+             Texts.WriteString(W, name); Texts.WriteString(W, " => "); Texts.WriteString(W, S.s);
+             Texts.WriteString(W, " copying"); Texts.Append(Oberon.Log, W.buf);
+@@ -266,8 +266,8 @@
+     Texts.WriteString(W, "System.RenameFiles"); EndLine;
+     WHILE S.class = Texts.Name DO
+       name := S.s; Texts.Scan(S);
+-      IF (S.class = Texts.Char) & (S.c = "=") THEN Texts.Scan(S);
+-        IF (S.class = Texts.Char) & (S.c = ">") THEN Texts.Scan(S);
++      IF (S.class = Texts.Char) & (S.codepoint = ORD("=")) THEN Texts.Scan(S);
++        IF (S.class = Texts.Char) & (S.codepoint = ORD(">")) THEN Texts.Scan(S);
+           IF S.class = Texts.Name THEN
+             Texts.WriteString(W, name); Texts.WriteString(W, " => "); Texts.WriteString(W, S.s);
+             Texts.WriteString(W, " renaming"); Files.Rename(name, S.s, res);
+--- 1/TextFrames.Mod.txt
++++ 2/TextFrames.Mod.txt
+@@ -48,7 +48,7 @@
+   VAR TBuf*, DelBuf: Texts.Buffer;
+     menuH*, barW*, left*, right*, top*, bot*, lsp*: INTEGER; (*standard sizes*)
+     asr, dsr, selH, markW, eolW: INTEGER;
+-    nextCh: CHAR;
++    nextCodepoint: INTEGER;
+     ScrollMarker: Oberon.Marker;
+     W, KW: Texts.Writer; (*keyboard writer*)
+ 
+@@ -100,8 +100,8 @@
+     VAR patadr, pos: LONGINT; ox, dx, x, y, w, h: INTEGER;
+   BEGIN pos := 0; ox := 0;
+     WHILE pos < len DO
+-      Fonts.GetPat(R.fnt, nextCh, dx, x, y, w, h, patadr);
+-      ox := ox + dx; INC(pos); Texts.Read(R, nextCh)
++      Fonts.GetUniPat(R.fnt, nextCodepoint, dx, x, y, w, h, patadr);
++      ox := ox + dx; INC(pos, Texts.UnicodeWidth(nextCodepoint)); Texts.ReadUnicode(R, nextCodepoint)
+     END;
+     RETURN ox
+   END Width;
+@@ -110,15 +110,15 @@
+     VAR R: Texts.Reader; X, Y: INTEGER; len: LONGINT);
+     VAR patadr, NX,  dx, x, y, w, h: INTEGER;
+   BEGIN NX := F.X + F.W;
+-    WHILE (nextCh # CR) & (R.fnt # NIL) DO
+-      Fonts.GetPat(R.fnt, nextCh, dx, x, y, w, h, patadr);
++    WHILE (nextCodepoint # ORD(CR)) & (R.fnt # NIL) DO
++      Fonts.GetUniPat(R.fnt, nextCodepoint, dx, x, y, w, h, patadr);
+       IF (X + x + w <= NX) & (h # 0) THEN
+         Display.CopyPattern(R.col, patadr, X + x, Y + y, Display.invert)
+       END;
+-      X := X + dx; INC(len); Texts.Read(R, nextCh)
++      X := X + dx; INC(len, Texts.UnicodeWidth(nextCodepoint)); Texts.ReadUnicode(R, nextCodepoint)
+     END;
+     L.len := len + 1; L.wid := X + eolW - (F.X + F.left);
+-    L.eot := R.fnt = NIL; Texts.Read(R, nextCh)
++    L.eot := R.fnt = NIL; Texts.ReadUnicode(R, nextCodepoint)
+   END DisplayLine;
+ 
+   PROCEDURE Validate (T: Texts.Text; VAR pos: LONGINT);
+@@ -127,7 +127,7 @@
+     IF pos > T.len THEN pos := T.len
+     ELSIF pos > 0 THEN
+       DEC(pos); Texts.OpenReader(R, T, pos);
+-      REPEAT Texts.Read(R, nextCh); INC(pos) UNTIL R.eot OR (nextCh = CR)
++      REPEAT Texts.ReadUnicode(R, nextCodepoint); INC(pos, Texts.UnicodeWidth(nextCodepoint)) UNTIL R.eot OR (nextCodepoint = ORD(CR))
+     ELSE pos := 0
+     END
+   END Validate;
+@@ -148,7 +148,7 @@
+     END;
+     Validate(F.text, F.org);
+     botY := F.Y + F.bot + dsr;
+-    Texts.OpenReader(R, F.text, F.org); Texts.Read(R, nextCh);
++    Texts.OpenReader(R, F.text, F.org); Texts.ReadUnicode(R, nextCodepoint);
+     L := F.trailer; curY := F.Y + F.H - F.top - asr;
+     WHILE ~L.eot & (curY >= botY) DO
+       NEW(l);
+@@ -177,7 +177,7 @@
+       L := L.next; org := org + L.len; curY := curY - lsp
+     END;
+     botY := F.Y + F.bot + dsr;
+-    Texts.OpenReader(R, F.text, org); Texts.Read(R, nextCh);
++    Texts.OpenReader(R, F.text, org); Texts.ReadUnicode(R, nextCodepoint);
+     WHILE ~L.eot & (curY >= botY) DO
+       NEW(l);
+       DisplayLine(F, l, R, F.X + F.left, curY, 0);
+@@ -228,7 +228,7 @@
+           Display.ReplConst(F.col, F.X + F.left, F.Y, F.W - F.left, curY - dsr - F.Y, Display.replace);
+           botY := F.Y + F.bot + dsr;
+           org := org + L.len; curY := curY - lsp;
+-          Texts.OpenReader(R, F.text, org); Texts.Read(R, nextCh);
++          Texts.OpenReader(R, F.text, org); Texts.ReadUnicode(R, nextCodepoint);
+           WHILE ~L.eot & (curY >= botY) DO
+             NEW(L0); DisplayLine(F, L0, R, F.X + F.left, curY, 0);
+             L.next := L0; L := L0; curY := curY - lsp
+@@ -262,21 +262,21 @@
+     lim := loc.org + loc.lin.len - 1;
+     bpos := loc.org; bx := F.left;
+     pos := loc.org; ox := F.left;
+-    Texts.OpenReader(R, F.text, loc.org); Texts.Read(R, nextCh);
++    Texts.OpenReader(R, F.text, loc.org); Texts.ReadUnicode(R, nextCodepoint);
+     REPEAT
+-      WHILE (pos # lim) & (nextCh > " ") DO (*scan string*)
+-        Fonts.GetPat(R.fnt, nextCh, dx, u, v, w, h, patadr);
+-        INC(pos); ox := ox + dx; Texts.Read(R, nextCh)
++      WHILE (pos # lim) & (nextCodepoint > ORD(" ")) DO (*scan string*)
++        Fonts.GetUniPat(R.fnt, nextCodepoint, dx, u, v, w, h, patadr);
++        INC(pos, Texts.UnicodeWidth(nextCodepoint)); ox := ox + dx; Texts.ReadUnicode(R, nextCodepoint)
+       END;
+       ex := ox;
+-      WHILE (pos # lim) & (nextCh <= " ") DO (*scan gap*)
+-        Fonts.GetPat(R.fnt, nextCh, dx, u, v, w, h, patadr);
+-        INC(pos); ox := ox + dx; Texts.Read(R, nextCh)
++      WHILE (pos # lim) & (nextCodepoint <= ORD(" ")) DO (*scan gap*)
++        Fonts.GetUniPat(R.fnt, nextCodepoint, dx, u, v, w, h, patadr);
++        INC(pos, Texts.UnicodeWidth(nextCodepoint)); ox := ox + dx; Texts.ReadUnicode(R, nextCodepoint)
+       END;
+       IF (pos # lim) & (ox <= x) THEN
+-        Fonts.GetPat(R.fnt, nextCh, dx, u, v, w, h, patadr);
++        Fonts.GetUniPat(R.fnt, nextCodepoint, dx, u, v, w, h, patadr);
+         bpos := pos; bx := ox;
+-        INC(pos); ox := ox + dx; Texts.Read(R, nextCh)
++        INC(pos, Texts.UnicodeWidth(nextCodepoint)); ox := ox + dx; Texts.ReadUnicode(R, nextCodepoint)
+       ELSE pos := lim
+       END
+     UNTIL pos = lim;
+@@ -292,10 +292,10 @@
+     pos := loc.org; ox := F.left; dx := eolW;
+     Texts.OpenReader(R, F.text, loc.org);
+     WHILE pos # lim DO
+-      Texts.Read(R, nextCh);
+-      Fonts.GetPat(R.fnt, nextCh, dx, u, v, w, h, patadr);
++      Texts.ReadUnicode(R, nextCodepoint);
++      Fonts.GetUniPat(R.fnt, nextCodepoint, dx, u, v, w, h, patadr);
+       IF ox + dx <= x THEN
+-        INC(pos); ox := ox + dx;
++        INC(pos, Texts.UnicodeWidth(nextCodepoint)); ox := ox + dx;
+         IF pos = lim THEN dx := eolW END
+       ELSE lim := pos
+       END
+@@ -313,7 +313,7 @@
+       org := org + L.len; L := L.next; cury := cury - lsp
+     END;
+     IF pos >= org + L.len THEN pos := org + L.len - 1 END;    
+-    Texts.OpenReader(R, T, org); Texts.Read(R, nextCh);
++    Texts.OpenReader(R, T, org); Texts.ReadUnicode(R, nextCodepoint);
+     loc.org := org; loc.pos := pos; loc.lin := L;
+     loc.x := F.left + Width(R, pos - org); loc.y := cury
+   END LocatePos;
+@@ -386,7 +386,7 @@
+         LocateChar(F, F.left, Y - F.Y, F.selbeg)
+       ELSE F.selbeg := loc
+       END;
+-      INC(loc.pos); loc.x := loc.x + loc.dx; F.selend := loc;
++      INC(loc.pos, Texts.UnicodeWidth(nextCodepoint)); loc.x := loc.x + loc.dx; F.selend := loc;
+       FlipSelection(F, F.selbeg, F.selend); keysum := {};
+       REPEAT
+         Input.Mouse(keys, X, Y);
+@@ -394,7 +394,7 @@
+         Oberon.DrawMouseArrow(X, Y);
+         LocateChar(F, X - F.X, Y - F.Y, loc);
+         IF loc.pos < F.selbeg.pos THEN loc := F.selbeg END;
+-        INC(loc.pos); loc.x := loc.x + loc.dx;
++        INC(loc.pos, Texts.UnicodeWidth(nextCodepoint)); loc.x := loc.x + loc.dx;
+         IF loc.pos < F.selend.pos THEN FlipSelection(F, loc, F.selend); F.selend := loc
+         ELSIF loc.pos > F.selend.pos THEN FlipSelection(F, F.selend, loc); F.selend := loc
+         END
+@@ -464,7 +464,7 @@
+         org := org + L.len; L := L.next; curY := curY - lsp
+       END;
+       IF L # F.trailer THEN
+-        Texts.OpenReader(R, F.text, org); Texts.Read(R, nextCh);
++        Texts.OpenReader(R, F.text, org); Texts.ReadUnicode(R, nextCodepoint);
+         len := beg - org; wid := Width(R, len);
+         ReplConst(F.col, F, F.X + F.left + wid, curY - dsr, L.wid - wid, lsp, Display.replace);
+         DisplayLine(F, L, R, F.X + F.left + wid, curY, len);
+@@ -491,7 +491,7 @@
+       END;
+       IF L # F.trailer THEN
+         botY := F.Y + F.bot + dsr;
+-        Texts.OpenReader(R, F.text, org); Texts.Read(R, nextCh);
++        Texts.OpenReader(R, F.text, org); Texts.ReadUnicode(R, nextCodepoint);
+         len := beg - org; wid := Width(R, len);
+         ReplConst (F.col, F, F.X + F.left + wid, curY - dsr, L.wid - wid, lsp, Display.replace);
+         DisplayLine(F, L, R, F.X + F.left + wid, curY, len);
+@@ -550,7 +550,7 @@
+           org := org + L.len; L := L.next; curY := curY - lsp
+         END;
+         Y1 := curY;
+-        Texts.OpenReader(R, F.text, org0); Texts.Read(R, nextCh);
++        Texts.OpenReader(R, F.text, org0); Texts.ReadUnicode(R, nextCodepoint);
+         len := beg - org0; wid := Width(R, len);
+         ReplConst (F.col, F, F.X + F.left + wid, Y0 - dsr, L0.wid - wid, lsp, Display.replace);
+         DisplayLine(F, L0, R, F.X + F.left + wid, Y0, len);
+@@ -565,7 +565,7 @@
+               F.X + F.left, curY + lsp - dsr + (Y0 - Y1), 0);
+           curY := curY + (Y0 - Y1);
+           Display.ReplConst (F.col, F.X + F.left, F.Y, F.W - F.left, curY + lsp - (F.Y + dsr), Display.replace);
+-          Texts.OpenReader(R, F.text, org); Texts.Read(R, nextCh);
++          Texts.OpenReader(R, F.text, org); Texts.ReadUnicode(R, nextCodepoint);
+           WHILE ~L.eot & (curY >= botY) DO
+             NEW(l);
+             DisplayLine(F, l, R, F.X + F.left, curY, 0);
+@@ -614,28 +614,33 @@
+     END
+   END Call;
+ 
+-  PROCEDURE Write* (F: Frame; ch: CHAR; fnt: Fonts.Font; col, voff: INTEGER);
+-    VAR buf: Texts.Buffer;
++  PROCEDURE Write* (F: Frame; codepoint: INTEGER; fnt: Fonts.Font; col, voff: INTEGER);
++    VAR buf: Texts.Buffer; R: Texts.Reader; charlen: INTEGER; ch: CHAR;
+   BEGIN (*F.hasCar*)
+-    IF ch = BS THEN  (*backspace*)
++    IF codepoint = ORD(BS) THEN  (*backspace*)
+       IF F.carloc.pos > F.org THEN
+-        Texts.Delete(F.text, F.carloc.pos - 1, F.carloc.pos, DelBuf); SetCaret(F, F.carloc.pos - 1)
++        charlen := 0;
++        REPEAT INC(charlen);
++	  Texts.OpenReader(R, F.text, F.carloc.pos-charlen);
++	  Texts.Read(R, ch);
++        UNTIL (ch < 80X) OR (ch >= 0C0X); (* skip over continuation *)
++        Texts.Delete(F.text, F.carloc.pos - charlen, F.carloc.pos, DelBuf); SetCaret(F, F.carloc.pos - charlen)
+       END
+-    ELSIF ch = 3X THEN (* ctrl-c  copy*)
++    ELSIF codepoint = ORD(3X) THEN (* ctrl-c  copy*)
+       IF F.hasSel THEN
+         NEW(TBuf); Texts.OpenBuf(TBuf); Texts.Save(F.text, F.selbeg.pos, F.selend.pos, TBuf)
+       END
+-    ELSIF ch = 16X THEN (*ctrl-v  paste*)
++    ELSIF codepoint = ORD(16X) THEN (*ctrl-v  paste*)
+       NEW(buf); Texts.OpenBuf(buf); Texts.Copy(TBuf, buf); Texts.Insert(F.text, F.carloc.pos, buf);
+       SetCaret(F, F.carloc.pos + TBuf.len)
+-    ELSIF ch = 18X THEN (*ctrl-x,  cut*)
++    ELSIF codepoint = ORD(18X) THEN (*ctrl-x,  cut*)
+       IF F.hasSel THEN
+         NEW(TBuf); Texts.OpenBuf(TBuf); Texts.Delete(F.text, F.selbeg.pos, F.selend.pos, TBuf)
+       END
+-    ELSIF (20X <= ch) & (ch <= DEL) OR (ch = CR) OR (ch = TAB) THEN
+-      KW.fnt := fnt; KW.col := col; KW.voff := voff; Texts.Write(KW, ch);
++    ELSIF (20H <= codepoint) & (codepoint <= 010FFFFH) OR (codepoint = ORD(CR)) OR (codepoint = ORD(TAB)) THEN
++      KW.fnt := fnt; KW.col := col; KW.voff := voff; Texts.WriteUnicode(KW, codepoint);
+       Texts.Insert(F.text, F.carloc.pos, KW.buf);
+-      SetCaret(F, F.carloc.pos + 1)
++      SetCaret(F, F.carloc.pos + Texts.UnicodeWidth(codepoint))
+     END
+   END Write;
+ 
+@@ -799,7 +804,7 @@
+       Oberon.InputMsg:
+         IF M.id = Oberon.track THEN Edit(F, M.X, M.Y, M.keys)
+         ELSIF M.id = Oberon.consume THEN
+-          IF F.hasCar THEN Write(F, M.ch, M.fnt, M.col, M.voff) END
++          IF F.hasCar THEN Write(F, M.codepoint, M.fnt, M.col, M.voff) END
+         END |
+       Oberon.ControlMsg:
+         IF M.id = Oberon.defocus THEN Defocus(F)
+--- Texts.Mod.txt
++++ Texts.Mod.txt
+@@ -52,7 +52,7 @@
+       i*: LONGINT;
+       x*: REAL;
+       y*: LONGREAL;
+-      c*: CHAR;
++      codepoint*: INTEGER;
+       len*: INTEGER;
+       s*: ARRAY 32 OF CHAR
+     END;
+@@ -305,6 +305,44 @@
+       Files.Set(R.rider, R.ref.f, R.ref.off)
+     END
+   END Read;
++
++  PROCEDURE UnicodeWidth* (codepoint: INTEGER): INTEGER;
++  VAR result: INTEGER;
++  BEGIN
++    IF codepoint < 80H THEN result := 1
++    ELSIF codepoint < 800H THEN result := 2
++    ELSIF codepoint < 10000H THEN result := 3
++    ELSE result := 4 END;
++  RETURN result
++  END UnicodeWidth;
++
++  PROCEDURE ReadUnicodeRest(VAR R: Reader; ch: CHAR; VAR codepoint: INTEGER);
++  VAR i, more: INTEGER;
++  BEGIN
++    IF ORD(ch) < 80H THEN
++      codepoint := ORD(ch); more := 0;
++    ELSIF ORD(ch) < 0C0H THEN
++      codepoint := 0FFFDH; more := 0;
++    ELSIF ORD(ch) < 0E0H THEN
++      codepoint := ORD(ch) MOD 20H; more := 1;
++    ELSIF ORD(ch) < 0F0H THEN
++      codepoint := ORD(ch) MOD 10H; more := 2;
++    ELSIF ORD(ch) < 0F8H THEN
++      codepoint := ORD(ch) MOD 08H; more := 3;
++    ELSE
++      codepoint := 0FFFDH; more := 0;
++    END;
++    FOR i := 1 TO more DO
++      IF ~R.eot THEN Read(R, ch) END;
++      codepoint := codepoint * 40H + (ORD(ch) MOD 40H)
++    END;
++    IF R.eot & (more > 0) THEN codepoint := 0FFFDH END;
++  END ReadUnicodeRest;
++
++  PROCEDURE ReadUnicode* (VAR R: Reader; VAR codepoint: INTEGER);
++  VAR ch: CHAR;
++  BEGIN Read(R, ch); ReadUnicodeRest(R, ch, codepoint)
++  END ReadUnicode;
+ 
+   PROCEDURE Pos* (VAR R: Reader): LONGINT;
+   BEGIN RETURN R.org + R.off
+@@ -389,8 +427,8 @@
+           IF neg THEN S.i := -n ELSE S.i := n END;
+           IF hex THEN S.class := Inval ELSE S.class := Int END
+         END
+-      ELSE (*spectal character*) S.class := Char;
+-        IF neg THEN S.c := "-" ELSE S.c := ch; Read(S, ch) END
++      ELSE (*special character*) S.class := Char;
++        IF neg THEN S.codepoint := ORD("-") ELSE ReadUnicodeRest(S, ch, S.codepoint); Read(S, ch) END
+       END
+     END ;
+     S.nextCh := ch
+@@ -428,6 +466,25 @@
+     Files.Write(W.rider, ch);
+     INC(W.buf.last.len); INC(W.buf.len)
+   END Write;
++
++  PROCEDURE WriteUnicode* (VAR W: Writer; codepoint: INTEGER);
++  BEGIN
++    IF codepoint < 80H THEN
++      Write(W, CHR(codepoint))
++    ELSIF codepoint < 800H THEN
++      Write(W, CHR(0C0H + (codepoint DIV 40H MOD 20H)));
++      Write(W, CHR(080H + (codepoint MOD 40H)))
++    ELSIF codepoint < 10000H THEN
++      Write(W, CHR(0E0H + (codepoint DIV 1000H MOD 10H)));
++      Write(W, CHR(080H + (codepoint DIV 40H MOD 40H)));
++      Write(W, CHR(080H + (codepoint MOD 40H)))
++    ELSE
++      Write(W, CHR(0F0H + (codepoint DIV 40000H MOD 08H)));
++      Write(W, CHR(080H + (codepoint DIV 1000H MOD 40H)));
++      Write(W, CHR(080H + (codepoint DIV 40H MOD 40H)));
++      Write(W, CHR(080H + (codepoint MOD 40H)))
++    END
++  END WriteUnicode;
+ 
+   PROCEDURE WriteLn* (VAR W: Writer);
+   BEGIN Write(W, CR)

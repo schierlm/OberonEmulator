@@ -48,7 +48,7 @@ public abstract class Keyboard {
 		}
 
 		public void type(char keyChar) {
-			mmio.keyboardInput(new int[] { keyChar << 24 });
+			mmio.keyboardInput(new int[] { (keyChar << 24) | (keyChar >>> 8 << 16) });
 		}
 	}
 
