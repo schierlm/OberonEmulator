@@ -88,4 +88,8 @@ public class Memory {
 	public void setIRQEnabled(boolean enabled) {
 		mmio.setIRQEnabled(enabled);
 	}
+
+	public void unblock() {
+		mmio.mouseButton(1, false);
+	}
 }

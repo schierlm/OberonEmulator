@@ -34,6 +34,7 @@ public class CPU extends Thread {
 
 	public void dispose() {
 		running = false;
+		mem.unblock();
 		try {
 			join();
 		} catch (InterruptedException ex) {
