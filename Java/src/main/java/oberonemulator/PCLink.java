@@ -39,19 +39,31 @@ public class PCLink extends JFrame {
 	private JTextField nameField;
 	private final List<String[]> receiveJobs = new ArrayList<String[]>();
 	private final List<String[]> sendJobs = new ArrayList<String[]>();
+	private final Object lock = new Object();
 
-	public static void start(String host, int port) throws Exception {
+	public static void start(String host, int port, EmulatorFrame emuFrame) throws Exception {
 		Socket s = new Socket(host, port);
-		PCLink link = new PCLink();
+		PCLink link = new PCLink(emuFrame);
 		InputStream in = s.getInputStream();
 		OutputStream out = new BufferedOutputStream(s.getOutputStream());
 		while (true) {
-			synchronized (link) {
+			String[] job = null, sjob = null;
+			synchronized (link.lock) {
 				while (link.receiveJobs.size() == 0 && link.sendJobs.size() == 0) {
-					link.wait();
+					link.lock.wait();
 				}
 				if (link.receiveJobs.size() > 0) {
-					String[] job = link.receiveJobs.remove(0);
+					job = link.receiveJobs.remove(0);
+				}
+				if (link.sendJobs.size() > 0) {
+					sjob = link.sendJobs.remove(0);
+					if (sjob == null) {
+						s.close();
+						return;
+					}
+				}
+			}
+			if (job != null) {
 					FileInputStream fIn = new FileInputStream(job[0]);
 					String filename = job[1] + "\0";
 					int flen = (int) new File(job[0]).length();
@@ -73,13 +85,8 @@ public class PCLink extends JFrame {
 					} while (partLen == 255);
 					waitAck(in);
 					fIn.close();
-				}
-				if (link.sendJobs.size() > 0) {
-					String[] sjob = link.sendJobs.remove(0);
-					if (sjob == null) {
-						s.close();
-						return;
-					}
+			}
+			if (sjob != null) {
 					String filename = sjob[1] + "\0";
 					if (filename.contains("*")) {
 						Feature.WILDCARD_PCLINK.use();
@@ -120,9 +127,9 @@ public class PCLink extends JFrame {
 					} else if (b == NAK) {
 						System.out.println("File not found.");
 					} else {
+						s.close();
 						throw new IOException("Unexpected byte received: " + b);
 					}
-				}
 			}
 		}
 	}
@@ -133,7 +140,7 @@ public class PCLink extends JFrame {
 			throw new IOException("Unexpected byte received: " + b);
 	}
 
-	public PCLink() {
+	public PCLink(EmulatorFrame emuFrame) {
 		super("PCLink");
 		// ugly layout, I know.
 		setLayout(new BorderLayout());
@@ -141,14 +148,16 @@ public class PCLink extends JFrame {
 		add(jp, BorderLayout.NORTH);
 		jp.add(new JLabel("File name to copy out:"));
 		jp.add(nameField = new JTextField("DiskImage.Bin"));
-		add(new JLabel("<html>Drop files here to copy in.<br>Drop a folder here to copy out.",
-				JLabel.CENTER), BorderLayout.CENTER);
+		String helpText = "<html>Drop files here to copy in.<br>Drop a folder here to copy out.";
+		if (emuFrame != null)
+			helpText = helpText.replace("here", "here (or on the emulator window)");
+		add(new JLabel(helpText, JLabel.CENTER), BorderLayout.CENTER);
 		addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent e) {
-				synchronized(PCLink.this) {
+				synchronized(PCLink.this.lock) {
 					sendJobs.add(null);
-					PCLink.this.notifyAll();
+					PCLink.this.lock.notifyAll();
 				}
 				dispose();
 			}
@@ -204,7 +213,7 @@ public class PCLink extends JFrame {
 
 			public boolean drop(File[] fs) {
 				PCLink link = PCLink.this;
-				synchronized (link) {
+				synchronized (link.lock) {
 					for (File f : fs) {
 						if (f.isDirectory()) {
 							link.sendJobs.add(new String[] { new File(f, nameField.getText()).getAbsolutePath(), nameField.getText() });
@@ -218,14 +227,18 @@ public class PCLink extends JFrame {
 							}
 						}
 					}
-					link.notifyAll();
+					link.lock.notifyAll();
 				}
 				return true;
 			}
 
 		};
-		setDropTarget(new DropTarget(this, DnDConstants.ACTION_COPY,
-				dtl, true, null));
+		DropTarget dt = new DropTarget(this, DnDConstants.ACTION_COPY,
+				dtl, true, null);
+		setDropTarget(dt);
+		if (emuFrame != null) {
+			emuFrame.setDropTarget(dt);
+		}
 		pack();
 		setLocationRelativeTo(null);
 		setVisible(true);

@@ -36,7 +36,7 @@ public class Main {
 
 	public static void main(String[] args) throws Exception {
 		if (args.length == 3 && args[0].equals("PCLink")) {
-			PCLink.start(args[1], Integer.parseInt(args[2]));
+			PCLink.start(args[1], Integer.parseInt(args[2]), null);
 		} else if (args.length == 4 && args[0].equals("EncodePNG")) {
 			PNGEncoder.encode(args[1], args[2], args[3]);
 		} else if (args.length == 4 && args[0].equals("DecodePNG")) {
@@ -141,9 +141,9 @@ public class Main {
 			ImageMemory imgmem = new ImageMemory(span, img, (int)((displayStart & 0xFFFFFFFFL) / 4));
 			Memory mem = new Memory(imgmem, bootloader, mmio, largeAddressSpace, memSize, displayStart, romStart);
 			keyboard.setMMIO(mmio);
-			new EmulatorFrame(mem, keyboard, mmio, img, imgmem, largeAddressSpace);
+			EmulatorFrame emuFrame = new EmulatorFrame(mem, keyboard, mmio, img, imgmem, largeAddressSpace);
 			if (pcLinkPort != -1) {
-				PCLink.start("localhost", pcLinkPort);
+				PCLink.start("localhost", pcLinkPort, emuFrame);
 			}
 		} else {
 			System.out.println("Usage: java -jar OberonEmulator.jar PCLink <host> <port>");
