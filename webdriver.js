@@ -704,6 +704,18 @@ function ControlBarUI(emulator) {
 		this.clipboardToggle.classList.toggle("checked");
 	};
 
+	$proto.enableSerialLink = function(menuButton) {
+		var child = window.open(window.location.href);
+		this.controlBarBox.classList.add('seriallink');
+		setTimeout(function() {
+			var fifo1 = new SerialFIFO(window);
+			var fifo2 = new child.SerialFIFO(child);
+			this.emulator.link = new SerialLink(fifo1, fifo2);
+			child.emulator.link = new child.SerialLink(fifo2, fifo1);
+			child.emulator.ui.controlBarBox.classList.add('seriallink');
+		}, 500);
+	}
+
 	// DOM Event handling
 
 	$proto.handleEvent = function(event) {
@@ -895,6 +907,72 @@ function VirtualKeyboard(screen, emulator) {
 		emulator.registerMouseButton(3, false);
 	});
 }
+
+function SerialFIFO(notifyWindow) {
+	this.notifyWindow = notifyWindow;
+	this.buffer = new Uint8Array(4096);
+	this.readPtr = 0;
+	this.writePtr = 0;
+}
+
+(function(){
+	var $proto = SerialFIFO.prototype;
+
+	$proto.readReady = function() {
+		return this.readPtr != this.writePtr;
+	};
+
+	$proto.read = function() {
+		var result = this.buffer[this.readPtr];
+		this.readPtr = (this.readPtr + 1) % 4096;
+		return result;
+	};
+
+	$proto.writeReady = function() {
+		return (this.writePtr + 1) % 4096 != this.readPtr;
+	};
+
+	$proto.write = function(val) {
+		this.buffer[this.writePtr] = val;
+		this.writePtr = (this.writePtr + 1) % 4096;
+		var thatNotifyWindow = this.notifyWindow;
+		thatNotifyWindow.setTimeout(function() {
+			thatNotifyWindow.emulator.wait(-1);
+			thatNotifyWindow.emulator.reschedule();
+		}, 1);
+	};
+})();
+
+
+function SerialLink(inFIFO, outFIFO) {
+	this.inFIFO = inFIFO;
+	this.outFIFO = outFIFO;
+}
+
+(function(){
+	var $proto = SerialLink.prototype;
+
+	SerialLink.TX_READY = $proto.TX_READY = 0x01;
+	SerialLink.RX_READY = $proto.RX_READY = 0x02;
+
+	$proto.getStatus = function() {
+		var result = 0;
+		if (this.outFIFO.writeReady())
+			result |= this.RX_READY;
+		if (this.inFIFO.readReady())
+			result |= this.TX_READY;
+		return result;
+	};
+
+	$proto.getData = function() {
+		return this.inFIFO.readReady() ? this.inFIFO.read() : 0;
+	};
+
+	$proto.setData = function(val) {
+		if (this.outFIFO.writeReady())
+			this.outFIFO.write(val);
+	};
+})();
 
 function FileLink(emulator) {
 	this.emulator = emulator;

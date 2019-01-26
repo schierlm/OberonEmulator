@@ -135,6 +135,9 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   visibility: visible;
   height: 200px;
 }
+#controlbar.seriallink .hidewhenserial {
+  display: none;
+}
 </style>
 <script src="risc.js"></script>
 <script src="webdriver.js"></script>
@@ -218,7 +221,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
              ondrop="emulator.importFilesFromEvent(event);"
              title="Transfer data between the emulated system and your computer">
       <div class="popup right">
-        <div class="menuitem">
+        <div class="menuitem hidewhenserial">
           <input type="text" id="linknameinput" placeholder="System.Tool"><!--
        --><input type="button" id="linkexportbutton" class="cap" value="Copy"
                  onclick="emulator.exportFile()"
@@ -229,7 +232,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
                 onclick="emulator.ui.toggleClipboard();"
                 value="clipboard">Show Clipboard</button>
 
-        <div class="menuitem">
+        <div class="menuitem hidewhenserial">
           <input type="button" id="fileimportbutton" value="Import File…"
                  onclick="emulator.ui.linkFileInput.click();"
                  ondragover="emulator.cancelEvent(event);"
@@ -238,6 +241,11 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
           <input type="file" id="linkfileinput" multiple
                  onchange="emulator.importFiles();"
                  style="display: none;">
+        </div>
+        <div class="menuitem hidewhenserial">
+          <input type="button" id="rs232button" value="Attach Serial Link"
+                 onclick="emulator.ui.enableSerialLink(this);"
+                 title="Open second emulator window and attach serial null modem cable">
         </div>
       </div>
     </div>
