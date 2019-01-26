@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.Arrays;
 
 public class Main {
@@ -111,15 +112,19 @@ public class Main {
 				span = img.getWidth() / 8;
 			} else if (img.getWidth() != 1024 || img.getHeight() != 768)
 				Feature.DYNSIZE_GRAPHICS.use();
-			ServerSocket rs232 = null;
+			ServerSocket rs232ss = null;
+			Socket rs232s = null;
 			InetSocketAddress net = null;
 			int pcLinkPort = -1;
 			if (args.length >= 5) {
 				if (args[4].equals("PCLink")) {
-					rs232 = new ServerSocket(0);
-					pcLinkPort = rs232.getLocalPort();
+					rs232ss = new ServerSocket(0);
+					pcLinkPort = rs232ss.getLocalPort();
+				} else if (args[4].contains(":")) {
+					String[] parts = args[4].split(":", 2);
+					rs232s = new Socket(parts[0], Integer.parseInt(parts[1]));
 				} else if (!args[4].equals("-")){
-					rs232 = new ServerSocket(Integer.parseInt(args[4]));
+					rs232ss = new ServerSocket(Integer.parseInt(args[4]));
 				}
 				if (args.length == 6) {
 					int port = 48654;
@@ -132,7 +137,7 @@ public class Main {
 					net = new InetSocketAddress(InetAddress.getByName(host), port);
 				}
 			}
-			MemoryMappedIO mmio = new MemoryMappedIO(args[2], rs232, net, hostFsDirectory);
+			MemoryMappedIO mmio = new MemoryMappedIO(args[2], rs232ss, rs232s, net, hostFsDirectory);
 			ImageMemory imgmem = new ImageMemory(span, img, (int)((displayStart & 0xFFFFFFFFL) / 4));
 			Memory mem = new Memory(imgmem, bootloader, mmio, largeAddressSpace, memSize, displayStart, romStart);
 			keyboard.setMMIO(mmio);
@@ -151,7 +156,7 @@ public class Main {
 			System.out.println("       java -jar OberonEmulator.jar KeyboardEmulation <kbdtype> ...");
 			System.out.println("       java -jar OberonEmulator.jar HostFS <hostfspath> ...");
 			System.out.println();
-			System.out.println("<rs232> can be a TCP port number, the word 'PCLink' to run PCLink over virtual RS232, or '-' to ignore.");
+			System.out.println("<rs232> can be a TCP port number, <host>:<port>, the word 'PCLink' to run PCLink over virtual RS232, or '-' to ignore.");
 			System.out.println("<net> is a broadcast IP address, in the form <host>[:<port>]. Default port is 48654 (0BE0Eh, for 0BEr0nnEt).");
 			System.out.println("<kbdtype> is one of Virtual, ParaVirtual, NoParaVirtual, Native, Hybrid.");
 			System.out.println("<hostfspath> is a path of a directory on the host, which is used as HostFS.");
