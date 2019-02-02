@@ -504,6 +504,7 @@ function ControlBarUI(emulator) {
 	$proto.clipboardInput = null;
 	$proto.clipboardToggle = null;
 	$proto.autosaveToggle = null;
+	$proto.exportOptions = null;
 	$proto.controlBarBox = null;
 	$proto.diskFileInput = null;
 	$proto.diskImportButton = null;
@@ -535,6 +536,8 @@ function ControlBarUI(emulator) {
 		this.linkFileInput = $("linkfileinput");
 		this.linkNameInput = $("linknameinput");
 		this.linkExportButton = $("linkexportbutton");
+
+		this.exportOptions = $("exportoptions");
 
 		$ = document.querySelector.bind(document);
 		this.clickLeft = $(".mousebtn[name='1']");
@@ -578,6 +581,7 @@ function ControlBarUI(emulator) {
 	$proto.resize = function(width, height) {
 		this.controlBarBox.style.width = width + "px";
 		this.clipboardInput.style.width = width + "px";
+		this.exportOptions.style.width = width + "px";
 	};
 
 	$proto.addSystemItem = function(name) {
@@ -703,6 +707,73 @@ function ControlBarUI(emulator) {
 		this.selectItem(this.settingsButton, "clipboard");
 		this.clipboardToggle.classList.toggle("checked");
 	};
+
+	$proto.exportCustomImage = function() {
+		this.exportOptions.romtype[0].checked=true;
+		this.exportOptions.romfile.value="";
+		var mb = (emulator.machine.bootROM[255] & 0xFFFFFF) == 0x3D424D ? (emulator.machine.bootROM[255] >>> 24) & 0xF : 1;
+		this.exportOptions.ramsize.value=mb;
+		this.exportOptions.classList.add("open");
+		this.togglePopup(this.systemButton);
+	}
+
+	$proto.doExportPNG = function() {
+		var reader = new FileReader();
+		var that = this;
+		if (document.getElementById("romtypecurrent").checked) {
+			return this.doExportPNGWithROM(emulator.machine.bootROM);
+		} else if (document.getElementById("romtypefile").checked) {
+			reader.onload = function() {
+				that.doExportPNGWithROM(DiskFileReader.getContents(reader.result)[0]);
+			};
+		} else if (document.getElementById("romtypersc").checked) {
+			reader.onload = function() {
+				var rom = new Int32Array(256);
+				var buf = reader.result;
+				if (buf.byteLength < 35 + 1024) {
+					buf = new ArrayBuffer(35 + 1024);
+					new Uint8Array(buf).set(new Uint8Array(reader.result));
+				}
+				var view = new DataView(buf);
+				for (var i = 0; i < 256; i++) {
+					rom[i] = view.getInt32(35 + i * 4, true);
+				}
+				that.doExportPNGWithROM(rom);
+			};
+		}
+		reader.readAsArrayBuffer(document.getElementById("romfile").files[0]);
+	}
+
+	$proto.doExportPNGWithROM = function(rom) {
+		var mb = this.exportOptions.ramsize.value;
+		if (mb != 1) {
+			rom[255] = 0x3D424D | ((mb|0x30) << 24);
+		} else if ((rom[255] & 0xFFFFFF) == 0x3D424D) {
+			rom[255] = 0;
+		}
+		var canvas = document.createElement("canvas");
+		canvas.width = 1024;
+		canvas.height = emulator.disk.length + 1;
+		var context = canvas.getContext("2d");
+		var imageData = context.createImageData(canvas.width, canvas.height);
+		for (var i = 0; i < canvas.height; i++) {
+			var sector = i == 0 ? rom : emulator.disk[i-1];
+			for (var j = 0; j < 256; j++) {
+				var b = i * 4096 + j * 16 + 2;
+				imageData.data[b + 0] = sector[j] & 0xFF;
+				imageData.data[b + 4] = (sector[j] >> 8) & 0xFF;
+				imageData.data[b + 8] = (sector[j] >> 16) & 0xFF;
+				imageData.data[b + 12] = (sector[j] >> 24) & 0xFF;
+				imageData.data[b + 1] = imageData.data[b + 5] = imageData.data[b + 9] = imageData.data[b + 13] = 0xFF;
+			}
+		}
+		context.putImageData(imageData, 0, 0);
+		var that = this;
+		canvas.toBlob(function(blob) {
+			that.exportOptions.classList.remove("open");
+			that.emulator.save("oberon.png", [ blob ]);
+		}, "image/png");
+	}
 
 	$proto.enableSerialLink = function(menuButton) {
 		var child = window.open(window.location.href);

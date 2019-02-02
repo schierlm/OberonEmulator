@@ -4,12 +4,11 @@ function RISCMachine(romWords) {
 	);
 	if ((romWords[255] & 0xFFFFFF) == 0x3D424D) {
 		var mb = (romWords[255] >>> 24) & 0xF;
+		if (mb == 0) mb = 16;
 		this.MemSize = 0x100000 * mb;
 		this.MemWords = (this.MemSize / 4);
-		console.log(this.MemWords);
 		var offset = (mb - 1) * 0x100000;
 		this.DisplayStart += offset;
-		console.log(this.DisplayStart.toString(16));
 		this.ROMStart += offset;
 		this.PaletteStart += offset;
 		this.IOStart += offset;

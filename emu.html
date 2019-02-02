@@ -138,6 +138,15 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 #controlbar.seriallink .hidewhenserial {
   display: none;
 }
+#exportoptions {
+  width: 100%;
+  background-color: #ccc;
+  border: 1px solid #888;
+  display: none;
+}
+#exportoptions.open {
+  display: block;
+}
 </style>
 <script src="risc.js"></script>
 <script src="webdriver.js"></script>
@@ -166,6 +175,10 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
       <button id="diskexportbutton" class="menuitem"
               onclick="emulator.exportDiskImage();"
               title="Export disk image">Save…</button>
+
+      <button id="customexportbutton" class="menuitem"
+              onclick="emulator.ui.exportCustomImage();"
+              title="Export custom image">Save PNG…</button>
 
       <button id="autosaveToggle" class="checkable menuitem autosave"
               onclick="emulator.toggleAutoSave();"
@@ -268,6 +281,20 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
  --></div>
   </div>
 </div>
+<form id="exportoptions">
+<h2>Save PNG (compressed emulator image)</h2>
+<p><b>ROM:</b> <label><input type="radio" name="romtype" value="current" id="romtypecurrent"> Currently running</label>
+<label><input type="radio" name="romtype" value="file" id="romtypefile">Chosen RAW rom file</label>
+<label><input type="radio" name="romtype" value="rsc" id="romtypersc">Chosen .rsc rom file</label>
+<input type="file" name="romfile" id="romfile"></p>
+<p><b>RAM size:</b> <select name="ramsize">
+	<option value="1">1 MB</option><option value="2">2 MB</option>
+	<option value="4">4 MB</option><option value="8">8 MB</option>
+	<option value="16">16 MB</option>
+</select></p>
+<p><b>Disk:</b> Currently loaded disk</p>
+<input type="button" name="pngexport" value="Export" onclick="emulator.ui.doExportPNG();">
+</form>
 <canvas id="screen" tabindex="1000" height="0"></canvas>
 <textarea id="clipboardinput"></textarea>
 </div>
