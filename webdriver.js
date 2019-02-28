@@ -17,7 +17,17 @@ window.onload = function() {
 			params.height = h < 576 ? 512 : h < 768 ? 576 : 768;
 		}
 	}
-	emulator = new WebDriver(params.image, params.width, params.height);
+	RISCMachine.Initialize(function(uri, callback) {
+		var request = new XMLHttpRequest();
+		request.addEventListener("load", function(event) {
+			callback(event.target.response);
+		});
+		request.open("GET", uri);
+		request.responseType = "arraybuffer";
+		request.send(null);
+	}, function() {
+		emulator = new WebDriver(params.image, params.width, params.height);
+	});
 }
 
 function WebDriver(imageName, width, height) {
@@ -69,7 +79,6 @@ function WebDriver(imageName, width, height) {
 	$proto.screenUpdater = null;
 	$proto.startMillis = null;
 	$proto.transferHistory = null;
-	$proto.waitMillis = 0;
 	$proto.width = 0;
 	$proto.autosave = false;
 
@@ -146,7 +155,7 @@ function WebDriver(imageName, width, height) {
 					var reader = new ROMFileReader("boot.rom", contents, name);
 					return void(reader.prepareContentsThenNotify(this));
 				} else {
-					rom = this.machine.bootROM;
+					rom = this.machine.getBootROM();
 				}
 			} else if (this._hasDirMark(contents, 1)) {
 				rom = contents.shift();
@@ -170,8 +179,11 @@ function WebDriver(imageName, width, height) {
 
 		this.disk = disk;
 		this.startMillis = Date.now();
+		var that = this;
 		this.machine = new RISCMachine(rom);
-		this.reset(true);
+		this.machine.Initialize(function() {
+			that.reset(true);
+		});
 	};
 
 	$proto.isDisplayReady = function() {
@@ -194,7 +206,7 @@ function WebDriver(imageName, width, height) {
 	$proto.reset = function(cold) {
 		this.machine.cpuReset(cold);
 		if (cold) {
-			var base = this.machine.DisplayStart;
+			var base = this.machine.getDisplayStart();
 			this.machine.memWriteWord(base, 0x53697A65); // magic value 'Size'
 			this.machine.memWriteWord(base + 4, this.screen.width);
 			this.machine.memWriteWord(base + 8, this.screen.height);
@@ -209,22 +221,10 @@ function WebDriver(imageName, width, height) {
 
 	$proto.run = function() {
 		if (this.paused) return;
-		var now = Date.now();
-		for (var i = 0; i < 200000 && this.waitMillis < now; ++i) {
-			this.machine.cpuSingleStep();
-		}
+		this.machine.cpuRun();
 		this.cpuTimeout = window.setTimeout(
-			this.$run, Math.max(this.waitMillis - Date.now(), 10), this
+			this.$run, Math.max(this.machine.getWaitMillis() - Date.now(), 10), this
 		);
-	};
-
-	$proto.wait = function(x) {
-		if (this.waitMillis === -1) {
-			this.waitMillis = 0;
-		}
-		else {
-			this.waitMillis = this.startMillis + x;
-		}
 	};
 
 	$proto.getTickCount = function() {
@@ -273,7 +273,7 @@ function WebDriver(imageName, width, height) {
 		if (before === after) return;
 
 		this.mouse = after;
-		this.wait(-1);
+		this.machine.resetWaitMillis();
 		this.reschedule();
 	};
 
@@ -287,7 +287,7 @@ function WebDriver(imageName, width, height) {
 				this.mouse &= ~bit;
 			}
 		}
-		this.wait(-1);
+		this.machine.resetWaitMillis();
 		this.reschedule();
 	};
 
@@ -331,7 +331,7 @@ function WebDriver(imageName, width, height) {
 
 	$proto.registerKey = function(keyCode) {
 		this.keyBuffer.push((keyCode << 24) | (keyCode >>> 8 << 16));
-		this.wait(-1);
+		this.machine.resetWaitMillis();
 		this.reschedule();
 	};
 
@@ -372,7 +372,7 @@ function WebDriver(imageName, width, height) {
 		this.ui.autosaveToggle.classList.toggle("checked");
 		if (this.autosave) {
 			window.localStorage.setItem("AUTOSAVE", this.disk.length);
-			window.localStorage.setItem("AUTOSAVE-ROM", btoa(String.fromCharCode.apply(null, new Uint8Array(this.machine.bootROM.buffer))));
+			window.localStorage.setItem("AUTOSAVE-ROM", btoa(String.fromCharCode.apply(null, new Uint8Array(this.machine.getBootROM().buffer))));
 			for(var i = 0; i < this.disk.length; i++) {
 				window.localStorage.setItem("AUTOSAVE-"+i, btoa(String.fromCharCode.apply(null, new Uint8Array(this.disk[i].buffer))));
 			}
@@ -382,7 +382,7 @@ function WebDriver(imageName, width, height) {
 	}
 
 	$proto.dumpROM = function() {
-		this.save("boot.rom", [ this.machine.bootROM ]);
+		this.save("boot.rom", [ this.machine.getBootROM() ]);
 	};
 
 	$proto.save = function(name, content) {
@@ -711,7 +711,7 @@ function ControlBarUI(emulator) {
 	$proto.exportCustomImage = function() {
 		this.exportOptions.romtype[0].checked=true;
 		this.exportOptions.romfile.value="";
-		var mb = (emulator.machine.bootROM[255] & 0xFFFFFF) == 0x3D424D ? (emulator.machine.bootROM[255] >>> 24) & 0xF : 1;
+		var mb = (emulator.machine.getBootROM()[255] & 0xFFFFFF) == 0x3D424D ? (emulator.machine.getBootROM()[255] >>> 24) & 0xF : 1;
 		this.exportOptions.ramsize.value=mb;
 		this.exportOptions.classList.add("open");
 		this.togglePopup(this.systemButton);
@@ -721,7 +721,7 @@ function ControlBarUI(emulator) {
 		var reader = new FileReader();
 		var that = this;
 		if (document.getElementById("romtypecurrent").checked) {
-			return this.doExportPNGWithROM(emulator.machine.bootROM);
+			return this.doExportPNGWithROM(emulator.machine.getBootROM());
 		} else if (document.getElementById("romtypefile").checked) {
 			reader.onload = function() {
 				that.doExportPNGWithROM(DiskFileReader.getContents(reader.result)[0]);
@@ -1008,7 +1008,7 @@ function SerialFIFO(notifyWindow) {
 		this.writePtr = (this.writePtr + 1) % 4096;
 		var thatNotifyWindow = this.notifyWindow;
 		thatNotifyWindow.setTimeout(function() {
-			thatNotifyWindow.emulator.wait(-1);
+			thatNotifyWindow.emulator.machine.resetWaitMillis();
 			thatNotifyWindow.emulator.reschedule();
 		}, 1);
 	};

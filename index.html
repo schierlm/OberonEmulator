@@ -50,8 +50,10 @@ or hide. You can copy and paste from there like normal.</p>
 		<option>ColorDiskImage</option>
 		<option>ColorBigmemDiskImage</option>
 	</select>
-	<input type="Button" value="Start" onclick="startEmu()">
-	<label><input type="checkbox" name="oldemu" value="false">Use old (ugly) emulator</label>
+	<input type="Button" value="Start" onclick="startEmu()"><br>
+	<label><input id="oldemu" type="radio" name="flavor" value="old">Old emulator (ugly)</label>
+	<label><input type="radio" name="flavor" value="js" checked>Pure JavaScript emulator</label>
+	<label><input id="wasmemu" type="radio" name="flavor" value="wasm" disabled>JavaScript+WebAssembly emulator (faster)</label>
 </form>
 <script type="text/javascript">
 try {
@@ -62,24 +64,28 @@ try {
 		new Int32Array(10);
 	})();
 	document.getElementById("emuform").style.display="";
+	if ('WebAssembly' in window) {
+		document.getElementById("wasmemu").disabled = false;
+	}
 } catch (e) {
 	document.write("Your browser does not support the required JavaScript features.");
 }
 
 function startEmu() {
-	if (document.forms.emuform.oldemu.checked && document.forms.emuform.image.value.indexOf("Color") == 0) {
+	if (document.getElementById("oldemu").checked && document.forms.emuform.image.value.indexOf("Color") == 0) {
 		alert("Old emulator does not support color!")
 		return;
 	}
-	if (document.forms.emuform.oldemu.checked) {
+	if (document.getElementById("oldemu").checked) {
 		var size = document.forms.emuform.size.value;
 		var image = document.forms.emuform.image.value;
 		document.location.href="old_emu.html#"+image+","+size.split("×").join(",");
 		return;
 	}
+	var page= document.getElementById("wasmemu").checked ? "emu-wasm.html" : "emu.html";
 	var imageName = document.forms.emuform.image.value;
 	var size = document.forms.emuform.size.value.split("×");
-	document.location.href = "emu.html?image=" + imageName +
+	document.location.href = page + "?image=" + imageName +
 		"&width=" + size[0] + "&height=" + size[1];
 }
 </script>
