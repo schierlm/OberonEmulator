@@ -1,4 +1,4 @@
-function RISCMachine(romWords) {
+function RISCMachine(romWords, callback) {
 	this.registers = new Int32Array(
 		this.GeneralRegisterCount + this.SpecialRegisterCount
 	);
@@ -34,6 +34,7 @@ function RISCMachine(romWords) {
 	RISCMachine.MemSize = $proto.MemSize = 0x100000;
 	RISCMachine.MemWords = $proto.MemWords = (RISCMachine.MemSize / 4);
 	$proto.palette = null;
+	$proto.waitMillis = 0;
 
 	$proto.cpuRegisterSlot = function(id) {
 		if (id < 0 && -id <= this.SpecialRegisterCount) {
@@ -118,12 +119,20 @@ function RISCMachine(romWords) {
 
 	$proto.memWriteIO = function(address, val) {
 		switch (address - this.IOStart) {
-			case  0: return void(emulator.wait(val));
+			case  0: return void(this.wait(val));
 			case  4: return void(emulator.registerLEDs(val));
 			case  8: return void(emulator.link.setData(val));
 			case 36: return void(emulator.storageRequest(val, this.mainMemory));
 			case 40: return void(emulator.clipboard.expect(val));
 			case 44: return void(emulator.clipboard.putData(val));
+		}
+	}
+
+	$proto.wait = function(x) {
+		if (this.waitMillis === -1) {
+			this.waitMillis = 0;
+		} else {
+			this.waitMillis = emulator.startMillis + x;
 		}
 	}
 
@@ -136,6 +145,13 @@ function RISCMachine(romWords) {
 	$proto.cpuReset = function(cold) {
 		this.cpuPutRegister(this.PCID, this.ROMStart / 4);
 		if (cold) this.cpuPutRegister(15, 0);
+	}
+
+	$proto.cpuRun = function() {
+		var now = Date.now();
+		for (var i = 0; i < 200000 && this.waitMillis < now; ++i) {
+			this.cpuSingleStep();
+		}
 	}
 
 	$proto.cpuSingleStep = function() {
@@ -350,6 +366,30 @@ function RISCMachine(romWords) {
 		} else {
 			this.memWriteWord(address | 0, value & 0xFF);
 		}
+	}
+
+	$proto.getBootROM = function() {
+		return this.bootROM;
+	}
+
+	$proto.getDisplayStart = function() {
+		return this.DisplayStart;
+	}
+
+	$proto.getWaitMillis = function() {
+		return this.waitMillis;
+	}
+
+	$proto.resetWaitMillis = function() {
+		this.waitMillis = -1;
+	}
+
+	RISCMachine.Initialize = function(fetchCallback, finishCallback) {
+		finishCallback();
+	}
+
+	$proto.Initialize = function(callback) {
+		callback();
 	}
 })();
 
