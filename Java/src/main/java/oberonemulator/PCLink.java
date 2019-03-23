@@ -10,6 +10,8 @@ import java.awt.dnd.DropTargetDragEvent;
 import java.awt.dnd.DropTargetDropEvent;
 import java.awt.dnd.DropTargetEvent;
 import java.awt.dnd.DropTargetListener;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.BufferedOutputStream;
@@ -27,6 +29,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -37,6 +40,7 @@ public class PCLink extends JFrame {
 	public static final byte ACK = 0x10, NAK = 0x11, REC = 0x21, SND = 0x22, LST = 0x23;
 
 	private JTextField nameField;
+	private JButton hide;
 	private final List<String[]> receiveJobs = new ArrayList<String[]>();
 	private final List<String[]> sendJobs = new ArrayList<String[]>();
 	private final Object lock = new Object();
@@ -140,7 +144,7 @@ public class PCLink extends JFrame {
 			throw new IOException("Unexpected byte received: " + b);
 	}
 
-	public PCLink(EmulatorFrame emuFrame) {
+	public PCLink(final EmulatorFrame emuFrame) {
 		super("PCLink");
 		// ugly layout, I know.
 		setLayout(new BorderLayout());
@@ -158,6 +162,10 @@ public class PCLink extends JFrame {
 				synchronized(PCLink.this.lock) {
 					sendJobs.add(null);
 					PCLink.this.lock.notifyAll();
+				}
+				if (emuFrame != null) {
+					emuFrame.setDropTarget(null);
+					hide.setEnabled(false);
 				}
 				dispose();
 			}
@@ -216,7 +224,11 @@ public class PCLink extends JFrame {
 				synchronized (link.lock) {
 					for (File f : fs) {
 						if (f.isDirectory()) {
-							link.sendJobs.add(new String[] { new File(f, nameField.getText()).getAbsolutePath(), nameField.getText() });
+							if (nameField.getText().isEmpty()) {
+								setVisible(true);
+							} else {
+								link.sendJobs.add(new String[] { new File(f, nameField.getText()).getAbsolutePath(), nameField.getText() });
+							}
 						} else {
 							String fileName = f.getName();
 
@@ -237,7 +249,25 @@ public class PCLink extends JFrame {
 				dtl, true, null);
 		setDropTarget(dt);
 		if (emuFrame != null) {
-			emuFrame.setDropTarget(dt);
+			emuFrame.setDropTarget(new DropTarget(emuFrame, DnDConstants.ACTION_COPY, dtl, true, null));
+			hide = new JButton("Hide");
+			hide.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					nameField.setText("");
+					setVisible(false);
+				}
+			});
+			add(hide, BorderLayout.SOUTH);
+			emuFrame.addWindowListener(new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent e) {
+					if (hide.isEnabled()) {
+						setVisible(true);
+						hide.setEnabled(false);
+					}
+				}
+			});
 		}
 		pack();
 		setLocationRelativeTo(null);
