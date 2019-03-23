@@ -27,3 +27,31 @@
        END
      END
    END DrawPalette;
+--- 1/OberonFromScratch.Tool.txt
++++ 2/OberonFromScratch.Tool.txt
+@@ -41,7 +41,8 @@
+ |> Batch.Collect |> XORP.Compile Calc.Mod/s ResourceMonitor.Mod/s ~
+ |> Batch.Collect |> XORP.Compile Graphics.Mod/s ~
+ |> Batch.Collect |> XORP.Compile GraphicFrames.Mod/s ~
+-|> Batch.Collect |> Batch.VerifyLog 11123706H
++|> Batch.Collect |> XORP.Compile ColorPalette.Mod/s PaletteEdit.Mod/s ~
++|> Batch.Collect |> Batch.VerifyLog 7F7FACA8H
+ |> Batch.WriteLog * \ 2 "*** First part done - "
+ |> Batch.WriteLog \ 0 "Restart Oberon and run second "
+ |> Batch.WriteLog 0 "part ***"
+@@ -88,6 +89,7 @@
+         ORTool.rsc.X Calc.rsc.X RealCalc.rsc.X ResourceMonitor.rsc.X
+         Graphics.rsc.X GraphicFrames.rsc.X Draw.rsc.X
+         GraphTool.rsc.X Rectangles.rsc.X Curves.rsc.X
++	ColorPalette.rsc.X PaletteEdit.rsc.X
+ ~ |> Batch.Collect |> ImageTool.AddFiles
+         Draw.Tool Calc.Tool RealCalc.Tool
+         Kernel.smb.X FileDir.smb.X Files.smb.X Modules.smb.X
+@@ -99,6 +101,7 @@
+ ~ |> Batch.Collect |> ImageTool.AddFiles
+         Graphics.smb.X GraphicFrames.smb.X Draw.smb.X
+         GraphTool.smb.X Rectangles.smb.X Curves.smb.X
++	ColorPalette.smb.X PaletteEdit.smb.X
+         Oberon8.Scn.Fnt Oberon8i.Scn.Fnt
+         Oberon10b.Scn.Fnt Oberon10i.Scn.Fnt
+         Oberon12.Scn.Fnt Oberon12b.Scn.Fnt Oberon12i.Scn.Fnt

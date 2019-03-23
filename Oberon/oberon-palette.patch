@@ -1,0 +1,103 @@
+--- 1/MenuViewers.Mod.txt
++++ 2/MenuViewers.Mod.txt
+@@ -1,7 +1,7 @@
+ MODULE MenuViewers; (*JG 26.8.90 / 16.9.93 / NW 10.3.2013*)
+   IMPORT Input, Display, Viewers, Oberon;
+ 
+-  CONST extend* = 0; reduce* = 1; FrameColor = Display.white;
++  CONST extend* = 0; reduce* = 1; FrameColor = 0;
+ 
+   TYPE Viewer* = POINTER TO ViewerDesc;
+ 
+--- 1/Oberon.Mod.txt	Sat Mar 23 19:38:25 2019
++++ 2/Oberon.Mod.txt	Sat Mar 23 21:13:35 2019
+@@ -177,10 +177,10 @@
+     Viewers.ViewerMsg:
+       IF (M.id = Viewers.restore) & (V.W > 0) & (V.H > 0) THEN
+         RemoveMarks(V.X, V.Y, V.W, V.H);
+-        Display.ReplConst(Display.black, V.X, V.Y, V.W, V.H, Display.replace)
++        Display.ReplConst(12, V.X, V.Y, V.W, V.H, Display.replace)
+       ELSIF (M.id = Viewers.modify) & (M.Y < V.Y) THEN
+         RemoveMarks(V.X, M.Y, V.W, V.Y - M.Y);
+-        Display.ReplConst(Display.black, V.X, M.Y, V.W, V.Y - M.Y, Display.replace)
++        Display.ReplConst(12, V.X, M.Y, V.W, V.Y - M.Y, Display.replace)
+       END
+     END
+   END HandleFiller;
+@@ -189,7 +189,7 @@
+     VAR Filler: Viewers.Viewer;
+   BEGIN
+      Input.SetMouseLimits(Viewers.curW + UW + SW, H);
+-     Display.ReplConst(Display.black, Viewers.curW, 0, UW + SW, H, Display.replace);
++     Display.ReplConst(12, Viewers.curW, 0, UW + SW, H, Display.replace);
+      NEW(Filler); Filler.handle := HandleFiller;
+      Viewers.InitTrack(UW, H, Filler); (*init user track*)
+      NEW(Filler); Filler.handle := HandleFiller;
+--- 1/TextFrames.Mod.txt	Sat Mar 23 19:38:20 2019
++++ 2/TextFrames.Mod.txt	Sat Mar 23 21:50:37 2019
+@@ -82,8 +82,8 @@
+     VAR oldH: INTEGER;
+   BEGIN oldH := F.markH; F.markH := F.org * F.H DIV (F.text.len + 1);
+     IF F.hasMark & (F.left >= barW) & (F.markH # oldH) THEN
+-      Display.ReplConst(Display.white, F.X + 1, F.Y + F.H - 1 - oldH, markW, 1, Display.invert);
+-      Display.ReplConst(Display.white, F.X + 1, F.Y + F.H - 1 - F.markH, markW, 1, Display.invert)
++      Display.ReplConst(1, F.X + 1, F.Y + F.H - 1 - oldH, markW, 1, Display.invert);
++      Display.ReplConst(1, F.X + 1, F.Y + F.H - 1 - F.markH, markW, 1, Display.invert)
+     END
+   END UpdateMark;
+ 
+@@ -113,8 +113,10 @@
+     WHILE (nextCh # CR) & (R.fnt # NIL) DO
+       Fonts.GetPat(R.fnt, nextCh, dx, x, y, w, h, patadr);
+       IF (X + x + w <= NX) & (h # 0) THEN
++        Display.CopyPattern(F.col, patadr, X + x, Y + y, Display.invert);
++        IF (R.col # 0) THEN
+         Display.CopyPattern(R.col, patadr, X + x, Y + y, Display.invert)
+-      END;
++      END;END;
+       X := X + dx; INC(len); Texts.Read(R, nextCh)
+     END;
+     L.len := len + 1; L.wid := X + eolW - (F.X + F.left);
+@@ -135,7 +137,7 @@
+   PROCEDURE Mark* (F: Frame; on: BOOLEAN);
+   BEGIN
+     IF (F.H > 0) & (F.left >= barW) & ((F.hasMark & ~on) OR (~F.hasMark & on)) THEN
+-      Display.ReplConst(Display.white, F.X + 1, F.Y + F.H - 1 - F.markH, markW, 1, Display.invert)
++      Display.ReplConst(1, F.X + 1, F.Y + F.H - 1 - F.markH, markW, 1, Display.invert)
+     END;
+     F.hasMark := on
+   END Mark;
+@@ -144,7 +146,7 @@
+     VAR R: Texts.Reader; L, l: Line; curY, botY: INTEGER;
+   BEGIN  Display.ReplConst(F.col, F.X, F.Y, F.W, F.H, Display.replace);
+     IF F.left >= barW THEN
+-      Display.ReplConst(Display.white, F.X + barW - 1, F.Y, 1, F.H, Display.invert)
++      Display.ReplConst(3, F.X + barW - 1, F.Y, 1, F.H, Display.invert)
+     END;
+     Validate(F.text, F.org);
+     botY := F.Y + F.bot + dsr;
+@@ -168,7 +170,7 @@
+     org: LONGINT; curY, botY: INTEGER;
+   BEGIN Display.ReplConst(F.col, F.X, newY, F.W, F.Y - newY, Display.replace);
+     IF F.left >= barW THEN
+-      Display.ReplConst(Display.white, F.X + barW - 1, newY, 1, F.Y - newY, Display.invert)
++      Display.ReplConst(3, F.X + barW - 1, newY, 1, F.Y - newY, Display.invert)
+     END;
+     botY := F.Y + F.bot + dsr; F.H := F.H + F.Y - newY; F.Y := newY;
+     IF F.trailer.next = F.trailer THEN Validate(F.text, F.org) END;
+@@ -832,13 +834,13 @@
+   PROCEDURE NewMenu* (name, commands: ARRAY OF CHAR): Frame;
+     VAR F: Frame; T: Texts.Text;
+   BEGIN NEW(F); T := Menu(name, commands);
+-    Open(F, Handle, T, 0, Display.white, left DIV 4, 0, 0, 0, lsp); RETURN F
++    Open(F, Handle, T, 0, 13, left DIV 4, 0, 0, 0, lsp); RETURN F
+   END NewMenu;
+ 
+   PROCEDURE NewText* (text: Texts.Text; pos: LONGINT): Frame;
+     VAR F: Frame;
+   BEGIN NEW(F);
+-    Open(F, Handle, text, pos, Display.black, left, right, top, bot, lsp); RETURN F
++    Open(F, Handle, text, pos, 14, left, right, top, bot, lsp); RETURN F
+   END NewText;
+ 
+ BEGIN NEW(TBuf); NEW(DelBuf);

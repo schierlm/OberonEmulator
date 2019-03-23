@@ -1,0 +1,47 @@
+--- 1/BootLoad.Mod.txt
++++ 2/BootLoad.Mod.txt
+@@ -1,7 +1,7 @@
+ MODULE* BootLoad;
+   IMPORT SYSTEM;
+   CONST MT = 12; SP = 14; LNK = 15;
+-    MTOrg = 20H; MemLim = 0E7EF0H; stackOrg = 80000H;
++    MTOrg = 20H; MemLim = 39FEF0H; stackOrg = 200000H;
+     FSoffset = 0H;   (*block offset*)
+ 
+   PROCEDURE LoadFromDisk;
+--- 1/Display.Mod.16Colors.txt
++++ 1/Display.Mod.16Colors.txt
+@@ -11,7 +11,7 @@
+     replace* = 0; paint* = 1; invert* = 2;  (*modes*)
+     screenW = 1024; screenH = 768;      (* nbr of pixels on screen *)
+     LINELEN = screenW DIV PP8;      (* nbr of bytes per screenW *)
+-    base = 09FF00H; (* base address *)
++    base = 39FF00H; (* base address *)
+ 
+   TYPE Frame* = POINTER TO FrameDesc;
+     FrameMsg* = RECORD END ;
+@@ -237,10 +237,10 @@
+   END ReplPattern;
+ 
+ BEGIN Base := base; Width := screenW; Height := screenH;
+-  SYSTEM.GET(0E7F00H, arrow);
++  SYSTEM.GET(3E7F00H, arrow);
+   IF arrow = 53697A65H THEN
+-    SYSTEM.GET(0E7F00H+4, Width);
+-    SYSTEM.GET(0E7F00H+8, Height);
++    SYSTEM.GET(3E7F00H+4, Width);
++    SYSTEM.GET(3E7F00H+8, Height);
+   END;
+   SYSTEM.GET(-128, arrow);
+   arrow := SYSTEM.ADR($0F0F 0060 0070 0038 001C 000E 0007 8003 C101 E300 7700 3F00 1F00 3F00 7F00 FF00$);
+--- 1/Display.Mod.txt
++++ 1/Display.Mod.txt
+@@ -3,7 +3,7 @@
+ 
+   CONST black* = 0; white* = 1;  (*black = background*)
+     replace* = 0; paint* = 1; invert* = 2;  (*modes*)
+-    base = 0E7F00H;  (*adr of 1024 x 768 pixel, monocolor display frame*)
++    base = 3E7F00H;  (*adr of 1024 x 768 pixel, monocolor display frame*)
+ 
+   TYPE Frame* = POINTER TO FrameDesc;
+     FrameMsg* = RECORD END ;
