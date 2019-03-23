@@ -12,7 +12,7 @@ rm -rf work
 mkdir work
 cd work
 for i in ../download/*.zip; do unzip $i; done
-cp ../wirth-personal/personal/wirth/ProjectOberon/Sources/*.txt .
+cp ../wirth-personal/people.inf.ethz.ch/wirth/ProjectOberon/Sources/*.txt .
 dos2unix *.txt
 cd ..
 cp *.Mod.txt *.Tool.txt work
