@@ -62,7 +62,7 @@ function RISCMachine(romWords) {
 		if (this.wasm.exports.getWaitMillis() === -1) {
 			this.wasm.exports.setWaitMillis(0);
 		} else {
-			this.wasm.exports.setWaitMillis(emulator.startMillis + x);
+			this.wasm.exports.setWaitMillis(x);
 		}
 	}
 
@@ -71,7 +71,7 @@ function RISCMachine(romWords) {
 	}
 
 	$proto.cpuRun = function() {
-		this.wasm.exports.cpuRun0(Date.now());
+		this.wasm.exports.cpuRun0(Date.now() - emulator.startMillis);
 	}
 
 	$proto.cpuSingleStep = function() {
@@ -87,7 +87,7 @@ function RISCMachine(romWords) {
 	}
 
 	$proto.getWaitMillis = function() {
-		return this.wasm.exports.getWaitMillis();
+		return this.wasm.exports.getWaitMillis() + emulator.startMillis;
 	}
 
 	$proto.resetWaitMillis = function() {
