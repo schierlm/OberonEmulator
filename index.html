@@ -46,9 +46,11 @@ or hide. You can copy and paste from there like normal.</p>
 		<option>FullDiskImage</option>
 		<option>VanillaDiskImage</option>
 		<option>ExperimentalOberonDiskImage</option>
-		<option>UnicodeDiskImage</option>
+		<option>ExperimentalOberonDiskImageWithSource</option>
+		<option>BootFromSerialLine</option>
 		<option>ColorDiskImage</option>
 		<option>ColorBigmemDiskImage</option>
+		<option>UnicodeDiskImage</option>
 	</select>
 	<input type="Button" value="Start" onclick="startEmu()"><br>
 	<label><input id="oldemu" type="radio" name="flavor" value="old">Old emulator (ugly)</label>
@@ -117,5 +119,8 @@ directory, while files that are different can be found in "Compatible", "JS"
 and "Bigmem" subdirectories. The directory "ExperimentalOberonTools" contains
 tools used to build the Experimental Oberon disk image for the JavaScript
 emulator.</p>
+
+<p>There is also an <a href="/OberonXref/ProjectOberon2013/">Interactive Source Xref</a> available for all
+the original ("vanilla") Project Oberon files.</p>
 </body>
 </html>
