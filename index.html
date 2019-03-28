@@ -46,12 +46,14 @@ or hide. You can copy and paste from there like normal.</p>
 		<option>FullDiskImage</option>
 		<option>VanillaDiskImage</option>
 		<option>ExperimentalOberonDiskImage</option>
-		<option>ExperimentalOberonDiskImageWithSource</option>
 		<option>BootFromSerialLine</option>
 		<option>ColorDiskImage</option>
-		<option>ColorBigmemDiskImage</option>
 		<option>UnicodeDiskImage</option>
+		<option>MinimalBigmemDiskImage</option>
+		<option>FullBigmemDiskImage</option>
+		<option>ColorBigmemDiskImage</option>
 	</select>
+	<label><input id="withsource" type="checkbox" name="withsource">WithSource</label>
 	<input type="Button" value="Start" onclick="startEmu()"><br>
 	<label><input id="oldemu" type="radio" name="flavor" value="old">Old emulator (ugly)</label>
 	<label><input type="radio" name="flavor" value="js" checked>Pure JavaScript emulator</label>
@@ -78,14 +80,16 @@ function startEmu() {
 		alert("Old emulator does not support color!")
 		return;
 	}
+	var imageName = document.forms.emuform.image.value;
+	if (document.getElementById("withsource").checked && !/^Minimal|^BootFrom/.test(imageName)) {
+		imageName += "WithSource";
+	}
 	if (document.getElementById("oldemu").checked) {
 		var size = document.forms.emuform.size.value;
-		var image = document.forms.emuform.image.value;
-		document.location.href="old_emu.html#"+image+","+size.split("×").join(",");
+		document.location.href="old_emu.html#"+imageName+","+size.split("×").join(",");
 		return;
 	}
 	var page= document.getElementById("wasmemu").checked ? "emu-wasm.html" : "emu.html";
-	var imageName = document.forms.emuform.image.value;
 	var size = document.forms.emuform.size.value.split("×");
 	document.location.href = page + "?image=" + imageName +
 		"&width=" + size[0] + "&height=" + size[1];
