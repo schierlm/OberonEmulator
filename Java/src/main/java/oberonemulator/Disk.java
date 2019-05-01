@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 public class Disk {
 
@@ -14,6 +16,15 @@ public class Disk {
 		diskWrite,
 		diskWriting,
 	};
+
+	private static byte[] MAGIC_TRIM_SECTOR = new byte[512];
+
+	static {
+		byte[] marker = "!!TRIM!!".getBytes(StandardCharsets.US_ASCII);
+		Arrays.fill(MAGIC_TRIM_SECTOR, (byte) '-');
+		System.arraycopy(marker, 0, MAGIC_TRIM_SECTOR, 0, marker.length);
+		System.arraycopy(marker, 0, MAGIC_TRIM_SECTOR, MAGIC_TRIM_SECTOR.length - marker.length, marker.length);
+	}
 
 	private DiskState state;
 	private RandomAccessFile file;
@@ -162,6 +173,11 @@ public class Disk {
 	private static void write_sector(RandomAccessFile f, int[] buf, int startOffset) throws IOException {
 		byte[] bytes = new byte[512];
 		ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer().put(buf, startOffset, 128);
+		if (Arrays.equals(bytes, MAGIC_TRIM_SECTOR)) {
+			if (f.length() > f.getFilePointer())
+				f.setLength(f.getFilePointer());
+			return;
+		}
 		f.write(bytes);
 	}
 
@@ -186,6 +202,16 @@ public class Disk {
 			file.seek((sector * 2 - offset) * 512);
 			ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer().put(data, dataOffset, 256);
 			file.write(bytes);
+		} catch (IOException ex) {
+			throw new RuntimeException(ex);
+		}
+	}
+
+	public void trimBeforeDoubleSector(int sector) {
+		try {
+			int newLength = (sector * 2 - offset) * 512;
+			if (file.length() > newLength)
+				file.setLength(newLength);
 		} catch (IOException ex) {
 			throw new RuntimeException(ex);
 		}

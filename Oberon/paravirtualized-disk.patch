@@ -87,7 +87,7 @@
    PROCEDURE InitSecMap*;
      VAR i: INTEGER;
    BEGIN NofSectors := 0; sectorMap[0] := {0 .. 31}; sectorMap[1] := {0 .. 31};
-@@ -228,14 +164,16 @@
+@@ -239,30 +175,23 @@
  
    PROCEDURE GetSector*(src: INTEGER; VAR dst: Sector);
    BEGIN src := src DIV 29; ASSERT(SYSTEM.H(0) = 0);
@@ -106,5 +106,24 @@
 +    SYSTEM.PUT(-28, SYSTEM.ADR(src));
 +    SYSTEM.PUT(-28, 0C0000000H + dst);
    END PutSector;
+ 
+   PROCEDURE TrimAllSectorsAfter*(sec: INTEGER);
+-  VAR i: INTEGER; magicSector: ARRAY 512 OF BYTE;
+   BEGIN sec := sec DIV 29; ASSERT(SYSTEM.H(0) = 0);
+-    sec := sec * 2 + FSoffset + 2;
+-    magicSector[0] := ORD("!"); magicSector[504] := ORD("!");
+-    magicSector[1] := ORD("!"); magicSector[505] := ORD("!");
+-    magicSector[2] := ORD("T"); magicSector[506] := ORD("T");
+-    magicSector[3] := ORD("R"); magicSector[507] := ORD("R");
+-    magicSector[4] := ORD("I"); magicSector[508] := ORD("I");
+-    magicSector[5] := ORD("M"); magicSector[509] := ORD("M");
+-    magicSector[6] := ORD("!"); magicSector[510] := ORD("!");
+-    magicSector[7] := ORD("!"); magicSector[511] := ORD("!");
+-    FOR i := 8 TO 503 DO magicSector[i] := ORD("-") END;
+-    WriteSD(sec, SYSTEM.ADR(magicSector));
++    sec := sec + FSoffset DIV 2 + 1;
++    SYSTEM.PUT(-28, 3FFFFFFFH);
++    SYSTEM.PUT(-28, 0C0000000H + sec);
+   END TrimAllSectorsAfter;
  
  (*-------- Miscellaneous procedures----------*)

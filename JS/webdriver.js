@@ -317,10 +317,16 @@ function WebDriver(imageName, width, height) {
 			return;
 		}
 		if ((value & 0xC0000000) === (0xC0000000 | 0)) {
-			// write
-			var sector = new Int32Array(256);
-			sector.set(memory.subarray(address, address + 256));
-			this.disk[sectorNumber - 1] = sector;
+			if (this.paravirtPointer == 0x3FFFFFFF) {
+				// trim
+				if (this.disk.length > sectorNumber - 1)
+					this.disk.length = sectorNumber - 1;
+			} else {
+				// write
+				var sector = new Int32Array(256);
+				sector.set(memory.subarray(address, address + 256));
+				this.disk[sectorNumber - 1] = sector;
+			}
 			if (this.autosave) {
 				window.localStorage.setItem("AUTOSAVE", this.disk.length);
 				window.localStorage.setItem("AUTOSAVE-"+(sectorNumber-1), btoa(String.fromCharCode.apply(null, new Uint8Array(this.disk[sectorNumber-1].buffer))));

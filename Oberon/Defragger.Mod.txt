@@ -1,0 +1,110 @@
+MODULE Defragger;
+  IMPORT SYSTEM, Kernel, FileDir, Files, Display, Fonts;
+
+  TYPE FileInfo = POINTER TO FileInfoDesc;
+    FileInfoDesc = RECORD
+      name: FileDir.FileName;
+      length: INTEGER;
+      next: FileInfo
+    END;
+
+  VAR firstFile: FileInfo;
+
+  PROCEDURE DrawText(text: ARRAY OF CHAR; x, y: INTEGER);
+  VAR
+    dx, xx, yy, t1, t2, patAdr, i: INTEGER;
+  BEGIN
+    i := 0;
+    WHILE text[i] # 0X DO
+      Fonts.GetPat(Fonts.Default, text[i], dx, xx, yy, t1, t2, patAdr);
+      Display.CopyPattern(Display.white, patAdr, x + xx, y + yy, Display.replace);
+      INC(x, dx);
+      INC(i)
+    END
+  END DrawText;
+
+  PROCEDURE ShowRestartMessage;
+  BEGIN
+    Display.ReplConst(Display.white, 20, 20, 170, 30, Display.replace);
+    Display.ReplConst(Display.black, 22, 22, 166, 26, Display.replace);
+    DrawText("Defrag finished. Please restart.", 30, 30);
+    Kernel.Install(SYSTEM.ADR(ShowRestartMessage), 0);
+    REPEAT SYSTEM.PUT(-64, Kernel.Time() + 1000) UNTIL FALSE
+  END ShowRestartMessage;
+
+  PROCEDURE Trim*;
+  BEGIN Kernel.TrimAllSectorsAfter(Kernel.LastUsedSector())
+  END Trim;
+
+  PROCEDURE EnumAll(name: FileDir.FileName; adr: LONGINT; VAR cont: BOOLEAN);
+    VAR fi: FileInfo;
+  BEGIN
+    NEW(fi);
+    fi.name := name;
+    fi.length := -1;
+    fi.next := firstFile;
+    firstFile := fi;
+  END EnumAll;
+
+  PROCEDURE Defrag*;
+  VAR
+    currFile: FileInfo;
+    f: Files.File;
+    R: Files.Rider;
+    dp: FileDir.DirPage;
+    buf: FileDir.DataSector;
+    lastUsedSector, currSector, pos, len: INTEGER;
+  BEGIN
+    lastUsedSector := Kernel.LastUsedSector(); firstFile := NIL;
+    FileDir.Enumerate("", EnumAll);
+    currSector := lastUsedSector + 29;  currFile := firstFile; pos := 0;
+    WHILE currFile # NIL DO
+      f := Files.Old(currFile.name);
+      ASSERT(f # NIL);
+      len := 0;
+      Files.Set(R, f, 0);
+      Files.ReadByte(R, buf[pos]);
+      WHILE ~R.eof DO
+        INC(pos); INC(len);
+        IF pos = FileDir.SectorSize THEN
+          Kernel.PutSector(currSector, buf);
+          INC(currSector, 29);
+          pos := 0
+        END;
+        Files.ReadByte(R, buf[pos]);
+      END;
+      Files.Close(f);
+      currFile.length := len;
+      currFile := currFile.next;
+    END;
+    IF pos # 0 THEN
+      WHILE pos < FileDir.SectorSize DO buf[pos] := 0; INC(pos) END;
+      Kernel.PutSector(currSector, buf);
+    END;
+    FOR pos := 0 TO FileDir.SectorSize - 1 DO buf[pos] := 0 END;
+    Kernel.PutSector(FileDir.DirRootAdr, buf);
+    Kernel.GetSector(FileDir.DirRootAdr, dp);
+    dp.mark := FileDir.DirMark;
+    Kernel.PutSector(FileDir.DirRootAdr, dp);
+    Kernel.InitSecMap;
+    currSector := lastUsedSector + 29; currFile := firstFile; pos := 0;
+    Kernel.GetSector(currSector, buf); INC(currSector, 29);
+    WHILE currFile # NIL DO
+        len := currFile.length;
+        f := Files.New(currFile.name);
+        Files.Set(R, f, 0);
+        WHILE len > 0 DO
+          Files.WriteByte(R, buf[pos]);
+          INC(pos); DEC(len);
+          IF pos = FileDir.SectorSize THEN
+            Kernel.GetSector(currSector, buf); INC(currSector, 29);
+            pos := 0;
+          END;
+        END;
+        Files.Register(f);
+        currFile := currFile.next;
+    END;
+    Trim; ShowRestartMessage
+  END Defrag;
+
+END Defragger.

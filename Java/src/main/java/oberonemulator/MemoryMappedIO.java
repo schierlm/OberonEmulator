@@ -290,7 +290,10 @@ public class MemoryMappedIO {
 			}
 			if ((value & 0xC0000000) == 0xC0000000) { // write
 				int sector = value - 0xC0000000;
-				sdCard.setDoubleSector(sector, mem.getRAM(), paravirtPtr / 4);
+				if (paravirtPtr == 0x3FFFFFFF)
+					sdCard.trimBeforeDoubleSector(sector);
+				else
+					sdCard.setDoubleSector(sector, mem.getRAM(), paravirtPtr / 4);
 			}
 			break;
 		}

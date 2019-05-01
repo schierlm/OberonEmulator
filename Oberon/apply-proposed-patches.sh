@@ -10,3 +10,4 @@ patch -d work <../ProposedPatches/memory-allocator-robust-fail.patch
 patch -d work <../ProposedPatches/filesystem-encapsulation.patch
 patch -d work <../ProposedPatches/fix-aliased-modules.patch
 patch -d work <../ProposedPatches/graphicframes-initialize-tbuf.patch
+patch -d work <../ProposedPatches/add-defragment-support.patch

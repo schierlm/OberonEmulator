@@ -77,7 +77,7 @@ diff -Naur experimental2_orig/Kernel.Mod.txt experimental2/Kernel.Mod.txt
 --- experimental2_orig/Kernel.Mod.txt	2016-12-27 23:28:21.999913000 +0100
 +++ experimental2/Kernel.Mod.txt	2016-12-27 23:24:08.229520900 +0100
 @@ -1,9 +1,8 @@
- MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / AP 1.8.17*)
+ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014 / AP 1.10.18 Experimental Oberon*)
    IMPORT SYSTEM;
    CONST SectorLength* = 1024;
 -    timer = -64; spiData = -48; spiCtrl = -44;
@@ -89,14 +89,14 @@ diff -Naur experimental2_orig/Kernel.Mod.txt experimental2/Kernel.Mod.txt
  
    TYPE Sector* = ARRAY SectorLength OF BYTE;
 @@ -14,7 +13,6 @@
-     stackOrg* ,  stackSize*, MemLim*: INTEGER;
+     stackOrg*, stackSize*, MemLim*: INTEGER;
      clock: INTEGER;
      list0, list1, list2, list3: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
 -    data: INTEGER; (*SPI data in*)
      sectorMap: ARRAY mapsize DIV 32 OF SET;
      
  (* ---------- New: heap allocation ----------*)
-@@ -157,68 +155,6 @@
+@@ -218,74 +216,23 @@
  
  (* ---------- Disk storage management ----------*)
  
@@ -165,7 +165,24 @@ diff -Naur experimental2_orig/Kernel.Mod.txt experimental2/Kernel.Mod.txt
    PROCEDURE InitSecMap*;
      VAR i: INTEGER;
    BEGIN NofSectors := 0; sectorMap[0] := {0 .. 31}; sectorMap[1] := {0 .. 31};
-@@ -247,14 +183,16 @@
+     FOR i := 2 TO mapsize DIV 32 - 1 DO sectorMap[i] := {} END
+   END InitSecMap;
+ 
++  PROCEDURE LastUsedSector*(): INTEGER;
++  VAR i, j, secno: INTEGER;
++  BEGIN
++    i := mapsize DIV 32 - 1;
++    WHILE sectorMap[i] = {} DO DEC(i) END;
++    FOR j := 0 TO 31 DO
++      IF j IN sectorMap[i] THEN secno := i * 32 + j END;
++    END;
++  RETURN secno * 29
++  END LastUsedSector;
++
+   PROCEDURE MarkSector*(sec: INTEGER);
+   BEGIN sec := sec DIV 29; ASSERT(SYSTEM.H(0) = 0);
+     INCL(sectorMap[sec DIV 32], sec MOD 32); INC(NofSectors)
+@@ -308,15 +255,24 @@
  
    PROCEDURE GetSector*(src: INTEGER; VAR dst: Sector);
    BEGIN src := src DIV 29; ASSERT(SYSTEM.H(0) = 0);
@@ -184,8 +201,16 @@ diff -Naur experimental2_orig/Kernel.Mod.txt experimental2/Kernel.Mod.txt
 +    SYSTEM.PUT(-28, SYSTEM.ADR(src));
 +    SYSTEM.PUT(-28, 0C0000000H + dst);
    END PutSector;
++
++  PROCEDURE TrimAllSectorsAfter*(sec: INTEGER);
++  BEGIN sec := sec DIV 29; ASSERT(SYSTEM.H(0) = 0);
++    sec := sec + FSoffset DIV 2 + 1;
++    SYSTEM.PUT(-28, 3FFFFFFFH);
++    SYSTEM.PUT(-28, 0C0000000H + sec);
++  END TrimAllSectorsAfter;
  
  (*-------- Miscellaneous procedures----------*)
+ 
 diff -Naur experimental2_orig/Oberon.Mod.txt experimental2/Oberon.Mod.txt
 --- experimental2_orig/Oberon.Mod.txt	2016-12-27 23:28:22.049297500 +0100
 +++ experimental2/Oberon.Mod.txt	2016-12-27 23:23:28.963576900 +0100
