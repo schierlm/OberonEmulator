@@ -46,12 +46,11 @@ MODULE Defragger;
     firstFile := fi;
   END EnumAll;
 
-  PROCEDURE Defrag*;
+  PROCEDURE Prepare*;
   VAR
     currFile: FileInfo;
     f: Files.File;
     R: Files.Rider;
-    dp: FileDir.DirPage;
     buf: FileDir.DataSector;
     lastUsedSector, currSector, pos, len: INTEGER;
   BEGIN
@@ -80,7 +79,20 @@ MODULE Defragger;
     IF pos # 0 THEN
       WHILE pos < FileDir.SectorSize DO buf[pos] := 0; INC(pos) END;
       Kernel.PutSector(currSector, buf);
-    END;
+    END
+  END Prepare;
+
+  PROCEDURE Defrag*;
+  VAR
+    currFile: FileInfo;
+    f: Files.File;
+    R: Files.Rider;
+    dp: FileDir.DirPage;
+    buf: FileDir.DataSector;
+    lastUsedSector, currSector, pos, len: INTEGER;
+  BEGIN
+    IF firstFile = NIL THEN Prepare END;
+    lastUsedSector := Kernel.LastUsedSector();
     FOR pos := 0 TO FileDir.SectorSize - 1 DO buf[pos] := 0 END;
     Kernel.PutSector(FileDir.DirRootAdr, buf);
     Kernel.GetSector(FileDir.DirRootAdr, dp);
