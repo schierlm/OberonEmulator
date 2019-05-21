@@ -12,6 +12,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.CharBuffer;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 
 public class MemoryMappedIO {
 
@@ -387,5 +389,14 @@ public class MemoryMappedIO {
 			}
 		}
 		return sb.append("]").toString();
+	}
+
+	public int[] getTimeInit() {
+		long millis = System.currentTimeMillis() / 1000 * 1000;
+		Calendar cal = new GregorianCalendar();
+		cal.setTimeInMillis(millis);
+		int clock = ((cal.get(Calendar.YEAR) % 100) * 16 + cal.get(Calendar.MONTH) + 1) * 32 + cal.get(Calendar.DAY_OF_MONTH);
+		clock = ((clock * 32 + cal.get(Calendar.HOUR_OF_DAY)) * 64 + cal.get(Calendar.MINUTE)) * 64 + cal.get(Calendar.SECOND);
+		return new int[] { (int) (millis - startMillis), clock };
 	}
 }

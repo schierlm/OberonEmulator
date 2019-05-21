@@ -70,6 +70,10 @@ public class Memory {
 	public void reset() {
 		imgio.reset();
 		mmio.reset();
+		int[] timeInit = mmio.getTimeInit();
+		ram[0x4000] = 0x54696D65; // Time
+		ram[0x4001] = timeInit[0];
+		ram[0x4002] = timeInit[1];
 		setIRQEnabled(false);
 	}
 

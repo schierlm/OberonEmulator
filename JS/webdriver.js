@@ -210,6 +210,13 @@ function WebDriver(imageName, width, height) {
 			this.machine.memWriteWord(base, 0x53697A65); // magic value 'Size'
 			this.machine.memWriteWord(base + 4, this.screen.width);
 			this.machine.memWriteWord(base + 8, this.screen.height);
+
+			var d = new Date(Math.floor(Date.now() / 1000) * 1000);
+			var clock = ((d.getYear() % 100) * 16 + d.getMonth() + 1) * 32 + d.getDate();
+			clock = ((clock * 32 + d.getHours()) * 64 + d.getMinutes()) * 64 + d.getSeconds();
+			this.machine.memWriteWord(0x10000, 0x54696D65); // magic value 'Time'
+			this.machine.memWriteWord(0x10004, d.getTime() - this.startMillis);
+			this.machine.memWriteWord(0x10008, clock);
 		}
 		this.reschedule();
 	};
