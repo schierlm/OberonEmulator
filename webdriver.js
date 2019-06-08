@@ -210,6 +210,13 @@ function WebDriver(imageName, width, height) {
 			this.machine.memWriteWord(base, 0x53697A65); // magic value 'Size'
 			this.machine.memWriteWord(base + 4, this.screen.width);
 			this.machine.memWriteWord(base + 8, this.screen.height);
+
+			var d = new Date(Math.floor(Date.now() / 1000) * 1000);
+			var clock = ((d.getYear() % 100) * 16 + d.getMonth() + 1) * 32 + d.getDate();
+			clock = ((clock * 32 + d.getHours()) * 64 + d.getMinutes()) * 64 + d.getSeconds();
+			this.machine.memWriteWord(0x10000, 0x54696D65); // magic value 'Time'
+			this.machine.memWriteWord(0x10004, d.getTime() - this.startMillis);
+			this.machine.memWriteWord(0x10008, clock);
 		}
 		this.reschedule();
 	};
@@ -317,10 +324,16 @@ function WebDriver(imageName, width, height) {
 			return;
 		}
 		if ((value & 0xC0000000) === (0xC0000000 | 0)) {
-			// write
-			var sector = new Int32Array(256);
-			sector.set(memory.subarray(address, address + 256));
-			this.disk[sectorNumber - 1] = sector;
+			if (this.paravirtPointer == 0x3FFFFFFF) {
+				// trim
+				if (this.disk.length > sectorNumber - 1)
+					this.disk.length = sectorNumber - 1;
+			} else {
+				// write
+				var sector = new Int32Array(256);
+				sector.set(memory.subarray(address, address + 256));
+				this.disk[sectorNumber - 1] = sector;
+			}
 			if (this.autosave) {
 				window.localStorage.setItem("AUTOSAVE", this.disk.length);
 				window.localStorage.setItem("AUTOSAVE-"+(sectorNumber-1), btoa(String.fromCharCode.apply(null, new Uint8Array(this.disk[sectorNumber-1].buffer))));
