@@ -8,7 +8,7 @@ Batch.Run
 |> ORP.Compile ImageKernel.Mod/s ImageFileDir.Mod/s ImageFiles.Mod/s
         ImageTool.Mod/s ImageORL.Mod/s ~
 |> Batch.Collect
-|> ImageTool.Init
+|> ImageTool.Init |> ImageTool.FreezeClock
 |> Batch.Collect
 |> ImageTool.AddFiles Clipboard.rsc Curves.rsc Draw.rsc Edit.rsc Fonts.rsc
 	GraphTool.rsc GraphicFrames.rsc Graphics.rsc Input.rsc MenuViewers.rsc

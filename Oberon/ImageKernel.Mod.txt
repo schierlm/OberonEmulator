@@ -10,6 +10,7 @@ MODULE ImageKernel;
   VAR NofSectors*: INTEGER;
     sectorMap: ARRAY mapsize DIV 32 OF SET;
     imageFile: Files.File;
+    realClock: BOOLEAN;
 
   PROCEDURE InitSecMap*;
     VAR i: INTEGER;
@@ -63,7 +64,9 @@ MODULE ImageKernel;
   END PutSector;
 
   PROCEDURE Clock*(): INTEGER;
-  BEGIN RETURN Kernel.Clock()
+  VAR clock: INTEGER;
+  BEGIN IF realClock THEN clock := Kernel.Clock() ELSE clock := 0 END;
+  RETURN clock
   END Clock;
 
   PROCEDURE Restart*;
@@ -78,7 +81,7 @@ MODULE ImageKernel;
   END Restart;
 
   PROCEDURE Init*;
-  BEGIN
+  BEGIN realClock := TRUE;
     imageFile := Files.Old("DiskImage.Bin");
     IF imageFile = NIL THEN
       imageFile := Files.New("DiskImage.Bin");
@@ -86,6 +89,10 @@ MODULE ImageKernel;
     END;
     InitSecMap
   END Init;
+
+  PROCEDURE FreezeClock*;
+  BEGIN realClock := FALSE
+  END FreezeClock;
 
   PROCEDURE Close*;
   BEGIN

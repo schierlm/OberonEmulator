@@ -56,13 +56,15 @@ Batch.Run
 |> Batch.Collect |> XORP.Compile GraphTool.Mod/s ~
 |> Batch.Collect |> XORP.Compile Rectangles.Mod/s PCLink1.Mod/s ~
 |> Batch.Collect |> XORP.Compile Curves.Mod/s RealCalc.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 0F1E41627H
+|> Batch.Collect |> XORP.Compile Splines.Mod/s PictureTiles.Mod/s ~
+|> Batch.Collect |> XORP.Compile DefragFiles.Mod/s Defragger.Mod/s ~
+|> Batch.Collect |> Batch.VerifyLog 1BDD2B6DHH
 |> Batch.WriteLog * \ 1 "*** Building MinimalDiskImage"
 |> Batch.WriteLog 0 ".Bin ***"
 |> System.CopyFiles System.Tool.Min => System.Tool.X ~
 |> ImageORL.ExtractBootROM
 |> Batch.Collect
-|> ImageTool.Init
+|> ImageTool.Init |> ImageTool.FreezeClock
 |> Batch.Collect
 |> ImageTool.AddFiles System.Tool.X Oberon10.Scn.Fnt
         Input.rsc.X Display.rsc.X Viewers.rsc.X Fonts.rsc.X
@@ -73,12 +75,12 @@ Batch.Run
 |> ImageTool.Close
 |> Batch.Collect
 |> System.RenameFiles DiskImage.Bin => MinimalDiskImage.Bin ~
-|> Batch.VerifyLog 0B2B17BDAH
+|> Batch.VerifyLog 3D056E05H
 |> Batch.Collect
 |> Batch.Collect
 |> Batch.WriteLog * 1 "*** Building DiskImage.Bin ***"
 |> System.CopyFiles System.Tool.Full => System.Tool.X ~
-|> ImageTool.Init
+|> ImageTool.Init |> ImageTool.FreezeClock
 |> Batch.Collect
 |> ImageTool.AddFiles System.Tool.X Oberon10.Scn.Fnt
         Input.rsc.X Display.rsc.X Viewers.rsc.X Fonts.rsc.X
@@ -88,8 +90,10 @@ Batch.Run
         ORTool.rsc.X Calc.rsc.X RealCalc.rsc.X ResourceMonitor.rsc.X
         Graphics.rsc.X GraphicFrames.rsc.X Draw.rsc.X
         GraphTool.rsc.X Rectangles.rsc.X Curves.rsc.X
+        Splines.rsc.X PictureTiles.rsc.X
+        DefragFiles.rsc.X Defragger.rsc.X
 ~ |> Batch.Collect |> ImageTool.AddFiles
-        Draw.Tool Calc.Tool RealCalc.Tool
+        Draw.Tool Calc.Tool RealCalc.Tool DrawAddons.Tool
         Kernel.smb.X FileDir.smb.X Files.smb.X Modules.smb.X
         Input.smb.X Display.smb.X Viewers.smb.X Fonts.smb.X
         Texts.smb.X Oberon.smb.X MenuViewers.smb.X TextFrames.smb.X
@@ -99,6 +103,8 @@ Batch.Run
 ~ |> Batch.Collect |> ImageTool.AddFiles
         Graphics.smb.X GraphicFrames.smb.X Draw.smb.X
         GraphTool.smb.X Rectangles.smb.X Curves.smb.X
+        Splines.smb.X PictureTiles.smb.X
+        DefragFiles.smb.X Defragger.smb.X
         Oberon8.Scn.Fnt Oberon8i.Scn.Fnt
         Oberon10b.Scn.Fnt Oberon10i.Scn.Fnt
         Oberon12.Scn.Fnt Oberon12b.Scn.Fnt Oberon12i.Scn.Fnt
@@ -107,7 +113,7 @@ Batch.Run
 |> Batch.Collect
 |> ImageORL.Link
 |> ImageTool.Close
-|> Batch.VerifyLog 0A03D3E63H
+|> Batch.VerifyLog 8492530BH
 |> Batch.Collect
 |> Batch.WriteLog * 3 "*** FINISHED ***"
 ||

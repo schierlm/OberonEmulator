@@ -25,5 +25,5 @@ grep -v 'ChangeFont\|ORP\|Draw\|Tools' <work/System.Tool.Full.txt \
     >work/System.Tool.Min.txt
 sed 's/PCLink1.Run/PCLink1.Run  ResourceMonitor.Run  ResourceMonitor.Stop/' \
     -i work/System.Tool.Full.txt
-sed 's/Draw.Tool/^  Draw.Tool Calc.Tool RealCalc.Tool/' \
+sed 's/Draw.Tool/^  Draw.Tool DrawAddons.Tool Calc.Tool RealCalc.Tool/' \
     -i work/System.Tool.Full.txt

@@ -31,15 +31,14 @@
  
  (* ---------- Garbage collector ----------*)
  
-@@ -265,7 +271,7 @@
+@@ -261,6 +261,6 @@
+ 
+   PROCEDURE Init*;
+   BEGIN Install(SYSTEM.ADR(Trap), 20H);  (*install temporary trap*)
+-    SYSTEM.GET(12, MemLim); SYSTEM.GET(24, heapOrg);
++    SYSTEM.GET(12, MemLim); SYSTEM.GET(24, heapOrg); allocFailed := 0;
      stackOrg := heapOrg; stackSize := 8000H; heapLim := MemLim;
      list1 := 0; list2 := 0; list3 := 0; list0 := heapOrg;
-     SYSTEM.PUT(list0, heapLim - heapOrg); SYSTEM.PUT(list0+4, -1); SYSTEM.PUT(list0+8, 0);
--    allocated := 0; clock := 0; InitSecMap
-+    allocated := 0; allocFailed := 0; clock := 0; InitSecMap
-   END Init;
- 
- END Kernel.
 --- 1/Oberon.Mod.txt
 +++ 2/Oberon.Mod.txt
 @@ -359,6 +359,7 @@

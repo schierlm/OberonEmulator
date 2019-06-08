@@ -63,7 +63,7 @@ Batch.Run
 |> Batch.Collect |> Batch.VerifyLog 0F497DE48H
 |> Batch.WriteLog * 1 "*** Building DiskImage.Bin ***"
 |> System.CopyFiles System.Tool.Full => System.Tool.X ~
-|> ImageTool.Init
+|> ImageTool.Init |> ImageTool.FreezeClock
 |> Batch.Collect
 |> ImageTool.AddFiles System.Tool.X Oberon10.Scn.Fnt
         Input.rsc.X Display.rsc.X Viewers.rsc.X Fonts.rsc.X

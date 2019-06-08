@@ -15,6 +15,10 @@ MODULE ImageTool;
     ImageFiles.Init;
   END Init;
 
+  PROCEDURE FreezeClock*;
+  BEGIN ImageKernel.FreezeClock
+  END FreezeClock;
+
   PROCEDURE AddFile(file: ARRAY OF CHAR);
     VAR f: Files.File;
       g: ImageFiles.File;
