@@ -274,9 +274,9 @@
    BEGIN
      i := 0;
      WHILE text[i] # 0X DO
--      Fonts.GetPat(Fonts.Default, text[i], dx, t1, t2, t3, t4, patAdr);
-+      Fonts.GetUniPat(Fonts.Default, ORD(text[i]), dx, t1, t2, t3, t4, patAdr);
-       Display.CopyPattern(Display.white, patAdr, x, y, Display.replace);
+-      Fonts.GetPat(Fonts.Default, text[i], dx, x, y, t1, t2, patAdr);
++      Fonts.GetUniPat(Fonts.Default, ORD(text[i]), dx, x, y, t1, t2, patAdr);
+       Display.CopyPattern(Display.white, patAdr, xx + x, yy + y, Display.replace);
        INC(x, dx);
        INC(i)
 --- 1/Batch.Mod.txt

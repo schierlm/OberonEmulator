@@ -2,10 +2,10 @@
 set -e
 
 ./get-source.sh
-patch -d work <../ProposedPatches/fix-aliased-modules.patch
+patch -d work <Oberon2013Modifications/BugFixes/FixAliasedModules.patch
 patch -d work <detect-screen-size.patch
 
-patch -d work <paravirtualized-keyboard.patch
+patch -d work <vanilla-paravirtualized-keyboard.patch
 patch -d work <paravirtualized-disk-minimal.patch
 patch -d work <power-management.patch
 patch -d work <power-management-keyboard-unresponsive.patch

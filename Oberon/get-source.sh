@@ -15,5 +15,5 @@ for i in ../download/*.zip; do unzip $i; done
 cp ../wirth-personal/people.inf.ethz.ch/wirth/ProjectOberon/Sources/*.txt .
 dos2unix *.txt
 cd ..
-cp Oberon2013Modifications/*/*.Mod.txt Oberon2013Modifications/*/*.Tool.txt work
+cp Oberon2013Modifications/*/*.Mod.txt Oberon2013Modifications/*/*.Text.txt Oberon2013Modifications/*/*.Tool.txt work
 cp *.Mod.txt *.Tool.txt work

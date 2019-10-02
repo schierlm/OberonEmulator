@@ -43,15 +43,15 @@
          ORTool.rsc.X Calc.rsc.X RealCalc.rsc.X ResourceMonitor.rsc.X
          Graphics.rsc.X GraphicFrames.rsc.X Draw.rsc.X
          GraphTool.rsc.X Rectangles.rsc.X Curves.rsc.X
-+	ColorPalette.rsc.X PaletteEdit.rsc.X
- ~ |> Batch.Collect |> ImageTool.AddFiles
-         Draw.Tool Calc.Tool RealCalc.Tool
-         Kernel.smb.X FileDir.smb.X Files.smb.X Modules.smb.X
++        ColorPalette.rsc.X PaletteEdit.rsc.X
+         Splines.rsc.X PictureTiles.rsc.X
+         DisplayGrab.rsc.X Fills.rsc.X PictureGrab.rsc.X
+         PixelizrObjects.rsc.X Pixelizr.rsc.X
 @@ -99,6 +101,7 @@
  ~ |> Batch.Collect |> ImageTool.AddFiles
          Graphics.smb.X GraphicFrames.smb.X Draw.smb.X
          GraphTool.smb.X Rectangles.smb.X Curves.smb.X
-+	ColorPalette.smb.X PaletteEdit.smb.X
-         Oberon8.Scn.Fnt Oberon8i.Scn.Fnt
-         Oberon10b.Scn.Fnt Oberon10i.Scn.Fnt
-         Oberon12.Scn.Fnt Oberon12b.Scn.Fnt Oberon12i.Scn.Fnt
++        ColorPalette.smb.X PaletteEdit.smb.X
+         Splines.smb.X PictureTiles.smb.X
+         DisplayGrab.smb.X Fills.smb.X PictureGrab.smb.X
+         PixelizrObjects.smb.X Pixelizr.smb.X

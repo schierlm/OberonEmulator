@@ -2,6 +2,7 @@
 set -e
 
 ./get-source.sh
+cp Oberon2013Modifications/DrawAddons/16Color/*.txt work
 ./apply-proposed-patches.sh
 ./apply-emulator-patches.sh
 

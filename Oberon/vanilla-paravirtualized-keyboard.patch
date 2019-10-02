@@ -42,12 +42,11 @@
      Recd := FALSE
    END Read;
  
-@@ -55,25 +44,7 @@
+@@ -55,24 +44,7 @@
    END SetMouseLimits;
  
    PROCEDURE Init*;
 -  BEGIN Up := FALSE; Shift := FALSE; Ctrl := FALSE; Recd := FALSE;
--    spacePending := FALSE; keyPending := 0X;
 -    KTabAdr := SYSTEM.ADR($
 -      00 00 00 00 00 1A 00 00  00 00 00 00 00 09 60 00
 -      00 00 00 00 00 71 31 00  00 00 7A 73 61 77 32 00
@@ -65,7 +64,7 @@
 -      00 00 22 00 7B 2B 00 00  00 00 0D 7D 00 7C 00 00
 -      00 00 00 00 00 00 08 00  00 00 00 00 00 00 00 00
 -      00 7F 00 00 00 00 1B 00  00 00 00 00 00 00 00 00$)
-+  BEGIN Recd := FALSE; spacePending := FALSE; keyPending := 0X
++  BEGIN Recd := FALSE
    END Init;
  
  BEGIN Init

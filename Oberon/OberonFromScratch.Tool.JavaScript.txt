@@ -57,8 +57,12 @@ Batch.Run
 |> Batch.Collect |> XORP.Compile Rectangles.Mod/s PCLink1.Mod/s ~
 |> Batch.Collect |> XORP.Compile Curves.Mod/s RealCalc.Mod/s ~
 |> Batch.Collect |> XORP.Compile Splines.Mod/s PictureTiles.Mod/s ~
+|> Batch.Collect |> XORP.Compile DisplayGrab.Mod/s Fills.Mod/s ~
+|> Batch.Collect |> XORP.Compile PictureGrab.Mod/s ~
+|> Batch.Collect |> XORP.Compile PixelizrObjects.Mod/s Pixelizr.Mod/s ~
+|> Batch.Collect |> XORP.Compile RebuildToolBuilder.Mod/s OnScreenKeyboard.Mod/s ~
 |> Batch.Collect |> XORP.Compile DefragFiles.Mod/s Defragger.Mod/s ~
-|> Batch.Collect |> Batch.VerifyLog 1BDD2B6DHH
+|> Batch.Collect |> Batch.VerifyLog 88040C02H
 |> Batch.WriteLog * \ 1 "*** Building MinimalDiskImage"
 |> Batch.WriteLog 0 ".Bin ***"
 |> System.CopyFiles System.Tool.Min => System.Tool.X ~
@@ -75,7 +79,7 @@ Batch.Run
 |> ImageTool.Close
 |> Batch.Collect
 |> System.RenameFiles DiskImage.Bin => MinimalDiskImage.Bin ~
-|> Batch.VerifyLog 3D056E05H
+|> Batch.VerifyLog 67DDBBC6H
 |> Batch.Collect
 |> Batch.Collect
 |> Batch.WriteLog * 1 "*** Building DiskImage.Bin ***"
@@ -91,9 +95,13 @@ Batch.Run
         Graphics.rsc.X GraphicFrames.rsc.X Draw.rsc.X
         GraphTool.rsc.X Rectangles.rsc.X Curves.rsc.X
         Splines.rsc.X PictureTiles.rsc.X
+        DisplayGrab.rsc.X Fills.rsc.X PictureGrab.rsc.X
+        PixelizrObjects.rsc.X Pixelizr.rsc.X
+        OnScreenKeyboard.rsc.X RebuildToolBuilder.rsc.X
         DefragFiles.rsc.X Defragger.rsc.X
 ~ |> Batch.Collect |> ImageTool.AddFiles
         Draw.Tool Calc.Tool RealCalc.Tool DrawAddons.Tool
+        OnScreenKeyboard.Text
         Kernel.smb.X FileDir.smb.X Files.smb.X Modules.smb.X
         Input.smb.X Display.smb.X Viewers.smb.X Fonts.smb.X
         Texts.smb.X Oberon.smb.X MenuViewers.smb.X TextFrames.smb.X
@@ -104,6 +112,9 @@ Batch.Run
         Graphics.smb.X GraphicFrames.smb.X Draw.smb.X
         GraphTool.smb.X Rectangles.smb.X Curves.smb.X
         Splines.smb.X PictureTiles.smb.X
+        DisplayGrab.smb.X Fills.smb.X PictureGrab.smb.X
+        PixelizrObjects.smb.X Pixelizr.smb.X
+        OnScreenKeyboard.smb.X RebuildToolBuilder.smb.X
         DefragFiles.smb.X Defragger.smb.X
         Oberon8.Scn.Fnt Oberon8i.Scn.Fnt
         Oberon10b.Scn.Fnt Oberon10i.Scn.Fnt
@@ -113,7 +124,7 @@ Batch.Run
 |> Batch.Collect
 |> ImageORL.Link
 |> ImageTool.Close
-|> Batch.VerifyLog 8492530BH
+|> Batch.VerifyLog 2014A8BCH
 |> Batch.Collect
 |> Batch.WriteLog * 3 "*** FINISHED ***"
 ||

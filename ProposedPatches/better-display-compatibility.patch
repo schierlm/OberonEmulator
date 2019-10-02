@@ -1,9 +1,9 @@
 --- 1/Input.Mod.txt
 +++ 2/Input.Mod.txt
 @@ -46,7 +46,7 @@
-     VAR w: INTEGER;
-   BEGIN SYSTEM.GET(msAdr, w);
-     keys := SYSTEM.VAL(SET, w DIV 1000000H MOD 8);
+     ELSIF (keys = {}) & (overrideCount = 10) THEN
+       overrideKeys := {}; overrideInterclick := {}; overrideCount := 0
+     END;
 -    x := w MOD 400H; y := (w DIV 1000H) MOD 400H;
 +    x := w MOD 1000H; y := (w DIV 1000H) MOD 1000H;
      IF y >= MH THEN y := MH-1 END
