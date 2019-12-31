@@ -22,3 +22,4 @@ patch -d work <Oberon2013Modifications/BugFixes/NoMemoryCorruptionAfterMemoryAll
 patch -d work <../ProposedPatches/filesystem-encapsulation.patch
 patch -d work <Oberon2013Modifications/BugFixes/FixAliasedModules.patch
 patch -d work <Oberon2013Modifications/BugFixes/InitializeGraphicFramesTbuf.patch
+patch -d work <Oberon2013Modifications/ORInspect/InspectSymbols.patch

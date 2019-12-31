@@ -3,7 +3,8 @@ set -e
 
 ./get-source.sh
 cp work/Input.Mod.txt work/Input0.Mod.txt
-patch -d work <../ProposedPatches/use-utf8-charset.patch
+patch -d work <Oberon2013Modifications/UTF8Charset/UTF8Charset.patch
+patch -d work <Oberon2013Modifications/VariableLinespace/VariableLineSpaceUTF8.patch
 mv work/Input.Mod.txt work/Input1.Mod.txt
 mv work/Input0.Mod.txt work/Input.Mod.txt
 sed 's/prevX, prevY, X, Y, t, codepoint: INTEGER; keys: SET;/prevX, prevY, X, Y, t: INTEGER; keys: SET; ch: CHAR;/' -i work/Oberon.Mod.txt
