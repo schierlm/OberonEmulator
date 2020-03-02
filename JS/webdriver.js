@@ -26,11 +26,11 @@ window.onload = function() {
 		request.responseType = "arraybuffer";
 		request.send(null);
 	}, function() {
-		emulator = new WebDriver(params.image, params.width, params.height);
+		emulator = new WebDriver(params.image, params.width, params.height, params.pclink == "2");
 	});
 }
 
-function WebDriver(imageName, width, height) {
+function WebDriver(imageName, width, height, dualSerial) {
 	this.disk = [];
 	this.keyBuffer = [];
 	this.transferHistory = [];
@@ -46,7 +46,8 @@ function WebDriver(imageName, width, height) {
 
 	this.clipboard = new Clipboard(this.ui.clipboardInput);
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
-	this.link = new FileLink(this);
+	this.filelink = new FileLink(this);
+	this.link = dualSerial ? new DualLink(this.filelink, this.filelink) : this.filelink;
 
 	SiteConfigLoader.read("config.json", this);
 }
@@ -421,7 +422,7 @@ function WebDriver(imageName, width, height) {
 	$proto.importFiles = function(files) {
 		if (files === undefined) files = this.ui.linkFileInput.files;
 		for (var i = 0; i < files.length; ++i) {
-			this.link.queue(new SupplyTransfer(files[i]));
+			this.filelink.queue(new SupplyTransfer(files[i]));
 		}
 	};
 
@@ -433,17 +434,17 @@ function WebDriver(imageName, width, height) {
 	$proto.exportFile = function() {
 		var names = this.ui.linkNameInput.value.split(/\s+/);
 		for (var i = 0; i < names.length; ++i) {
-			if (names[i].indexOf("*") != -1) this.link.queue(new GlobTransfer(this.link, names[i]));
-			else if (names[i]) this.link.queue(new DemandTransfer(names[i]));
+			if (names[i].indexOf("*") != -1) this.filelink.queue(new GlobTransfer(this.filelink, names[i]));
+			else if (names[i]) this.filelink.queue(new DemandTransfer(names[i]));
 		}
 	};
 
 	$proto.completeTransfer = function(transfer) {
 		// TODO: Add UI to retransmit files from the transfer history.
 		this.transferHistory.push(transfer);
-		if (transfer.success === this.link.NAK) {
+		if (transfer.success === this.filelink.NAK) {
 			alert("Transfer failed: " + transfer.fileName);
-		} else if (transfer.type === this.link.DEMAND_TRANSFER) {
+		} else if (transfer.type === this.filelink.DEMAND_TRANSFER) {
 			this.save(transfer.fileName, transfer.blocks);
 		}
 	};
@@ -789,14 +790,25 @@ function ControlBarUI(emulator) {
 	}
 
 	$proto.enableSerialLink = function(menuButton) {
-		var child = window.open(window.location.href);
-		this.controlBarBox.classList.add('seriallink');
+		var url = window.location.href;
+		if (url.indexOf("?image=") != -1 && url.indexOf("&serialimage=") != -1)
+			url = url.replace("?image=", "?oldimage=").replace("&serialimage=", "&image=");
+		var child = window.open(url);
+		if (this.emulator.link instanceof FileLink)
+			this.controlBarBox.classList.add('seriallink');
 		setTimeout(function() {
 			var fifo1 = new SerialFIFO(window);
 			var fifo2 = new child.SerialFIFO(child);
-			this.emulator.link = new SerialLink(fifo1, fifo2);
-			child.emulator.link = new child.SerialLink(fifo2, fifo1);
-			child.emulator.ui.controlBarBox.classList.add('seriallink');
+			if (this.emulator.link instanceof FileLink) {
+				this.emulator.link = new SerialLink(fifo1, fifo2);
+				this.emulator.filelink = null;
+				child.emulator.link = new child.SerialLink(fifo2, fifo1);
+				child.emulator.filelink = null;
+				child.emulator.ui.controlBarBox.classList.add('seriallink');
+			} else if (this.emulator.link instanceof DualLink) {
+				this.emulator.link.link1 = new SerialLink(fifo1, fifo2);
+				child.emulator.link.link1 = new child.SerialLink(fifo2, fifo1);
+			}
 		}, 500);
 	}
 
@@ -992,6 +1004,32 @@ function VirtualKeyboard(screen, emulator) {
 	});
 }
 
+function DualLink(link1, link2) {
+	this.link1 = link1;
+	this.link2 = link2;
+	this.link = 1;
+}
+
+(function(){
+	var $proto = DualLink.prototype;
+
+	$proto.getStatus = function() {
+		return this.link1.getStatus() | (this.link2.getStatus() << 2);
+	};
+
+	$proto.getData = function() {
+		return this["link" + this.link].getData();
+	};
+
+	$proto.setStatus = function(val) {
+		this.link = (val == 1) ? 2 : 1;
+	};
+
+	$proto.setData = function(val) {
+		this["link" + this.link].setData(val);
+	};
+})();
+
 function SerialFIFO(notifyWindow) {
 	this.notifyWindow = notifyWindow;
 	this.buffer = new Uint8Array(4096);
@@ -1051,6 +1089,8 @@ function SerialLink(inFIFO, outFIFO) {
 	$proto.getData = function() {
 		return this.inFIFO.readReady() ? this.inFIFO.read() : 0;
 	};
+
+	$proto.setStatus = function(val) {};
 
 	$proto.setData = function(val) {
 		if (this.outFIFO.writeReady())
@@ -1116,6 +1156,8 @@ function FileLink(emulator) {
 		this._checkFinished(this.transfer);
 		return result;
 	};
+
+	$proto.setStatus = function(val) {};
 
 	$proto.setData = function(val) {
 		this.transfer.acceptLinkByte(val);

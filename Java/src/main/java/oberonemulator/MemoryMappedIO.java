@@ -27,9 +27,10 @@ public class MemoryMappedIO {
 
 	private int spiSelected;
 	private Disk sdCard;
-	private byte[] socketIn = null;
-	private int socketInOffs = 0;
-	private OutputStream socketOut = null;
+	private byte[][] socketsIn = { null, null };
+	private int[] socketsInOffs = { 0, 0 };
+	private OutputStream[] socketsOut = { null, null };
+	private int socketSelected = 0;
 
 	private Network net;
 
@@ -41,53 +42,21 @@ public class MemoryMappedIO {
 
 	private CharBuffer clipboardData;
 
-	public MemoryMappedIO(String disk_file, final ServerSocket ss, final Socket sock, InetSocketAddress netAddr, File hostFsDirectory) throws IOException {
+	public MemoryMappedIO(String disk_file, final ServerSocket ss, final Socket sock, final InetSocketAddress netAddr, final File hostFsDirectory, final ServerSocket ss2) throws IOException {
 		if (netAddr != null) Feature.SPI_NETWORK.use();
 		if (hostFsDirectory != null) Feature.HOST_FILESYSTEM.use();
 		sdCard = disk_file == null ? null : new Disk(disk_file);
 		net = netAddr == null ? null : new Network(netAddr);
 		hostfs = hostFsDirectory == null ? null : new HostFS(hostFsDirectory);
-		if (ss == null && sock == null)
-			return;
-		Feature.SERIAL.use();
-		Thread t = new Thread(new Runnable() {
-
-			@Override
-			public void run() {
-				try {
-					Socket s = sock;
-					if (ss != null) {
-						s = ss.accept();
-						ss.close();
-					}
-					InputStream rawSocketIn = s.getInputStream();
-					synchronized (MemoryMappedIO.this) {
-						socketOut = s.getOutputStream();
-					}
-					int len;
-					byte[] b = new byte[4096];
-					while ((len = rawSocketIn.read(b)) != -1) {
-						synchronized (MemoryMappedIO.this) {
-							socketIn = Arrays.copyOfRange(b, 0, len);
-							socketInOffs = 0;
-							inputOccurred = true;
-							MemoryMappedIO.this.notifyAll();
-						}
-						synchronized(socketIn) {
-							while(socketInOffs < socketIn.length)
-								socketIn.wait();
-						}
-						synchronized(MemoryMappedIO.this) {
-							socketIn = null;
-						}
-					}
-				} catch (Exception ex) {
-					throw new RuntimeException(ex);
-				}
-			}
-		});
-		t.setDaemon(true);
-		t.start();
+		if (ss != null || sock != null) {
+			Feature.SERIAL.use();
+			new RS232Thread(0, sock, ss);
+		}
+		if (ss2 != null) {
+			Feature.SERIAL.use();
+			Feature.MULTI_SERIAL.use();
+			new RS232Thread(1, null, ss2);
+		}
 	}
 
 	public void setMem(Memory mem) {
@@ -113,12 +82,12 @@ public class MemoryMappedIO {
 			// RS232 data
 			int val = 0;
 			Feature.SERIAL.use();
-			if (socketIn != null && socketInOffs < socketIn.length) {
-				val = socketIn[socketInOffs] & 0xFF;
-				socketInOffs++;
-				if (socketInOffs == socketIn.length) {
-					synchronized(socketIn) {
-						socketIn.notifyAll();
+			if (socketsIn[socketSelected] != null && socketsInOffs[socketSelected] < socketsIn[socketSelected].length) {
+				val = socketsIn[socketSelected][socketsInOffs[socketSelected]] & 0xFF;
+				socketsInOffs[socketSelected]++;
+				if (socketsInOffs[socketSelected] == socketsIn[socketSelected].length) {
+					synchronized (socketsIn[socketSelected]) {
+						socketsIn[socketSelected].notifyAll();
 					}
 				}
 			}
@@ -128,8 +97,10 @@ public class MemoryMappedIO {
 			// RS232 status
 			int val;
 			Feature.SERIAL.use();
-			val = (socketIn != null && socketInOffs < socketIn.length ? 1 : 0) |
-					(socketOut != null ? 2 : 0);
+			val = (socketsIn[0] != null && socketsInOffs[0] < socketsIn[0].length ? 1 : 0) |
+					(socketsOut[0] != null ? 2 : 0) |
+					(socketsIn[1] != null && socketsInOffs[1] < socketsIn[1].length ? 4 : 0) |
+					(socketsOut[1] != null ? 8 : 0);
 			return val;
 		}
 		case 16: {
@@ -242,14 +213,19 @@ public class MemoryMappedIO {
 			// RS232 data
 			Feature.SERIAL.use();
 			try {
-				if (socketOut != null) {
-					socketOut.write(value & 0xff);
-					socketOut.flush();
+				if (socketsOut[socketSelected] != null) {
+					socketsOut[socketSelected].write(value & 0xff);
+					socketsOut[socketSelected].flush();
 				}
 			} catch (IOException ex) {
 				throw new RuntimeException(ex);
 			}
 			break;
+		}
+		case 12: {
+			// RS232 socket select
+			Feature.MULTI_SERIAL.use();
+			socketSelected = value == 1 ? 1 : 0;
 		}
 		case 16: {
 			// SPI write
@@ -398,5 +374,53 @@ public class MemoryMappedIO {
 		int clock = ((cal.get(Calendar.YEAR) % 100) * 16 + cal.get(Calendar.MONTH) + 1) * 32 + cal.get(Calendar.DAY_OF_MONTH);
 		clock = ((clock * 32 + cal.get(Calendar.HOUR_OF_DAY)) * 64 + cal.get(Calendar.MINUTE)) * 64 + cal.get(Calendar.SECOND);
 		return new int[] { (int) (millis - startMillis), clock };
+	}
+
+	private class RS232Thread extends Thread {
+		private final int number;
+		private final Socket sock;
+		private final ServerSocket ss;
+
+		private RS232Thread(int number, Socket sock, ServerSocket ss) {
+			this.number = number;
+			this.sock = sock;
+			this.ss = ss;
+			setDaemon(true);
+			start();
+		}
+
+		@Override
+		public void run() {
+			try {
+				Socket s = sock;
+				if (ss != null) {
+					s = ss.accept();
+					ss.close();
+				}
+				InputStream rawSocketIn = s.getInputStream();
+				synchronized (MemoryMappedIO.this) {
+					socketsOut[number] = s.getOutputStream();
+				}
+				int len;
+				byte[] b = new byte[4096];
+				while ((len = rawSocketIn.read(b)) != -1) {
+					synchronized (MemoryMappedIO.this) {
+						socketsIn[number] = Arrays.copyOfRange(b, 0, len);
+						socketsInOffs[number] = 0;
+						inputOccurred = true;
+						MemoryMappedIO.this.notifyAll();
+					}
+					synchronized (socketsIn[number]) {
+						while (socketsInOffs[number] < socketsIn[number].length)
+							socketsIn[number].wait();
+					}
+					synchronized (MemoryMappedIO.this) {
+						socketsIn[number] = null;
+					}
+				}
+			} catch (Exception ex) {
+				throw new RuntimeException(ex);
+			}
+		}
 	}
 }

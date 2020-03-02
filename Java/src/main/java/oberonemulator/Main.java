@@ -112,11 +112,16 @@ public class Main {
 				span = img.getWidth() / 8;
 			} else if (img.getWidth() != 1024 || img.getHeight() != 768)
 				Feature.DYNSIZE_GRAPHICS.use();
-			ServerSocket rs232ss = null;
+			ServerSocket rs232ss = null, rs232ss2 = null;
 			Socket rs232s = null;
 			InetSocketAddress net = null;
 			int pcLinkPort = -1;
 			if (args.length >= 5) {
+				if (args[4].endsWith("+PCLink")) {
+					args[4] = args[4].substring(0, args[4].length() - 7);
+					rs232ss2 = new ServerSocket(0);
+					pcLinkPort = rs232ss2.getLocalPort();
+				}
 				if (args[4].equals("PCLink")) {
 					rs232ss = new ServerSocket(0);
 					pcLinkPort = rs232ss.getLocalPort();
@@ -137,7 +142,7 @@ public class Main {
 					net = new InetSocketAddress(InetAddress.getByName(host), port);
 				}
 			}
-			MemoryMappedIO mmio = new MemoryMappedIO(args[2], rs232ss, rs232s, net, hostFsDirectory);
+			MemoryMappedIO mmio = new MemoryMappedIO(args[2], rs232ss, rs232s, net, hostFsDirectory, rs232ss2);
 			ImageMemory imgmem = new ImageMemory(span, img, (int)((displayStart & 0xFFFFFFFFL) / 4));
 			Memory mem = new Memory(imgmem, bootloader, mmio, largeAddressSpace, memSize, displayStart, romStart);
 			keyboard.setMMIO(mmio);
@@ -157,6 +162,7 @@ public class Main {
 			System.out.println("       java -jar OberonEmulator.jar HostFS <hostfspath> ...");
 			System.out.println();
 			System.out.println("<rs232> can be a TCP port number, <host>:<port>, the word 'PCLink' to run PCLink over virtual RS232, or '-' to ignore.");
+			System.out.println("        You can also add +PCLink to one of the other options, to run PCLink on the second RS232 port.");
 			System.out.println("<net> is a broadcast IP address, in the form <host>[:<port>]. Default port is 48654 (0BE0Eh, for 0BEr0nnEt).");
 			System.out.println("<kbdtype> is one of Virtual, ParaVirtual, NoParaVirtual, Native, Hybrid.");
 			System.out.println("<hostfspath> is a path of a directory on the host, which is used as HostFS.");

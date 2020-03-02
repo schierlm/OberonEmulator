@@ -1,0 +1,45 @@
+--- 1/PCLink1.Mod.txt
++++ 2/PCLink1.Mod.txt
+@@ -6,4 +6,5 @@
+     REQ = 20H; REC = 21H; SND = 22H; ACK = 10H; NAK = 11H;
+ 
+   VAR T: Oberon.Task;
++    port: INTEGER;
+     W: Texts.Writer;
+@@ -12,6 +13,8 @@
+   BEGIN
+-    REPEAT UNTIL SYSTEM.BIT(stat, 0);
++    REPEAT UNTIL SYSTEM.BIT(stat, port * 2);
++    IF port = 1 THEN SYSTEM.PUT(stat, 1) END;
+     SYSTEM.GET(data, x)
++    ;IF port = 1 THEN SYSTEM.PUT(stat, 0) END
+   END Rec;
+ 
+   PROCEDURE RecName(VAR s: ARRAY OF CHAR);
+@@ -23,8 +26,10 @@
+ 
+   PROCEDURE Send(x: BYTE);
+   BEGIN
+-    REPEAT UNTIL SYSTEM.BIT(stat, 1);
++    REPEAT UNTIL SYSTEM.BIT(stat, port * 2 + 1);
++    IF port = 1 THEN SYSTEM.PUT(stat, 1) END;
+     SYSTEM.PUT(data, x)
++    ;IF port = 1 THEN SYSTEM.PUT(stat, 0) END
+   END Send;
+ 
+   PROCEDURE Task;
+@@ -34,7 +39,7 @@
+       F: Files.File; R: Files.Rider;
+       buf: ARRAY 256 OF BYTE;
+   BEGIN
+-    IF  SYSTEM.BIT(stat, 0) THEN (*byte available*)
++    IF  SYSTEM.BIT(stat, port * 2) THEN (*byte available*)
+       Rec(code);
+         IF code = SND THEN  (*send file*)
+           LED(20H); RecName(name); F := Files.Old(name);
+@@ -85,4 +90,5 @@
+   END Stop;
+ 
+ BEGIN Texts.OpenWriter(W); T := Oberon.NewTask(Task, 0)
++  ; port := 0; IF SYSTEM.BIT(stat, 3) THEN port := 1 END
+ END PCLink1.

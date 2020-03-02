@@ -12,7 +12,8 @@ Read | -64 | Hardware, C, Java, JS | **Timer**: Provide the number of millisecon
 Read | -60 | Hardware, C (Only switch 0, boot-from-serial) | **Switches**: Provide access to hardware switches on the board. Emulators always return 0 here
 Write | -60 | Hardware, C, Java, JS | **LEDs**: The low-order byte written is displayed on 8 (virtual) LEDs
 Read/Write | -56 | Hardware, C, Java, JS | **RS232**: Write bytes to / read bytes from RS232 interface
-Read | -52 | Hardware, C, Java, JS | **RS232 status**: Returns 3 if data is available, or 2 otherwise
+Read | -52 | Hardware, C, Java, JS | **RS232 status**: Returns 3 if data is available, or 2 otherwise. Next two bits are used for second RS232 port.
+**Write** | **-52** | **Java, JS** | **RS232 select**: Select which RS232 port is connected to address -56.
 Read/Write | -48 / -44 | Hardware, C, Java | **SPI**
 Read | -40 | Hardware, C, Java, JS | ** Mouse input / keyboard status **
 Read | -36 | Hardware, C, Java | **Keyboard input**:Return PS2 scancodes in least significant byte
