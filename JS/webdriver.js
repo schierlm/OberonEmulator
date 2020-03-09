@@ -961,6 +961,12 @@ function VirtualKeyboard(screen, emulator) {
 			emulator.registerKey(26);
 			return;
 		}
+		// Cursor keys
+		if (code >= 37 && code <= 40) {
+			event.preventDefault();
+			emulator.registerKey(code == 38 || code == 39 ? 57 - code : code - 20);
+			return;
+		}
 		// Alt
 		if (code === 18 && !event.ctrlKey && event.key != "AltGraph") {
 			event.preventDefault();

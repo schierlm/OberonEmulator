@@ -61,6 +61,10 @@ public class PS2 {
 		addKey(0x49, '.', '>');
 		addKey(0x4A, '/', '?');
 		addKey(0x05, (char) 26, '\0');
+		addKey(0x6B, (char) 0x11, '\0');
+		addKey(0x74, (char) 0x12, '\0');
+		addKey(0x75, (char) 0x13, '\0');
+		addKey(0x72, (char) 0x14, '\0');
 
 		addVK(KeyEvent.KEY_LOCATION_STANDARD, KeyEvent.VK_A, 0x1C, VK_TYPE.CHAR_BASED);
 		addVK(KeyEvent.KEY_LOCATION_STANDARD, KeyEvent.VK_B, 0x32, VK_TYPE.CHAR_BASED);

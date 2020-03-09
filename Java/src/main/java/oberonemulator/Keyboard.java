@@ -17,20 +17,12 @@ public abstract class Keyboard {
 		this.mmio = mmio;
 	}
 
-	public static class VirtualKeyboard extends Keyboard {
+	public static class VirtualKeyboard extends ParavirtualKeyboard {
 
 		private boolean hint;
 
 		public VirtualKeyboard(boolean hint) {
 			this.hint = hint;
-		}
-
-		public void press(int location, int keyCode) {
-			if (keyCode == KeyEvent.VK_F1)
-				type((char) 26);
-		}
-
-		public void release(int location, int keyCode) {
 		}
 
 		public void type(char keyChar) {
@@ -42,6 +34,14 @@ public abstract class Keyboard {
 		public void press(int location, int keyCode) {
 			if (keyCode == KeyEvent.VK_F1)
 				type((char) 26);
+			if (keyCode == KeyEvent.VK_LEFT)
+				type((char) 0x11);
+			if (keyCode == KeyEvent.VK_RIGHT)
+				type((char) 0x12);
+			if (keyCode == KeyEvent.VK_UP)
+				type((char) 0x13);
+			if (keyCode == KeyEvent.VK_DOWN)
+				type((char) 0x14);
 		}
 
 		public void release(int location, int keyCode) {
