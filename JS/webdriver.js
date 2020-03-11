@@ -17,6 +17,9 @@ window.onload = function() {
 			params.height = h < 576 ? 512 : h < 768 ? 576 : 768;
 		}
 	}
+	if (params.serialpreview) {
+		document.body.classList.add(params.serialpreview.replace(/,.*/,"")+"preview");
+	}
 	RISCMachine.Initialize(function(uri, callback) {
 		var request = new XMLHttpRequest();
 		request.addEventListener("load", function(event) {
@@ -26,19 +29,22 @@ window.onload = function() {
 		request.responseType = "arraybuffer";
 		request.send(null);
 	}, function() {
-		emulator = new WebDriver(params.image, params.width, params.height, params.pclink == "2");
+		emulator = new WebDriver(params.image, params.width, params.height, params.pclink == "2", params.configfile || "config.json");
 	});
 }
 
-function WebDriver(imageName, width, height, dualSerial) {
+function WebDriver(imageName, width, height, dualSerial, configFile) {
 	this.disk = [];
 	this.keyBuffer = [];
 	this.transferHistory = [];
 
 	this.localSaveAnchor = document.getElementById("localsaveanchor");
 	this.screen = document.getElementById("screen");
+	this.previewscreen = document.getElementById("previewscreen");
+	this.previewcontext = this.previewscreen.getContext("2d");
+	this.previewcontext.fillStyle = "black";
 
-	this.ui = new ControlBarUI(this);
+	this.ui = new ControlBarUI(this, dualSerial);
 	this.setDimensions(width, height, true);
 	if (imageName !== undefined) {
 		this.imageName = imageName;
@@ -49,7 +55,7 @@ function WebDriver(imageName, width, height, dualSerial) {
 	this.filelink = new FileLink(this);
 	this.link = dualSerial ? new DualLink(this.filelink, this.filelink) : this.filelink;
 
-	SiteConfigLoader.read("config.json", this);
+	SiteConfigLoader.read(configFile, this);
 }
 
 (function(){
@@ -199,9 +205,11 @@ function WebDriver(imageName, width, height, dualSerial) {
 		this.screen.addEventListener("mousedown", this, false);
 		this.screen.addEventListener("mouseup", this, false);
 		this.screen.addEventListener("contextmenu", this, false);
-		this.screenUpdater = new ScreenUpdater(
-			this.screen.getContext("2d"), width, height
-		);
+		this.screenUpdater = new ScreenUpdater(this.screen, width, height);
+		this.previewscreen.width = width / 5;
+		this.previewscreen.height = height / 5;
+		this.previewcontext.setTransform(0.2, 0, 0, 0.2, 0, 0)
+		this.previewcontext.fillRect(0,0, width, height);
 	};
 
 	$proto.reset = function(cold) {
@@ -501,9 +509,9 @@ function WebDriver(imageName, width, height, dualSerial) {
 	};
 })();
 
-function ControlBarUI(emulator) {
+function ControlBarUI(emulator, dualSerial) {
 	this.emulator = emulator;
-	this._initWidgets();
+	this._initWidgets(dualSerial);
 
 	this.linkNameInput.addEventListener("keypress", this, false);
 }
@@ -529,7 +537,7 @@ function ControlBarUI(emulator) {
 	$proto.settingsButton = null;
 	$proto.systemButton = null;
 
-	$proto._initWidgets = function() {
+	$proto._initWidgets = function(dualSerial) {
 		var $ = document.getElementById.bind(document);
 		this.leds = [
 			$("led0"), $("led1"), $("led2"), $("led3"),
@@ -562,6 +570,9 @@ function ControlBarUI(emulator) {
 			this.linkNameInput.offsetHeight + "px";
 		this.linkExportButton.style.width =
 			this.linkExportButton.offsetWidth + "px";
+
+		if (dualSerial)
+			this.controlBarBox.classList.add('dualserial');
 
 		// XXX Hack to reposition mouse buttons.  Gecko/WebKit/Blink can't
 		// seem to agree with IE on how to lay things out based on our CSS,
@@ -596,6 +607,7 @@ function ControlBarUI(emulator) {
 		this.controlBarBox.style.width = width + "px";
 		this.clipboardInput.style.width = width + "px";
 		this.exportOptions.style.width = width + "px";
+		document.getElementById("emulatorface").style.width = (width - -5)+"px";
 	};
 
 	$proto.addSystemItem = function(name) {
@@ -790,12 +802,11 @@ function ControlBarUI(emulator) {
 	}
 
 	$proto.enableSerialLink = function(menuButton) {
-		var url = window.location.href;
+		var url = window.location.href.replace(/&serialpreview=(left|right),/, "&serialpreview=");
 		if (url.indexOf("?image=") != -1 && url.indexOf("&serialimage=") != -1)
 			url = url.replace("?image=", "?oldimage=").replace("&serialimage=", "&image=");
 		var child = window.open(url);
-		if (this.emulator.link instanceof FileLink)
-			this.controlBarBox.classList.add('seriallink');
+		this.controlBarBox.classList.add('seriallink');
 		setTimeout(function() {
 			var fifo1 = new SerialFIFO(window);
 			var fifo2 = new child.SerialFIFO(child);
@@ -804,11 +815,15 @@ function ControlBarUI(emulator) {
 				this.emulator.filelink = null;
 				child.emulator.link = new child.SerialLink(fifo2, fifo1);
 				child.emulator.filelink = null;
-				child.emulator.ui.controlBarBox.classList.add('seriallink');
 			} else if (this.emulator.link instanceof DualLink) {
 				this.emulator.link.link1 = new SerialLink(fifo1, fifo2);
 				child.emulator.link.link1 = new child.SerialLink(fifo2, fifo1);
 			}
+			if (url.indexOf("&serialpreview=") != -1) {
+				this.emulator.screenUpdater.previewcontext = child.emulator.previewcontext;
+				child.emulator.screenUpdater.previewcontext = this.emulator.previewcontext;
+			}
+			child.emulator.ui.controlBarBox.classList.add('seriallink');
 		}, 500);
 	}
 
@@ -822,9 +837,10 @@ function ControlBarUI(emulator) {
 	};
 })();
 
-function ScreenUpdater(context, width, height) {
-	this.context = context;
-	this.backBuffer = context.createImageData(width, height);
+function ScreenUpdater(canvas, width, height) {
+	this.canvas = canvas;
+	this.context = canvas.getContext("2d");
+	this.backBuffer = this.context.createImageData(width, height);
 
 	this.clear();
 }
@@ -833,7 +849,9 @@ function ScreenUpdater(context, width, height) {
 	var $proto = ScreenUpdater.prototype;
 
 	$proto.backBuffer = null;
+	$proto.canvas = null;
 	$proto.context = null;
+	$proto.previewcontext = null;
 	$proto.maxX = null;
 	$proto.maxY = null;
 	$proto.minX = null;
@@ -846,6 +864,9 @@ function ScreenUpdater(context, width, height) {
 			updater.maxX - updater.minX + 1, updater.maxY - updater.minY + 1
 		);
 		updater.clear();
+		if (updater.previewcontext != null) {
+			updater.previewcontext.drawImage(updater.canvas, 0, 0);
+		}
 	};
 
 	$proto.mark = function(x, y) {
