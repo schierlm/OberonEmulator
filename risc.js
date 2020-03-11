@@ -122,6 +122,7 @@ function RISCMachine(romWords, callback) {
 			case  0: return void(this.wait(val));
 			case  4: return void(emulator.registerLEDs(val));
 			case  8: return void(emulator.link.setData(val));
+			case 12: return void(emulator.link.setStatus(val));
 			case 36: return void(emulator.storageRequest(val, this.mainMemory));
 			case 40: return void(emulator.clipboard.expect(val));
 			case 44: return void(emulator.clipboard.putData(val));
