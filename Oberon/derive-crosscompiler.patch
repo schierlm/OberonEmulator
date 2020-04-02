@@ -1,8 +1,8 @@
 --- 1/XORB.Mod.txt
 +++ 2/XORB.Mod.txt
 @@ -1,4 +1,4 @@
--MODULE ORB;   (*NW 25.6.2014  / 1.3.2019  in Oberon-07*)
-+MODULE XORB;   (*NW 25.6.2014  / 1.3.2019  in Oberon-07*)
+-MODULE ORB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07*)
++MODULE XORB;   (*NW 25.6.2014  / AP 4.3.2020 / 8.3.2019  in Oberon-07*)
    IMPORT Files, ORS;
    (*Definition of data types Object and Type, which together form the data structure
      called "symbol table". Contains procedures for creation of Objects, and for search:
@@ -57,9 +57,9 @@
 --- 1/XORP.Mod.txt
 +++ 2/XORP.Mod.txt
 @@ -1,5 +1,5 @@
--MODULE ORP; (*N. Wirth 1.7.97 / 31.5.2019  Oberon compiler for RISC in Oberon-07*)
+-MODULE ORP; (*N. Wirth 1.7.97 / 8.3.2020  Oberon compiler for RISC in Oberon-07*)
 -  IMPORT Texts, Oberon, ORS, ORB, ORG;
-+MODULE XORP; (*N. Wirth 1.7.97 / 31.5.2019  Oberon compiler for RISC in Oberon-07*)
++MODULE XORP; (*N. Wirth 1.7.97 / 8.3.2020  Oberon compiler for RISC in Oberon-07*)
 +  IMPORT Texts, Oberon, ORS, ORB := XORB, ORG := XORG;
    (*Author: Niklaus Wirth, 2014.
      Parser of Oberon-RISC compiler. Uses Scanner ORS to obtain symbols (tokens),

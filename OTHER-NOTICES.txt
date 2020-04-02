@@ -18,7 +18,7 @@ OberonEmulator, available from:
 
   <https://github.com/schierlm/OberonEmulator/>
 
-Copyright © 2014 Michael Schierl
+Copyright © 2014, 2020 Michael Schierl
 
 * * *
 
