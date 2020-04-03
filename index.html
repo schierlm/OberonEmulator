@@ -56,7 +56,6 @@ or hide. You can copy and paste from there like normal.</p>
 		<option>FullWithRescueDiskImage</option>
 		<option>FullBigmemWithRescueDiskImage</option>
 	</select>
-	<label><input id="withsource" type="checkbox" name="withsource">WithSource</label>
 	<input type="Button" value="Start" onclick="startEmu()"><br>
 	<label><input id="oldemu" type="radio" name="flavor" value="old">Old emulator (ugly)</label>
 	<label><input type="radio" name="flavor" value="js" checked>Pure JavaScript emulator</label>
@@ -84,9 +83,6 @@ function startEmu() {
 		return;
 	}
 	var imageName = document.forms.emuform.image.value;
-	if (document.getElementById("withsource").checked && !/^Minimal|^BootFrom/.test(imageName)) {
-		imageName += "WithSource";
-	}
 	if (document.getElementById("oldemu").checked) {
 		var size = document.forms.emuform.size.value;
 		document.location.href="old_emu.html#"+imageName+","+size.split("×").join(",");
