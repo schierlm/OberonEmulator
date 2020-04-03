@@ -1,0 +1,116 @@
+--- 1/RescueSystemLoader.Mod.txt
++++ 2/RescueSystemLoader.Mod.txt
+@@ -2,71 +2,33 @@
+   IMPORT SYSTEM;
+ 
+   CONST SP = 14; stackOrg = 80000H;
+-    spiData = -48; spiCtrl = -44;
+-    CARD0 = 1; SPIFAST = 4;
+-    FSoffset = 80000H;   (*block offset*)
++    FSoffset = 0H;   (*block offset*)
+     RSoffset = 80H; (* extra offset due to rescue system *)
+ 
+-  PROCEDURE SPIIdle(n: INTEGER); (*send n FFs slowly with no card selected*)
+-  BEGIN SYSTEM.PUT(spiCtrl, 0);
+-    WHILE n > 0 DO DEC(n); SYSTEM.PUT(spiData, -1);
+-      REPEAT UNTIL SYSTEM.BIT(spiCtrl, 0)
+-    END
+-  END SPIIdle;
+-
+-  PROCEDURE SPI(n: INTEGER); (*send&rcv byte slowly with card selected*)
+-  BEGIN SYSTEM.PUT(spiCtrl, CARD0); SYSTEM.PUT(spiData, n);
+-    REPEAT UNTIL SYSTEM.BIT(spiCtrl, 0)
+-  END SPI;
+-
+-  PROCEDURE SPICmd(n, arg: INTEGER);
+-    VAR i, data, crc: INTEGER;
+-  BEGIN (*send cmd*)
+-    REPEAT SPIIdle(1); SYSTEM.GET(spiData, data) UNTIL data = 255; (*flush while unselected*)
+-    REPEAT SPI(255); SYSTEM.GET(spiData, data) UNTIL data = 255; (*flush while selected*)
+-    IF n = 8 THEN crc := 135 ELSIF n = 0 THEN crc := 149 ELSE crc := 255 END;
+-    SPI(n MOD 64 + 64); (*send command*)
+-    FOR i := 24 TO 0 BY -8 DO SPI(ROR(arg, i)) END; (*send arg*)
+-    SPI(crc); i := 32;
+-    REPEAT SPI(255); SYSTEM.GET(spiData, data); DEC(i) UNTIL (data < 80H) OR (i = 0)
+-  END SPICmd;
+-
+-  PROCEDURE SDShift(VAR n: INTEGER);
+-    VAR data: INTEGER;
+-  BEGIN SPICmd(58, 0);  (*CMD58 get card capacity bit*)
+-    SYSTEM.GET(spiData, data); SPI(-1);
+-    IF (data # 0) OR ~SYSTEM.BIT(spiData, 6) THEN n := n * 512 END ;  (*non-SDHC card*)
+-    SPI(-1); SPI(-1); SPIIdle(1)  (*flush response*)
+-  END SDShift;
++  PROCEDURE Filler();
++  VAR x: INTEGER;
++  BEGIN
++    (*
++    This Procedure is here to increase the size of the loader module
++    to be more than 1KB. Otherwise the rescue system will get shifted
++    by one sector and be unable to boot (without patching the rescue
++    system builder as well).
++    *)
++    x:=9999999; x:=9999999; x:=9999999; x:=9999999; x:=9999999; x:=9999999;
++    x:=9999999; x:=9999999; x:=9999999; x:=9999999; x:=9999999; x:=9999999;
++    x:=9999999; x:=9999999; x:=9999999; x:=9999999; x:=9999999; x:=9999999;
++    x:=9999999; x:=9999999; x:=9999999; x:=9999999; x:=9999999; x:=9999999;
++    x:=9999999; x:=9999999; x:=9999999; x:=9999999; x:=9999999; x:=9999999;
++    x:=9999999; x:=9999999; x:=9999999; x:=9999999; x:=9999999; x:=9999999;
++  END Filler;
+ 
+   PROCEDURE ReadSD(src, dst: INTEGER);
+     VAR i, data: INTEGER;
+-  BEGIN SDShift(src); SPICmd(17, src); (*CMD17 read one block*)
+-    i := 0; (*wait for start data marker*)
+-    REPEAT SPI(-1); SYSTEM.GET(spiData, data); INC(i) UNTIL data = 254;
+-    SYSTEM.PUT(spiCtrl, SPIFAST + CARD0);
+-    FOR i := 0 TO 508 BY 4 DO
+-      SYSTEM.PUT(spiData, -1);
+-      REPEAT UNTIL SYSTEM.BIT(spiCtrl, 0);
+-      SYSTEM.GET(spiData, data); SYSTEM.PUT(dst, data); INC(dst, 4)
+-    END;
+-    SPI(255); SPI(255); SPIIdle(1) (*may be a checksum; deselect card*)
++  BEGIN
++    SYSTEM.PUT(-28, dst);
++    SYSTEM.PUT(-28, 080000000H + src);
+   END ReadSD;
+ 
+-  PROCEDURE WriteSD(dst, src: INTEGER);
+-    VAR i, n, data: INTEGER; x: BYTE;
+-  BEGIN SDShift(dst); SPICmd(24, dst); (*CMD24 write one block*)
+-    SPI(254); (*write start data marker*)
+-    SYSTEM.PUT(spiCtrl, SPIFAST + CARD0);
+-    FOR i := 0 TO 508 BY 4 DO
+-      SYSTEM.GET(src, n); INC(src, 4); SYSTEM.PUT(spiData, n);
+-      REPEAT UNTIL SYSTEM.BIT(spiCtrl, 0)
+-    END;
+-    SPI(255); SPI(255); (*dummy checksum*) i := 0;
+-    REPEAT SPI(-1); SYSTEM.GET(spiData, data); INC(i); UNTIL data MOD 32 = 5;
+-    SPIIdle(1) (*deselect card*)
+-  END WriteSD;
+-
+   PROCEDURE Load;
+     VAR src, dst, data: INTEGER;
+   BEGIN SYSTEM.GET(0, data);
+@@ -74,16 +36,18 @@
+     SYSTEM.GET(4, data);
+     data := 1 - data;
+     SYSTEM.PUT(4, data);
+-    WriteSD(FSoffset + 4, 0);
++    SYSTEM.PUT(-28, 0);
++    SYSTEM.PUT(-28, 0C0000000H + FSoffset DIV 2 + 2);
+     FOR src := 0 TO 2048 - 4 BY 4 DO SYSTEM.GET(src, data); SYSTEM.PUT(src + 20000H, data) END;
+     data := 0E7008006H;
+     SYSTEM.PUT(0, data)
+   ELSE
+     SYSTEM.GET(4, data);
+     IF data = 0 THEN src := FSoffset + 8 ELSE src := FSoffset + RSoffset + 4 END;
++    src := src DIV 2;
+     ReadSD(src, 0); SYSTEM.GET(16, data);
+-    INC(src); dst := 512;
+-    WHILE dst < data DO ReadSD(src, dst); INC(src); INC(dst, 512) END;
++    INC(src); dst := 1024;
++    WHILE dst < data DO ReadSD(src, dst); INC(src); INC(dst, 1024) END;
+     SYSTEM.GET(12 + 20000H, data); SYSTEM.PUT(12, data);
+     SYSTEM.GET(24 + 20000H, data); SYSTEM.PUT(24, data)
+   END
