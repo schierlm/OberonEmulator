@@ -36,6 +36,8 @@ public class MemoryMappedIO {
 
 	private final HostFS hostfs;
 
+	private final WizNet wiznet;
+
 	private int mouse;
 
 	private Memory mem;
@@ -48,6 +50,7 @@ public class MemoryMappedIO {
 		sdCard = disk_file == null ? null : new Disk(disk_file);
 		net = netAddr == null ? null : new Network(netAddr);
 		hostfs = hostFsDirectory == null ? null : new HostFS(hostFsDirectory);
+		wiznet = new WizNet();
 		if (ss != null || sock != null) {
 			Feature.SERIAL.use();
 			new RS232Thread(0, sock, ss);
@@ -250,10 +253,16 @@ public class MemoryMappedIO {
 			break;
 		}
 		case 32: {
-			// host filesystem
-			Feature.HOST_FILESYSTEM.use();
-			if (hostfs != null)
-				hostfs.handleCommand(value/4, mem.getRAM());
+			// host filesystem / wiznet
+			int highBits = mem.getRAM()[value / 4] >> 16;
+			if (highBits == 0) {
+				Feature.HOST_FILESYSTEM.use();
+				if (hostfs != null)
+					hostfs.handleCommand(value / 4, mem.getRAM());
+			} else if (highBits == 1) {
+				Feature.PARAVIRTUAL_WIZNET.use();
+				wiznet.handleCommand(value/4, mem.getRAM());
+			}
 			break;
 		}
 		case 36: {
@@ -351,6 +360,7 @@ public class MemoryMappedIO {
 	}
 
 	public void reset() {
+		wiznet.reset();
 		if (hostfs != null)
 			hostfs.reset();
 	}

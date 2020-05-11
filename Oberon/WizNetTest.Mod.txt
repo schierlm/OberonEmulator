@@ -1,0 +1,515 @@
+MODULE WizNetTest;
+  IMPORT IP, DNS, UDP, TCP, Texts, Oberon;
+
+  VAR log: Texts.Writer;
+
+  PROCEDURE WriteAllBytes(c: TCP.Connection);
+  VAR buf: ARRAY 1024 OF BYTE; i, len: INTEGER;
+  BEGIN
+    REPEAT UNTIL TCP.Available(c) > 0;
+    TCP.Receive (c, buf, 0, 1024, 1, len);
+    WHILE(TCP.res # TCP.InterfaceClosed) DO
+      ASSERT(TCP.res = TCP.Ok);
+      FOR i := 0 TO len-1 DO
+        IF (buf[i] = 13) OR (buf[i] = 10) OR ((buf[i] >= 32) & (buf[i] < 127)) THEN
+          Texts.Write(log, CHR(buf[i]))
+        ELSE
+          Texts.Write(log, "?")
+        END
+      END;
+      Texts.Append(Oberon.Log, log.buf);
+      REPEAT UNTIL TCP.Available(c) > 0;
+      TCP.Receive (c, buf, 0, 1024, 1, len);
+    END;
+  END WriteAllBytes;
+
+  PROCEDURE RunDNSTest*;
+    VAR n: IP.Name; a: IP.Adr;
+  BEGIN
+    Texts.WriteString(log, "Hostname: ");
+    DNS.GetHostName(n);
+    ASSERT(DNS.res = DNS.Ok);
+    Texts.WriteString(log, n);
+    Texts.WriteLn(log);
+    n := "www.projectoberon.com";
+    Texts.WriteString(log, "IP of ");
+    Texts.WriteString(log, n);
+    Texts.WriteString(log, " = ");
+    DNS.HostByName(n, a);
+    ASSERT(DNS.res = DNS.Ok);
+    IP.AdrToStr(a, n);
+    ASSERT(IP.res = IP.Ok);
+    Texts.WriteString(log, n);
+    Texts.WriteLn(log);
+    Texts.WriteString(log, "Reverse DNS of ");
+    Texts.WriteString(log, n);
+    Texts.WriteString(log, " = ");
+    DNS.HostByNumber(a, n);
+    ASSERT(DNS.res = DNS.Ok);
+    Texts.WriteString(log, n);
+    Texts.WriteLn(log);
+    n := "1234567890";
+    DNS.HostByName(n, a);
+    ASSERT(DNS.res = DNS.Ok);
+    Texts.WriteString(log, "Numeric host ");
+    Texts.WriteString(log, n);
+    Texts.WriteString(log, " = ");
+    Texts.WriteInt(log, a, 11);
+    Texts.WriteLn(log);
+    Texts.Append(Oberon.Log, log.buf);
+  END RunDNSTest;
+
+  PROCEDURE RunUDPTest*;
+    VAR a, fip: IP.Adr; u: UDP.Socket;
+      buf: ARRAY 48 OF BYTE; i, fport, len: INTEGER;
+  BEGIN
+    buf[0] := 23H;
+    FOR i := 1 TO 47 DO buf[i] := 0 END;
+    DNS.HostByName("ntp.ur.de", a);
+    ASSERT(DNS.res = DNS.Ok);
+    UDP.Open(u, 0);
+    ASSERT(UDP.res = UDP.Ok);
+    UDP.Send(u, a, 123, buf, 0, 48);
+    ASSERT(UDP.res = UDP.Ok);
+    UDP.Receive(u, buf, 0, 48, 1000, fip, fport, len);
+    ASSERT(UDP.res = UDP.Ok);
+    ASSERT(fip = a);
+    ASSERT(fport = 123);
+    ASSERT(len = 48);
+    UDP.Close(u);
+    ASSERT(UDP.res = UDP.Ok);
+    ASSERT(buf[0] = 24H);
+    Texts.WriteString(log, "SNTP response: Stratum ");
+    Texts.WriteInt(log, buf[1], 1);
+    Texts.WriteString(log, ", poll interval 2^");
+    Texts.WriteInt(log, buf[2], 1);
+    Texts.WriteString(log, "s, precision 2^");
+    Texts.WriteInt(log, buf[3]-256, 1);
+    Texts.WriteString(log, "s.");
+    Texts.WriteLn(log);
+    Texts.WriteString(log, "    Root delay ");
+    Texts.WriteInt(log, buf[4]*1000000H + buf[5] * 10000H + buf[6] * 100H + buf[7], 1);
+    Texts.WriteString(log, "/65536 s, Root dispersion ");
+    Texts.WriteInt(log, buf[8]*1000000H + buf[9] * 10000H + buf[10] * 100H + buf[11], 1);
+    Texts.WriteString(log, "/65536 s");
+    Texts.WriteLn(log);
+    Texts.WriteString(log, "    Reference identifier ");
+    Texts.WriteHex(log, buf[12]*1000000H + buf[13] * 10000H + buf[14] * 100H + buf[15]);
+    Texts.WriteLn(log);
+    Texts.WriteString(log, "    Reference timestamp ");
+    Texts.WriteHex(log, buf[16]*1000000H + buf[17] * 10000H + buf[18] * 100H + buf[19]);
+    Texts.WriteHex(log, buf[20]*1000000H + buf[21] * 10000H + buf[22] * 100H + buf[23]);
+    Texts.WriteLn(log);
+    Texts.WriteString(log, "    Originate timestamp ");
+    Texts.WriteHex(log, buf[24]*1000000H + buf[25] * 10000H + buf[26] * 100H + buf[27]);
+    Texts.WriteHex(log, buf[28]*1000000H + buf[29] * 10000H + buf[30] * 100H + buf[31]);
+    Texts.WriteLn(log);
+    Texts.WriteString(log, "    Receive timestamp ");
+    Texts.WriteHex(log, buf[32]*1000000H + buf[33] * 10000H + buf[34] * 100H + buf[35]);
+    Texts.WriteHex(log, buf[36]*1000000H + buf[37] * 10000H + buf[38] * 100H + buf[39]);
+    Texts.WriteLn(log);
+    Texts.WriteString(log, "    Transmit timestamp ");
+    Texts.WriteHex(log, buf[40]*1000000H + buf[41] * 10000H + buf[42] * 100H + buf[43]);
+    Texts.WriteHex(log, buf[44]*1000000H + buf[45] * 10000H + buf[46] * 100H + buf[47]);
+    Texts.WriteLn(log);
+    Texts.Append(Oberon.Log, log.buf);
+  END RunUDPTest;
+
+  PROCEDURE CopyString(VAR dest: ARRAY OF BYTE; src: ARRAY OF CHAR);
+  VAR i: INTEGER;
+  BEGIN i := 0;
+    WHILE (src[i] # 0X) DO dest[i] := ORD(src[i]); INC(i) END
+  END CopyString;
+
+  PROCEDURE RunTCPTest*;
+    VAR a: IP.Adr; c: TCP.Connection;
+      buf: ARRAY 27 OF BYTE;
+  BEGIN
+
+    (* TCP test (DAYTIME) *)
+    DNS.HostByName("utcnist.colorado.edu", a);
+    ASSERT(DNS.res = DNS.Ok);
+    TCP.Open(c, 0, a, 13);
+    ASSERT(TCP.res = TCP.Ok);
+    Texts.WriteString(log, "DAYTIME response from utcnist.colorado.edu: ");
+    Texts.WriteLn(log);
+    WriteAllBytes(c);
+    Texts.WriteLn(log);
+    Texts.WriteLn(log);
+    TCP.Close(c);
+    ASSERT(TCP.res = TCP.Ok);
+    Texts.Append(Oberon.Log, log.buf);
+
+    (* TCP test (GOPHER) *)
+    DNS.HostByName("gopherpedia.com", a);
+    ASSERT(DNS.res = DNS.Ok);
+    TCP.Open(c, 0, a, 70);
+    ASSERT(TCP.res = TCP.Ok);
+    CopyString(buf, "Oberon (operating system)");
+    buf[25] := 13; buf[26] := 10;
+    TCP.Send(c, buf, 0, 27, TRUE);
+    ASSERT(TCP.res = TCP.Ok);
+    Texts.WriteString(log, "GopherPedia article about Oberon: ");
+    Texts.WriteLn(log);
+    WriteAllBytes(c);
+    Texts.WriteLn(log);
+    Texts.WriteLn(log);
+    TCP.Close(c);
+    ASSERT(TCP.res = TCP.Ok);
+    Texts.Append(Oberon.Log, log.buf);
+  END RunTCPTest;
+
+  PROCEDURE RunListenTest*;
+    VAR a: IP.Adr; l, c: TCP.Connection;
+      buf: ARRAY 27 OF BYTE;
+  BEGIN
+    TCP.Open(l, 10001, 0, 0);
+    ASSERT(TCP.res = TCP.Ok);
+    REPEAT UNTIL TCP.Accept (l, c) # TCP.NotConnected;
+    ASSERT(TCP.res = TCP.Ok);
+    TCP.Close(l);
+    ASSERT(TCP.res = TCP.Ok);
+    Texts.WriteString(log, "Response from listening on port 10001: ");
+    Texts.WriteLn(log);
+    WriteAllBytes(c);
+    Texts.WriteLn(log);
+    Texts.WriteLn(log);
+    TCP.Close(c);
+    ASSERT(TCP.res = TCP.Ok);
+    Texts.Append(Oberon.Log, log.buf);
+  END RunListenTest;
+
+  PROCEDURE Run*;
+  BEGIN
+    RunDNSTest; RunUDPTest; RunTCPTest
+  END Run;
+
+BEGIN
+  Texts.OpenWriter(log)
+END WizNetTest.
+
+===============================================================================
+
+MODULE IP; (* jr/16apr18 *)
+  IMPORT SYSTEM;
+
+  CONST
+    Ok* = 0;
+
+  TYPE
+    Adr* = INTEGER;
+    (*Packet* = POINTER TO ARRAY 1500 OF BYTE;*)
+    Name* = ARRAY 128 OF CHAR;
+    Interface* = RECORD
+      localAdr*, maskAdr*, gatewayAdr*: Adr;
+    END;
+
+  VAR
+    res*: INTEGER; (* result of last operation *)
+    default: Interface;
+
+  PROCEDURE Put2* (VAR buf: ARRAY OF BYTE; ofs, val: INTEGER);
+  BEGIN
+    buf[ofs] := val DIV 100H MOD 100H;
+    buf[ofs+1] := val MOD 100H
+  END Put2;
+
+  PROCEDURE Put4* (VAR buf: ARRAY OF BYTE; ofs, val: INTEGER);
+  BEGIN
+    buf[ofs] := val DIV 1000000H MOD 100H;
+    buf[ofs+1] := val DIV 10000H MOD 100H;
+    buf[ofs+2] := val DIV 100H MOD 100H;
+    buf[ofs+3] := val MOD 100H
+  END Put4;
+
+  PROCEDURE StrToAdr* (ipString: ARRAY OF CHAR): Adr;
+    TYPE blobType = RECORD op: INTEGER; res: INTEGER; adr: Adr; name: Name END;
+    VAR blob: blobType;
+  BEGIN blob.op := 10001H;
+    blob.name := ipString;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob)); res := blob.res
+  RETURN blob.adr
+  END StrToAdr;
+
+  PROCEDURE AdrToStr* (a: Adr; VAR string: ARRAY OF CHAR);
+    TYPE blobType = RECORD op: INTEGER; res: INTEGER; adr: Adr; name: Name END;
+    VAR blob: blobType; i: INTEGER;
+  BEGIN blob.op := 10002H;
+    blob.adr := a;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    i := 0; WHILE(blob.name[i] # 0X) DO string[i] := blob.name[i]; INC(i) END;
+    string[i] := 0X; res := blob.res
+  END AdrToStr;
+
+  PROCEDURE SetInterface* (own, mask, gw: Adr);
+  BEGIN (*empty *)
+  END SetInterface;
+
+  PROCEDURE OutInterface*;
+  BEGIN (*empty *)
+  END OutInterface;
+
+END IP.
+
+===============================================================================
+
+MODULE DNS; (* jr/16apr18 *)
+  IMPORT SYSTEM, IP;
+
+  CONST
+    Ok* = IP.Ok;
+    NotFound* = 3601;
+    BadName* = 3602;
+    MaxNofServer* = 4;
+
+  TYPE
+    Name* = IP.Name;
+
+  VAR
+    domain*: Name;
+    res*: INTEGER; (* result of last operation *)
+
+  PROCEDURE HostByName* (hostname: ARRAY OF CHAR; VAR addr: IP.Adr);
+  BEGIN
+    addr := IP.StrToAdr(hostname); res := IP.res;
+  END HostByName;
+
+  PROCEDURE HostByNumber* (addr: IP.Adr; VAR hostname: ARRAY OF CHAR);
+    TYPE blobType = RECORD op: INTEGER; res: INTEGER; adr: IP.Adr; name: Name END;
+    VAR blob: blobType; i: INTEGER;
+  BEGIN blob.op := 10003H;
+    blob.adr := addr;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    i := 0; WHILE(blob.name[i] # 0X) DO hostname[i] := blob.name[i]; INC(i) END;
+    hostname[i] := 0X; res := blob.res
+  END HostByNumber;
+
+  PROCEDURE GetHostName* (VAR hostname: ARRAY OF CHAR);
+  BEGIN
+    hostname := "emulated-wiznet";
+  END GetHostName;
+
+END DNS.
+
+===============================================================================
+
+MODULE UDP; (* jr/16apr18 *)
+  IMPORT SYSTEM, IP;
+
+  CONST
+    Ok* = IP.Ok;
+    PortInUse* = 3501;
+    Timeout* = 3502;
+    BufferOverflow* = 3503;
+    NoInterface* = 3504;
+    Closed* = 3505;
+    Error* = 9999;
+    NilPort* = 0;
+
+  TYPE Socket* = RECORD
+    lport*: INTEGER;
+    socketid: INTEGER;
+  END;
+
+  VAR res*: INTEGER; (* result of last operation *)
+
+  PROCEDURE Open* (VAR s: Socket; lport: INTEGER);
+    TYPE blobType = RECORD op, res, socketid, lport: INTEGER; END;
+    VAR blob: blobType;
+  BEGIN blob.op := 10004H; blob.lport := lport;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    res := blob.res;
+    s.lport := blob.lport;
+    s.socketid := blob.socketid
+  END Open;
+
+  PROCEDURE Send* (s: Socket; fip: IP.Adr; fport: INTEGER; data: ARRAY OF BYTE; ofs, len: INTEGER);
+    TYPE blobType = RECORD op, res, socketid, fip, fport, len: INTEGER; buf: ARRAY 1500 OF BYTE END;
+    VAR blob: blobType; i: INTEGER;
+  BEGIN ASSERT(len <= 1500);
+    blob.op := 10006H; blob.socketid := s.socketid;
+    blob.fip := fip; blob.fport := fport; blob.len := len;
+    FOR i := 0 TO len - 1 DO blob.buf[i] := data[ofs+i] END;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    res := blob.res
+  END Send;
+
+  PROCEDURE SendBroadcast* (s: Socket; itf: INTEGER; fport: INTEGER; data: ARRAY OF BYTE; ofs, len: INTEGER);
+  BEGIN
+    Send(s, -1, fport, data, ofs, len);
+  END SendBroadcast;
+
+  PROCEDURE Receive* (s: Socket; VAR data: ARRAY OF BYTE; ofs, size, ms: INTEGER; VAR fip: IP.Adr; VAR fport, len: INTEGER);
+    TYPE blobType = RECORD op, res, socketid, fip, fport, len, ms: INTEGER; buf: ARRAY 1500 OF BYTE END;
+    VAR blob: blobType; i: INTEGER;
+  BEGIN ASSERT(size <= 1500);
+    blob.op := 10007H; blob.socketid := s.socketid; blob.ms := ms;
+    blob.len := size; SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    len := blob.len; fip := blob.fip; fport := blob.fport;
+    ASSERT(len <= size);
+    FOR i := 0 TO len - 1 DO data[ofs+i] := blob.buf[i] END;
+    res := blob.res
+  END Receive;
+
+  PROCEDURE Close* (s: Socket);
+    TYPE blobType = RECORD op, res, socketid: INTEGER; END;
+    VAR blob: blobType;
+  BEGIN blob.op := 10005H; blob.socketid := s.socketid;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    res := blob.res;
+  END Close;
+
+END UDP.
+
+===============================================================================
+
+MODULE TCP; (* 16apr18 *)
+  IMPORT SYSTEM, IP;
+  CONST
+    NilPort* = 0;
+    Ok* = IP.Ok;
+    ConnectionRefused* = 3701;
+    ConnectionReset* = 3702;
+    WrongInterface* = 3703;
+    TimedOut* = 3704;
+    NotConnected* = 3705;
+    NoInterface* = 3706;
+    InterfaceClosed* = 3707;
+
+    Listen* = 1;
+    Established* = 4;
+
+  TYPE Connection* = RECORD
+      int: IP.Interface;
+      lport: INTEGER;
+      fip: IP.Adr;
+      fport: INTEGER;
+      state: BYTE;
+      socket: INTEGER;
+      localAdr, foreignAdr: INTEGER;
+    END;
+
+  VAR res*: INTEGER; (* result of last operation *)
+
+  PROCEDURE Open* (VAR c: Connection; lport: INTEGER; fip: IP.Adr; fPort: INTEGER);
+    TYPE blobType = RECORD op, res, socketid, lport, fip, fport: INTEGER; END;
+    VAR blob: blobType;
+  BEGIN blob.op := 10008H; blob.lport := lport; blob.fip := fip; blob.fport := fPort;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    res := blob.res;
+    c.lport := blob.lport;
+    c.fip := blob.fip;
+    c.fport := blob.fport;
+    c.state := Established;
+    IF (fip = 0) & (fPort = 0) THEN c.state := Listen END;
+    c.socket := blob.socketid;
+    c.localAdr := 0;
+    c.foreignAdr := fip
+  END Open;
+
+  PROCEDURE SendChunk (c: Connection; data: ARRAY OF BYTE; ofs, len: INTEGER; propagate: BOOLEAN);
+    TYPE blobType = RECORD op, res, socketid, len, flush: INTEGER; buf: ARRAY 1500 OF BYTE END;
+    VAR blob: blobType; i: INTEGER;
+  BEGIN ASSERT(len <= 1500);
+    blob.op := 10009H; blob.socketid := c.socket; blob.len := len; blob.flush := ORD(propagate);
+    FOR i := 0 TO len - 1 DO blob.buf[i] := data[ofs+i] END;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    res := blob.res
+  END SendChunk;
+
+  PROCEDURE Send* (c: Connection; data: ARRAY OF BYTE; ofs, len: INTEGER; propagate: BOOLEAN);
+  BEGIN res := 0;
+    WHILE (res = 0) & (len > 1500) DO
+      SendChunk(c, data, ofs, 1500, FALSE);
+      INC(ofs, 1500);
+      DEC(len, 1500)
+    END;
+    IF res = 0 THEN SendChunk(c, data, ofs, len, propagate) END
+  END Send;
+
+  PROCEDURE ReceiveChunk (c: Connection; VAR data: ARRAY OF BYTE; ofs, size, min: INTEGER; VAR len: INTEGER);
+    TYPE blobType = RECORD op, res, socketid, len, minlen: INTEGER; buf: ARRAY 1500 OF BYTE END;
+    VAR blob: blobType; i: INTEGER;
+  BEGIN ASSERT(min <= 1500);
+    blob.op := 1000AH; blob.socketid := c.socket; blob.len := size; blob.minlen := min;
+    IF size > 1500 THEN blob.len := 1500 END;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    len := blob.len;
+    FOR i := 0 TO len - 1 DO data[ofs+i] := blob.buf[i] END;
+    res := blob.res
+  END ReceiveChunk;
+
+  PROCEDURE Receive* (c: Connection; VAR data: ARRAY OF BYTE; ofs, size, min: INTEGER; VAR len: INTEGER);
+    VAR realLen: INTEGER;
+  BEGIN res := 0; realLen := 0;
+    WHILE (res = 0) & (min > 1500) DO
+      ReceiveChunk(c, data, ofs, 1500, 1500, len);
+      realLen := realLen + 1500;
+      INC(ofs, 1500);
+      DEC(len, 1500);
+      DEC(min, 1500);
+    END;
+    IF res = 0 THEN ReceiveChunk(c, data, ofs, size, min, len) ELSE len := 0 END;
+    len := len + realLen
+  END Receive;
+
+  PROCEDURE DelaySend* (c: Connection; enable: BOOLEAN);
+  BEGIN (* no-op *)
+  END DelaySend;
+
+  PROCEDURE KeepAlive* (c: Connection; enable: BOOLEAN);
+  BEGIN (* no-op *)
+  END KeepAlive;
+
+  PROCEDURE Available* (c: Connection): INTEGER;
+    TYPE blobType = RECORD op, res, socketid: INTEGER END;
+    VAR blob: blobType;
+  BEGIN
+    blob.op := 1000BH; blob.socketid := c.socket;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    res := 0
+  RETURN blob.res
+  END Available;
+
+  PROCEDURE State* (c: Connection): INTEGER;
+    VAR result: INTEGER;
+  BEGIN result := c.state;
+  RETURN result
+  END State;
+
+  PROCEDURE AwaitState* (c: Connection; good, bad: SET; ms: INTEGER);
+  BEGIN (* no-op *)
+  END AwaitState;
+
+  PROCEDURE Close* (c: Connection);
+    TYPE blobType = RECORD op, res, socketid: INTEGER END;
+    VAR blob: blobType;
+  BEGIN
+    blob.op := 1000CH; blob.socketid := c.socket;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    res := blob.res
+  END Close;
+
+  PROCEDURE Accept* (c: Connection; VAR client: Connection): INTEGER;
+    TYPE blobType = RECORD op, res, socketid, clientid, fip, fport: INTEGER END;
+    VAR blob: blobType;
+  BEGIN
+    blob.op := 1000DH; blob.socketid := c.socket;
+    SYSTEM.PUT(-32, SYSTEM.ADR(blob));
+    res := blob.res;
+    IF (res = Ok) & (blob.clientid = -1) THEN
+      res := NotConnected;
+    END;
+    IF res = Ok THEN
+      client.lport := c.lport;
+      client.fip := blob.fip;
+      client.fport := blob.fport;
+      client.state := Established;
+      client.socket := blob.clientid;
+      client.localAdr := 0;
+      client.foreignAdr := blob.fip;
+    END;
+    RETURN res
+  END Accept;
+
+END TCP.
