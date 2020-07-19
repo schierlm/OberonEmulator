@@ -5,6 +5,7 @@
 <title>Project Oberon emulator in JavaScript and Java</title>
 <style>
 body { font-family: Verdana, Arial, Helvetica, sans-serif; }
+dt {font-weight: bold; }
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-fork-ribbon-css/0.2.0/gh-fork-ribbon.min.css" />
 </head>
@@ -61,6 +62,23 @@ or hide. You can copy and paste from there like normal.</p>
 	<label><input id="oldemu" type="radio" name="flavor" value="old">Old emulator (ugly)</label>
 	<label><input type="radio" name="flavor" value="js" checked>Pure JavaScript emulator</label>
 	<label><input id="wasmemu" type="radio" name="flavor" value="wasm" disabled>JavaScript+WebAssembly emulator (faster)</label>
+	<p>Most disk images have last been rebuilt in April 2020.</p>
+	<h3>Short description of available disk images:</h3>
+	<dl>
+	<dt>MinimalDiskImage</dt><dd>A small (~100KB) disk image containing only the necessary files to start Oberon. No compiler, no tools. So
+	  all you can use it for is editing Text files.</dd>
+	<dt>FullDiskImage</dt><dd>Full content of the original Project Oberon 2013, with some patches to make it more convenient in the emulator.</dd>
+	<dt>VanillaDiskImage</dt><dd>Full content of the Origina Project Oberon 2013, with only minimal patches to make it work in the JS emulator.</dd>
+	<dt>ExtendedOberonDiskImage</dt><dd>Image based on Andreas Pirklbauer's <a href="https://github.com/andreaspirklbauer/Oberon-extended">Extended Oberon</a></dd>
+	<dt>IntegratedOberonDiskImage</dt><dd>Image based on Charles Perkin's <a href="https://github.com/io-core/io">Integrated Oberon</a></dd>
+	<dt>BootFromSerialLine</dt><dd>Small image that only boots from a serial line (used with a serial line to another Oberon system)</dd>
+	<dt>ColorDiskImage</dt><dd>Image patched to support 16 colors.</dd>
+	<dt>UnicodeDiskImage</dt><dd>Image patched to support Unicode characters.</dd>
+	<dt>*BigmemDiskImage</dt><dd>Same as the images without <b>Bigmen</b>, but using a 4MB address space instead of 1MB.</dd>
+	<dt>*WithRescueDiskImage</dt><dd>Same as the images without <b>WithRescue</b>, but these include a <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/RescueSystem">rescue system</a> to fix and recompile in case you break the boot.</dd>
+	<dt>ModificationsDiskImage</dt><dd>Image based on my <a href="https://github.com/schierlm/Oberon2013Modifications">Oberon 2013 Modifications</a></dd>
+	<dt>DebuggableDiskImage</dt><dd>Image that includes a <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/RescueSystem">Kernel debugger</a></dd>
+	</dl>
 </form>
 <script type="text/javascript">
 try {
