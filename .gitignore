@@ -6,7 +6,8 @@ Java/.project
 Java/.settings
 Java/*.bin
 Java/OberonEmulator.jar
-JavaScript/*.png
-JavaScript/*.zip
+JS/*.png
+JS/*.zip
+JS/offline-emu.html
 Oberon/download
 Oberon/work

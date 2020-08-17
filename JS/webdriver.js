@@ -55,7 +55,11 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 	this.filelink = new FileLink(this);
 	this.link = dualSerial ? new DualLink(this.filelink, this.filelink) : this.filelink;
 
-	SiteConfigLoader.read(configFile, this);
+	if (offlineInfo) {
+		emulator.useConfiguration(offlineInfo.config);
+	} else {
+		SiteConfigLoader.read(configFile, this);
+	}
 }
 
 (function(){
@@ -159,8 +163,12 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 		if (rom === undefined) {
 			if (this._hasDirMark(contents, 0)) {
 				if (!this.machine) {
-					var reader = new ROMFileReader("boot.rom", contents, name);
-					return void(reader.prepareContentsThenNotify(this));
+					if (offlineInfo) {
+						rom = offlineInfo.rom;
+					} else {
+						var reader = new ROMFileReader("boot.rom", contents, name);
+						return void(reader.prepareContentsThenNotify(this));
+					}
 				} else {
 					rom = this.machine.getBootROM();
 				}
