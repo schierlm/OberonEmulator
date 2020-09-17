@@ -1,0 +1,39 @@
+MODULE* BootLoad;
+  IMPORT SYSTEM;
+  CONST MT = 12; SP = 14; LNK = 15;
+    MTOrg = 20H; MemLim = 0E7EF0H; stackOrg = 80000H;
+    FSoffset = 0H;   (*block offset*)
+
+  PROCEDURE LoadFromDisk;
+    VAR
+      src, dst, lim, ml: INTEGER;
+  BEGIN
+    SYSTEM.GET(3FFFF80H - 4, ml);
+    IF ml = 4D4C696DH THEN
+      SYSTEM.GET(3FFFF80H - 8, ml)
+    ELSE
+      ml := MemLim
+    END;
+    src := (FSoffset + 4) DIV 2;
+    dst := 0;
+    REPEAT
+      SYSTEM.PUT(-28, dst);
+      SYSTEM.PUT(-28, 080000000H + src);
+      IF dst = 0 THEN SYSTEM.GET(16, lim) END;
+      INC(src); INC(dst, 1024);
+    UNTIL dst >= lim;
+    SYSTEM.LDREG(11, (ml + 70000H) DIV 100000H * stackOrg);
+    SYSTEM.PUT(12, ml); SYSTEM.PUT(24, SYSTEM.REG(11))
+  END LoadFromDisk;
+
+BEGIN
+  SYSTEM.LDREG(MT, MTOrg);
+  IF SYSTEM.REG(LNK) = 0 THEN SYSTEM.LDREG(SP, stackOrg); LED(82H); LoadFromDisk END;
+  IF SYSTEM.REG(11) # 0 THEN
+    SYSTEM.LDREG(SP, SYSTEM.REG(11))
+  ELSE
+    SYSTEM.COPY(24, 24, 1); SYSTEM.LDREG(SP, SYSTEM.REG(3))
+    (* = SYSTEM.LDREG(SP, SYSTEM.GET(24)) *)
+  END;
+  LED(84H)
+END BootLoad.

@@ -1,9 +1,13 @@
-function RISCMachine(romWords, callback) {
+function RISCMachine(romWords) {
 	this.registers = new Int32Array(
 		this.GeneralRegisterCount + this.SpecialRegisterCount
 	);
-	if ((romWords[255] & 0xFFFFFF) == 0x3D424D) {
+	var magic = (romWords[255] & 0xFFFFFF)
+	if (magic == 0x3D424D || magic == 0x3D4243 || magic == 0x3D423F) {
 		var mb = (romWords[255] >>> 24) & 0xF;
+		if ((romWords[255] >>> 24) == 0x3F) {
+			mb = 1;
+		}
 		if (mb == 0) mb = 16;
 		this.MemSize = 0x100000 * mb;
 		this.MemWords = (this.MemSize / 4);
@@ -13,6 +17,7 @@ function RISCMachine(romWords, callback) {
 		this.PaletteStart += offset;
 		this.IOStart += offset;
 	}
+	this.colorSupported = magic == 0x3D4243;
 	this.mainMemory = new Int32Array(this.MemWords);
 	this.flag_Z = false, this.flag_N = false;
 	this.flag_C = false, this.flag_V = false;
@@ -84,6 +89,8 @@ function RISCMachine(romWords, callback) {
 	}
 
 	$proto.memReadPalette = function(address) {
+		if (!this.colorSupported)
+			return 0;
 		if (this.palette == null) {
 			this.DisplayStart = 0x09FF00 + this.MemSize - 0x100000;
 			this.palette = [
@@ -143,9 +150,29 @@ function RISCMachine(romWords, callback) {
 		emulator.registerVideoChange(offset, val, this.palette);
 	}
 
-	$proto.cpuReset = function(cold) {
+	$proto.cpuReset = function(cold, ramhint, colorhint) {
 		this.cpuPutRegister(this.PCID, this.ROMStart / 4);
-		if (cold) this.cpuPutRegister(15, 0);
+		if (cold) {
+			this.cpuPutRegister(15, 0);
+			var magic = this.bootROM[255];
+			if ((magic == 0x3F3D424D || magic == 0x3F3D4243 || magic == 0x3F3D423F) && this.MemSize != 0x100000 * ramhint) {
+				var offset = (ramhint - this.MemSize / 0x100000) * 0x100000;
+				this.MemSize = 0x100000 * ramhint;
+				this.MemWords = (this.MemSize / 4);
+				this.DisplayStart += offset;
+				this.ROMStart += offset;
+				this.PaletteStart += offset;
+				this.IOStart += offset;
+				this.mainMemory = new Int32Array(this.MemWords);
+			}
+			if ((magic & 0xFFFFFF) == 0x3D423F) {
+				this.colorSupported = colorhint;
+			}
+			if (this.palette != null) {
+				this.DisplayStart = 0x0E7F00 + this.MemSize - 0x100000;
+				this.palette = null;
+			}
+		}
 	}
 
 	$proto.cpuRun = function() {

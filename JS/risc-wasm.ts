@@ -25,9 +25,9 @@ var MemSize: i32 = 0x100000;
 var waitMillis: i32 = 0;
 
 export function Initialize(mb: i32): i32 {
-	if (mb != 1) {
+	if (mb != MemSize / 0x100000) {
+		var offset: i32 = (mb - MemSize / 0x100000) * 0x100000;
 		MemSize = 0x100000 * mb;
-		var offset: i32 = (mb - 1) * 0x100000;
 		DisplayStart += offset;
 		ROMStart += offset;
 		PaletteStart += offset;
