@@ -96,6 +96,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 }
 .menuitem {
   display: block;
+  white-space: nowrap;
   height: 2em;
 }
 .menuitem > * {
@@ -251,8 +252,12 @@ body.leftpreview #emulatorface {
         <button id="breakbutton" class="midflight menuitem"
                 onclick="emulator.reset(false);">Break</button>
 
-        <button id="resetbutton" class="midflight menuitem"
-                onclick="emulator.reset(true);">Reset</button>
+        <button id="resetbutton" class="midflight menuitem" onclick="emulator.reset(true);">
+		<span>Reset
+			<select class="ramhint" onclick="event.stopPropagation()"><option>1 MB</option></select>
+			<select class="colorhint" onclick="event.stopPropagation()"><option>b/w</option></select>
+		</span>
+	</button>
       </div>
     </div>
     <div class="menu">
@@ -318,7 +323,10 @@ body.leftpreview #emulatorface {
 <p><b>RAM size:</b> <select name="ramsize">
 	<option value="1">1 MB</option><option value="2">2 MB</option>
 	<option value="4">4 MB</option><option value="8">8 MB</option>
-	<option value="16">16 MB</option>
+	<option value="0">16 MB</option><option value="?">selectable</option>
+</select></p>
+<p><b>Color:</b> <select name="colorchoice">
+	<option value="M">b/w</option><option value="C">16c</option><option value="?">selectable</option>
 </select></p>
 <p><b>Disk:</b> Currently loaded disk</p>
 <input type="button" name="pngexport" value="Export" onclick="emulator.ui.doExportPNG();">

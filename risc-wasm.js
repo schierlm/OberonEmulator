@@ -1,10 +1,15 @@
 function RISCMachine(romWords) {
 	this.megabytes = 1;
-	if ((romWords[255] & 0xFFFFFF) == 0x3D424D) {
+	var magic = (romWords[255] & 0xFFFFFF)
+	if (magic == 0x3D424D || magic == 0x3D4243 || magic == 0x3D423F) {
 		var mb = (romWords[255] >>> 24) & 0xF;
+		if ((romWords[255] >>> 24) == 0x3F) {
+			mb = 1;
+		}
 		if (mb == 0) mb = 16;
 		this.megabytes = mb;
 	}
+	this.colorSupported = magic == 0x3D4243;
 	this.bootROM = romWords;
 }
 
@@ -18,6 +23,8 @@ function RISCMachine(romWords) {
 	}
 
 	$proto.memReadPalette = function(address0) {
+		if (!this.colorSupported)
+			return 0;
 		if (this.palette == null) {
 			this.palette = [
 				0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0xff00ff, 0xffff00, 0x00ffff, 0xaa0000,
@@ -67,7 +74,18 @@ function RISCMachine(romWords) {
 		}
 	}
 
-	$proto.cpuReset = function(cold) {
+	$proto.cpuReset = function(cold, ramhint, colorhint) {
+		if (cold) {
+			var magic = this.bootROM[255];
+			if ((magic == 0x3F3D424D || magic == 0x3F3D4243 || magic == 0x3F3D423F) && this.megabytes != ramhint) {
+				this.megabytes = ramhint;
+				var romBase = this.wasm.exports.Initialize(this.megabytes);
+				new Int32Array(this.wasm.exports.memory.buffer).set(this.bootROM, romBase/4);
+			}
+			if ((magic & 0xFFFFFF) == 0x3D423F) {
+				this.colorSupported = colorhint;
+			}
+		}
 		this.wasm.exports.cpuReset(cold);
 	}
 

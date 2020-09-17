@@ -55,7 +55,11 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 	this.filelink = new FileLink(this);
 	this.link = dualSerial ? new DualLink(this.filelink, this.filelink) : this.filelink;
 
-	SiteConfigLoader.read(configFile, this);
+	if (window.offlineInfo) {
+		this.useConfiguration(offlineInfo.config);
+	} else {
+		SiteConfigLoader.read(configFile, this);
+	}
 }
 
 (function(){
@@ -159,8 +163,12 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 		if (rom === undefined) {
 			if (this._hasDirMark(contents, 0)) {
 				if (!this.machine) {
-					var reader = new ROMFileReader("boot.rom", contents, name);
-					return void(reader.prepareContentsThenNotify(this));
+					if (window.offlineInfo) {
+						rom = offlineInfo.rom;
+					} else {
+						var reader = new ROMFileReader("boot.rom", contents, name);
+						return void(reader.prepareContentsThenNotify(this));
+					}
 				} else {
 					rom = this.machine.getBootROM();
 				}
@@ -183,6 +191,33 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 		if (!this.isDisplayReady()) {
 			this.setUpDisplay(this.width, this.height);
 		}
+
+		var magic = rom[255] & 0xFFFFFF;
+		var magicMB = (rom[255] >>> 24) & 0xF;
+		if (magic == 0x3D424D || magic == 0x3D4243 || magic == 0x3D423F) {
+			if (magicMB == 0) magicMB = 16;
+			if ((rom[255] >>> 24) == 0x3F) {
+				magicMB = -1;
+			}
+		} else {
+			magic = 0x3D424D;
+			magicMB = 1;
+		}
+		var html = '';
+		if (magic != 0x3D4243)
+			html +='<option>b/w</option>';
+		if (magic != 0x3D424D)
+			html +='<option>16c</option>';
+		document.querySelector(".colorhint").innerHTML = html;
+		if (magicMB != -1) {
+			html = '<option>' + magicMB +' MB</option>';
+		} else {
+			html = '';
+			for(magicMB = 1; magicMB <= 64; magicMB *= 2) {
+				html += '<option>'+magicMB+' MB</option>';
+			}
+		}
+		document.querySelector(".ramhint").innerHTML = html;
 
 		this.disk = disk;
 		this.startMillis = Date.now();
@@ -213,7 +248,9 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 	};
 
 	$proto.reset = function(cold) {
-		this.machine.cpuReset(cold);
+		var ramhint = +document.querySelector(".ramhint").value.replace(" MB","");
+		var colorhint = document.querySelector(".colorhint").value == "16c";
+		this.machine.cpuReset(cold, ramhint, colorhint);
 		if (cold) {
 			var base = this.machine.getDisplayStart();
 			this.machine.memWriteWord(base, 0x53697A65); // magic value 'Size'
@@ -226,6 +263,11 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 			this.machine.memWriteWord(0x10000, 0x54696D65); // magic value 'Time'
 			this.machine.memWriteWord(0x10004, d.getTime() - this.startMillis);
 			this.machine.memWriteWord(0x10008, clock);
+
+			var paletteStart = 0x0FFF80 + (base / 0x100000 | 0) * 0x100000;
+			this.machine.memWriteWord(paletteStart-4, 0x4D4C696D); // magic value 'MLim'
+			var mLimOffs = this.machine.colorSupported ? 0x48010 : 0x10;
+			this.machine.memWriteWord(paletteStart-8, base - mLimOffs);
 		}
 		this.reschedule();
 	};
@@ -596,6 +638,7 @@ function ControlBarUI(emulator, dualSerial) {
 		this.systemButton.classList.add("feedback");
 		this.controlBarBox.classList.remove("preflight");
 		this.controlBarBox.classList.add("started");
+		this.controlBarBox.querySelector(".endcontrols .menu").style.width="";
 	};
 
 	$proto.markName = function(name) {
@@ -737,8 +780,10 @@ function ControlBarUI(emulator, dualSerial) {
 	$proto.exportCustomImage = function() {
 		this.exportOptions.romtype[0].checked=true;
 		this.exportOptions.romfile.value="";
-		var mb = (emulator.machine.getBootROM()[255] & 0xFFFFFF) == 0x3D424D ? (emulator.machine.getBootROM()[255] >>> 24) & 0xF : 1;
+		var magic = emulator.machine.getBootROM()[255] & 0xFFFFFF;
+		var mb = (magic == 0x3D424D || magic == 0x3D4243 || magic == 0x3D423F) ? String.fromCharCode(emulator.machine.getBootROM()[255] >>> 24) : "1";
 		this.exportOptions.ramsize.value=mb;
+		this.exportOptions.colorchoice.value = (magic == 0x3D424D || magic == 0x3D4243 || magic == 0x3D423F) ? String.fromCharCode(magic & 0xFF) : "M";
 		this.exportOptions.classList.add("open");
 		this.togglePopup(this.systemButton);
 	}
@@ -772,9 +817,11 @@ function ControlBarUI(emulator, dualSerial) {
 
 	$proto.doExportPNGWithROM = function(rom) {
 		var mb = this.exportOptions.ramsize.value;
-		if (mb != 1) {
-			rom[255] = 0x3D424D | ((mb|0x30) << 24);
-		} else if ((rom[255] & 0xFFFFFF) == 0x3D424D) {
+		var cc = this.exportOptions.colorchoice.value;
+		var magic = 0x3D4200 | (cc.charCodeAt(0)) | (mb.charCodeAt(0) << 24);
+		if (magic != 0x313D424D) {
+			rom[255] = magic;
+		} else if ((rom[255] & 0xFFFF00) == 0x3D4200) {
 			rom[255] = 0;
 		}
 		var canvas = document.createElement("canvas");
