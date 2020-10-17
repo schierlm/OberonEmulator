@@ -105,6 +105,12 @@ public class Main {
 				displayStart += (mb-1) * 0x100000;
 				romStart += (mb-1) * 0x100000;
 			}
+			boolean headless = false;
+			if (args[0].equals("0") && args[1].equals("0")) {
+				headless = true;
+				args[0] = "1024";
+				args[1] = "768";
+			}
 			BufferedImage img = new BufferedImage(Math.abs(Integer.parseInt(args[0])) & ~31, Integer.parseInt(args[1]), BufferedImage.TYPE_INT_RGB);
 			int span = -128;
 			if (Integer.parseInt(args[0]) < 0) {
@@ -115,7 +121,7 @@ public class Main {
 			ServerSocket rs232ss = null, rs232ss2 = null;
 			Socket rs232s = null;
 			InetSocketAddress net = null;
-			int pcLinkPort = -1;
+			int pcLinkPort = -1, commandLinePort = -1;
 			if (args.length >= 5) {
 				if (args[4].endsWith("+PCLink")) {
 					args[4] = args[4].substring(0, args[4].length() - 7);
@@ -125,6 +131,9 @@ public class Main {
 				if (args[4].equals("PCLink")) {
 					rs232ss = new ServerSocket(0);
 					pcLinkPort = rs232ss.getLocalPort();
+				} else if (args[4].equals("CommandLine")) {
+					rs232ss = new ServerSocket(0);
+					commandLinePort = rs232ss.getLocalPort();
 				} else if (args[4].contains(":")) {
 					String[] parts = args[4].split(":", 2);
 					rs232s = new Socket(parts[0], Integer.parseInt(parts[1]));
@@ -146,9 +155,20 @@ public class Main {
 			ImageMemory imgmem = new ImageMemory(span, img, (int)((displayStart & 0xFFFFFFFFL) / 4));
 			Memory mem = new Memory(imgmem, bootloader, mmio, largeAddressSpace, memSize, displayStart, romStart);
 			keyboard.setMMIO(mmio);
-			EmulatorFrame emuFrame = new EmulatorFrame(mem, keyboard, mmio, img, imgmem, largeAddressSpace);
+			EmulatorFrame emuFrame = null;
+			CPU cpu = null;
+			if (headless) {
+				cpu = new CPU(mem, largeAddressSpace);
+				cpu.start();
+			} else {
+				emuFrame = new EmulatorFrame(mem, keyboard, mmio, img, imgmem, largeAddressSpace);
+				cpu = emuFrame.getCPU();
+			}
 			if (pcLinkPort != -1) {
 				PCLink.start("localhost", pcLinkPort, emuFrame);
+			}
+			if (commandLinePort != -1) {
+				PCLink.startCommandLine("localhost",  rs232ss.getLocalPort(), cpu, keyboard, mmio);
 			}
 		} else {
 			System.out.println("Usage: java -jar OberonEmulator.jar PCLink <host> <port>");
@@ -162,6 +182,7 @@ public class Main {
 			System.out.println("       java -jar OberonEmulator.jar HostFS <hostfspath> ...");
 			System.out.println();
 			System.out.println("<rs232> can be a TCP port number, <host>:<port>, the word 'PCLink' to run PCLink over virtual RS232, or '-' to ignore.");
+			System.out.println("        It may also be 'CommandLine' to launch a CommandLineCompiler compatible command line on stdin/stdout.");
 			System.out.println("        You can also add +PCLink to one of the other options, to run PCLink on the second RS232 port.");
 			System.out.println("<net> is a broadcast IP address, in the form <host>[:<port>]. Default port is 48654 (0BE0Eh, for 0BEr0nnEt).");
 			System.out.println("<kbdtype> is one of Virtual, ParaVirtual, NoParaVirtual, Native, Hybrid.");

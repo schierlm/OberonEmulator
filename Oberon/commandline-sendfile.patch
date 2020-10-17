@@ -1,0 +1,21 @@
+--- 1/CommandLineSystem.Mod.txt
++++ 2/CommandLineSystem.Mod.txt
+@@ -58,6 +58,18 @@
+         WHILE i > 0 DO Rec(x); Files.WriteByte(R, x); DEC(i) END;
+         Rec(x); ASSERT(x = 0);
+         Files.Register(F); Texts.WriteString(W, " done"); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
++      ELSIF line[0] = "-" THEN
++        i := 0; WHILE line[i+1] # 0X DO name[i] := line[i+1]; INC(i) END;
++        name[i] := 0X;
++        Texts.WriteString(W, "sending "); Texts.WriteString(W, name);
++        Texts.Append(Oberon.Log, W.buf);
++        F := Files.Old(name);
++        i := Files.Length(F);
++        Send(i DIV 1000000H MOD 100H); Send(i DIV 10000H MOD 100H);
++        Send(i DIV 100H MOD 100H); Send(i MOD 100H);
++        Files.Set(R, F, 0);
++        WHILE i > 0 DO Files.ReadByte(R, x); Send(x); DEC(i) END;
++        Files.Close(F); Texts.WriteString(W, " done"); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
+       ELSE
+         Texts.WriteString(W, "> "); Texts.Append(Oberon.Log, W.buf);
+         i := Oberon.Log.len;

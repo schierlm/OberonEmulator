@@ -12,10 +12,13 @@ import java.awt.dnd.DropTargetEvent;
 import java.awt.dnd.DropTargetListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -136,6 +139,107 @@ public class PCLink extends JFrame {
 					}
 			}
 		}
+	}
+
+	public static void startCommandLine(String host, int port, CPU cpu, Keyboard keyboard, MemoryMappedIO mmio) throws Exception {
+		Socket s = new Socket(host, port);
+		DataInputStream in = new DataInputStream(s.getInputStream());
+		DataOutputStream out = new DataOutputStream(new BufferedOutputStream(s.getOutputStream()));
+		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+		String line;
+		File baseDirectory = new File(".").getCanonicalFile();
+		while ((line = br.readLine()) != null) {
+			if (line.startsWith("!")) {
+				if (line.equalsIgnoreCase("!reset")) {
+					cpu.reset(true);
+				} else if (line.toLowerCase().startsWith("!mouse ")) {
+					String args = line.substring(7);
+					if (args.matches("[0-9]+,[0-9]+")) {
+						String[] coords = args.split(",");
+						mmio.mouseMoved(Integer.parseInt(coords[0]), Integer.parseInt(coords[1]));
+					} else if (args.matches("[LlMmRr]+")) {
+						for (int i = 0; i < args.length(); i++) {
+							int idx = "lmrLMR".indexOf(args.charAt(i));
+							if (idx != -1)
+								mmio.mouseButton(idx % 3 + 1, idx >= 3);
+						}
+					} else {
+						System.out.println("Unsupported extended command: " + line);
+					}
+				} else if (line.toLowerCase().startsWith("!type ")) {
+					for (int i = 6; i < line.length(); i++) {
+						keyboard.type(line.charAt(i));
+					}
+				} else if (line.toLowerCase().startsWith("!key +")) {
+					keyboard.press(KeyEvent.KEY_LOCATION_STANDARD, Integer.parseInt(line.substring(6)));
+				} else if (line.toLowerCase().startsWith("!key -")) {
+					keyboard.release(KeyEvent.KEY_LOCATION_STANDARD, Integer.parseInt(line.substring(6)));
+				} else if (line.toLowerCase().startsWith("!sleep ")) {
+					Thread.sleep(Integer.parseInt(line.substring(7)));
+				} else if (line.toLowerCase().startsWith("!cd ")) {
+					baseDirectory = new File(baseDirectory, line.substring(4)).getCanonicalFile();
+					System.out.println("Now at " + baseDirectory);
+				} else if (line.startsWith("!+")) {
+					File f = new File(baseDirectory, line.substring(2));
+					try (FileInputStream fIn = new FileInputStream(f)) {
+						String filename = line.substring(2) + "\0";
+						int flen = (int) f.length();
+						out.write(REC);
+						out.write(filename.getBytes("ISO-8859-1"));
+						out.flush();
+						waitAck(in);
+						int partLen;
+						do {
+							partLen = Math.min(flen, 255);
+							out.write(partLen);
+							for (int i = 0; i < partLen; i++) {
+								out.write(fIn.read());
+							}
+							out.flush();
+							waitAck(in);
+							flen -= partLen;
+						} while (partLen == 255);
+						waitAck(in);
+					}
+				} else {
+					System.out.println("Unsupported extended command: " + line);
+				}
+				continue;
+			}
+			out.write(line.getBytes("ISO-8859-1"));
+			out.writeByte(0);
+			out.flush();
+			if (line.startsWith("+")) {
+				File f = new File(baseDirectory, line.substring(1));
+				out.writeInt((int) f.length());
+				try (FileInputStream fis = new FileInputStream(f)) {
+					byte[] buf = new byte[4096];
+					int len;
+					while ((len = fis.read(buf)) != -1) {
+						out.write(buf, 0, len);
+					}
+				}
+				out.write(0);
+				out.flush();
+			} else if (line.startsWith("-")) {
+				try (FileOutputStream fos = new FileOutputStream(new File(baseDirectory, line.substring(1)))) {
+					byte[] data = new byte[in.readInt()];
+					in.readFully(data);
+					fos.write(data);
+				}
+			}
+			int b;
+			while ((b = in.read()) > 0) {
+				if (b == 1) {
+					System.exit(1);
+				} else if (b == '\r') {
+					System.out.print('\n');
+				} else {
+					System.out.print((char) b);
+				}
+			}
+		}
+		s.close();
 	}
 
 	private static void waitAck(InputStream in) throws IOException {

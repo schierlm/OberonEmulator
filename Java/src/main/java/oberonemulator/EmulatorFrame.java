@@ -148,4 +148,8 @@ public class EmulatorFrame extends JFrame {
 			}
 		}
 	}
+
+	public CPU getCPU() {
+		return cpu;
+	}
 }
