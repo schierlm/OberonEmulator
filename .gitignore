@@ -11,3 +11,9 @@ JS/*.zip
 JS/offline-emu.html
 Oberon/download
 Oberon/work
+WebSocketServer/bin/
+WebSocketServer/target/
+WebSocketServer/.classpath
+WebSocketServer/.project
+WebSocketServer/.settings
+WebSocketServer/offline-emu.html

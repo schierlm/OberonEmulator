@@ -56,6 +56,15 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 	this.link = dualSerial ? new DualLink(this.filelink, this.filelink) : this.filelink;
 
 	if (window.offlineInfo) {
+		if (/https?:\/\/[^\/]+\//.test(window.location)) {
+			this.wiznet = new WizNet(this);
+			var request = new XMLHttpRequest();
+			request.addEventListener("load", function(event) {
+				window.offlineInfo.netConfig = JSON.parse(event.target.responseText);
+			});
+			request.open("GET", "/net/config.json");
+			request.send(null);
+		}
 		this.useConfiguration(offlineInfo.config);
 	} else {
 		SiteConfigLoader.read(configFile, this);
@@ -391,6 +400,12 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 			}
 			return;
 		}
+	};
+
+	$proto.netCommand = function(value, memory) {
+		if (!window.offlineInfo || !window.offlineInfo.netConfig || !this.wiznet)
+			return;
+		this.wiznet.netCommand(value, memory);
 	};
 
 	$proto.registerKey = function(keyCode) {

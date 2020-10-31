@@ -60,6 +60,7 @@ function RISCMachine(romWords) {
 			case  4: return void(emulator.registerLEDs(val));
 			case  8: return void(emulator.link.setData(val));
 			case 12: return void(emulator.link.setStatus(val));
+			case 32: return void(emulator.netCommand(val, new Int32Array(this.wasm.exports.memory.buffer, this.wasm.exports.getRAMBase(), this.wasm.exports.getRAMSize()/4));
 			case 36: return void(emulator.storageRequest(val, new Int32Array(this.wasm.exports.memory.buffer, this.wasm.exports.getRAMBase(), this.wasm.exports.getRAMSize()/4)));
 			case 40: return void(emulator.clipboard.expect(val));
 			case 44: return void(emulator.clipboard.putData(val));
@@ -110,7 +111,16 @@ function RISCMachine(romWords) {
 	}
 
 	$proto.resetWaitMillis = function() {
-		this.wasm.exports.setWaitMillis(-1);
+		if (this.wasm.exports.getWaitMillis() != 0x7fffffff)
+			this.wasm.exports.setWaitMillis(-1);
+	}
+
+	$proto.setStall = function(stalling) {
+		if (stalling) {
+			this.wasm.exports.setWaitMillis(0x7fffffff);
+		} else {
+			this.wasm.exports.setWaitMillis(-1);
+		}
 	}
 
 	RISCMachine.Initialize = function(fetchCallback, finishCallback) {
