@@ -21,6 +21,7 @@ function RISCMachine(romWords) {
 	this.mainMemory = new Int32Array(this.MemWords);
 	this.flag_Z = false, this.flag_N = false;
 	this.flag_C = false, this.flag_V = false;
+	this.lastLoadRegister = 0;
 	this.bootROM = romWords;
 }
 
@@ -335,6 +336,7 @@ function RISCMachine(romWords) {
 				} else {
 					a_val = this.cpuLoadByte(address) & 0xff;
 				}
+				this.lastLoadRegister = a;
 				this.cpuPutRegister(a, a_val);
 			} else {
 				if ((ir & vbit) == 0) {
@@ -420,6 +422,10 @@ function RISCMachine(romWords) {
 		} else {
 			this.waitMillis = -1;
 		}
+	}
+
+	$proto.repeatLastLoad = function(value) {
+		this.cpuPutRegister(this.lastLoadRegister, value);
 	}
 
 	RISCMachine.Initialize = function(fetchCallback, finishCallback) {

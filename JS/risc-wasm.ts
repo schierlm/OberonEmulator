@@ -23,6 +23,7 @@ var PaletteStart: i32 = 0x0FFF80;
 var IOStart: i32 = 0x0FFFC0;
 var MemSize: i32 = 0x100000;
 var waitMillis: i32 = 0;
+var lastLoadRegister: i32 = 0;
 
 export function Initialize(mb: i32): i32 {
 	if (mb != MemSize / 0x100000) {
@@ -234,6 +235,7 @@ export function cpuSingleStep(): void {
 			} else {
 				a_val = (memReadWord(address & ~3, false) >>> ((address % 4) * 8)) & 0xff;
 			}
+			lastLoadRegister = a;
 			cpuPutRegister(a, a_val);
 		} else {
 			if ((ir & vbit) == 0) {
@@ -273,6 +275,10 @@ export function cpuSingleStep(): void {
 			}
 		}
 	}
+}
+
+export function repeatLastLoad(value: i32): void {
+	this.cpuPutRegister(lastLoadRegister, value);
 }
 
 export function getRAMBase(): i32 {

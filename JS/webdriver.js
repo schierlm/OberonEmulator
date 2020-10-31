@@ -787,6 +787,7 @@ function ControlBarUI(emulator, dualSerial) {
 	};
 
 	$proto.toggleClipboard = function() {
+		this.emulator.clipboard.inputUsed = true;
 		this.clipboardInput.classList.toggle("open");
 		this.selectItem(this.settingsButton, "clipboard");
 		this.clipboardToggle.classList.toggle("checked");
@@ -956,10 +957,27 @@ function Clipboard(widget) {
 	$proto._buffer = null;
 	$proto._input = null;
 	$proto._count = null;
+	$proto.inputUsed = false;
 
 	$proto.getSize = function() {
 		// assert(this._buffer === null)
 		// assert(this._count === null)
+		if (!this.inputUsed && navigator.clipboard && navigator.clipboard.readText) {
+			var that = this;
+			navigator.clipboard.readText().then(function(txt) {
+				that._input.value = txt;
+				that._buffer = that._input.value.split("\n").join("\r").split("");
+				emulator.machine.repeatLastLoad(that._buffer.length);
+				emulator.machine.setStall(false);
+				emulator.reschedule();
+			}, function(err) {
+				emulator.machine.setStall(false);
+				emulator.reschedule();
+			});
+			that._buffer = [];
+			emulator.machine.setStall(true);
+			return 0;
+		}
 		this._buffer = this._input.value.split("\n").join("\r").split("");
 		return this._buffer.length;
 	};
@@ -980,6 +998,9 @@ function Clipboard(widget) {
 			this._input.value = this._buffer.join("").split("\r").join("\n");
 			this._buffer = null;
 			this._count = null;
+			if (!this.inputUsed && navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(this._input.value);
+			}
 		}
 	};
 
