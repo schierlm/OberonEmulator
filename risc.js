@@ -21,6 +21,7 @@ function RISCMachine(romWords) {
 	this.mainMemory = new Int32Array(this.MemWords);
 	this.flag_Z = false, this.flag_N = false;
 	this.flag_C = false, this.flag_V = false;
+	this.lastLoadRegister = 0;
 	this.bootROM = romWords;
 }
 
@@ -130,6 +131,7 @@ function RISCMachine(romWords) {
 			case  4: return void(emulator.registerLEDs(val));
 			case  8: return void(emulator.link.setData(val));
 			case 12: return void(emulator.link.setStatus(val));
+			case 32: return void(emulator.netCommand(val, this.mainMemory));
 			case 36: return void(emulator.storageRequest(val, this.mainMemory));
 			case 40: return void(emulator.clipboard.expect(val));
 			case 44: return void(emulator.clipboard.putData(val));
@@ -334,6 +336,7 @@ function RISCMachine(romWords) {
 				} else {
 					a_val = this.cpuLoadByte(address) & 0xff;
 				}
+				this.lastLoadRegister = a;
 				this.cpuPutRegister(a, a_val);
 			} else {
 				if ((ir & vbit) == 0) {
@@ -409,7 +412,20 @@ function RISCMachine(romWords) {
 	}
 
 	$proto.resetWaitMillis = function() {
-		this.waitMillis = -1;
+		if (this.waitMillis != emulator.startMillis + 0x7fffffff)
+			this.waitMillis = -1;
+	}
+
+	$proto.setStall = function(stalling) {
+		if (stalling) {
+			this.waitMillis = emulator.startMillis + 0x7fffffff;
+		} else {
+			this.waitMillis = -1;
+		}
+	}
+
+	$proto.repeatLastLoad = function(value) {
+		this.cpuPutRegister(this.lastLoadRegister, value);
 	}
 
 	RISCMachine.Initialize = function(fetchCallback, finishCallback) {
