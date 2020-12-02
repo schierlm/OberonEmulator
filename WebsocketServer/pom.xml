@@ -8,7 +8,7 @@
 	<url>http://maven.apache.org</url>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<jetty.version>9.4.33.v20201020</jetty.version>
+		<jetty.version>9.4.35.v20201120</jetty.version>
 	</properties>
 	<dependencies>
 		<dependency>
