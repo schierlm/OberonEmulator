@@ -152,6 +152,8 @@ public class PCLink extends JFrame {
 			if (line.startsWith("!")) {
 				if (line.equalsIgnoreCase("!reset")) {
 					cpu.reset(true);
+				} else if (line.equalsIgnoreCase("!exit")) {
+					System.exit(0);
 				} else if (line.toLowerCase().startsWith("!mouse ")) {
 					String args = line.substring(7);
 					if (args.matches("[0-9]+,[0-9]+")) {
@@ -170,6 +172,8 @@ public class PCLink extends JFrame {
 					for (int i = 6; i < line.length(); i++) {
 						keyboard.type(line.charAt(i));
 					}
+				} else if (line.toLowerCase().startsWith("!typechar ")) {
+					keyboard.type((char) Integer.parseInt(line.substring(10)));
 				} else if (line.toLowerCase().startsWith("!key +")) {
 					keyboard.press(KeyEvent.KEY_LOCATION_STANDARD, Integer.parseInt(line.substring(6)));
 				} else if (line.toLowerCase().startsWith("!key -")) {

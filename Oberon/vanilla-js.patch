@@ -1,0 +1,111 @@
+--- 1/Kernel.Mod
++++ 2/Kernel.Mod
+@@ -222,14 +222,14 @@
+ 
+   PROCEDURE GetSector*(src: INTEGER; VAR dst: Sector);
+   BEGIN src := src DIV 29; ASSERT(SYSTEM.H(0) = 0);
+-    src := src * 2 + FSoffset;
+-    ReadSD(src, SYSTEM.ADR(dst)); ReadSD(src+1, SYSTEM.ADR(dst)+512) 
++    SYSTEM.PUT(-28, SYSTEM.ADR(dst));
++    SYSTEM.PUT(-28, 080000000H + src);
+   END GetSector;
+   
+   PROCEDURE PutSector*(dst: INTEGER; VAR src: Sector);
+   BEGIN dst := dst DIV 29; ASSERT(SYSTEM.H(0) =  0);
+-    dst := dst * 2 + FSoffset;
+-    WriteSD(dst, SYSTEM.ADR(src)); WriteSD(dst+1, SYSTEM.ADR(src)+512)
++    SYSTEM.PUT(-28, SYSTEM.ADR(src));
++    SYSTEM.PUT(-28, 0C0000000H + dst);
+   END PutSector;
+ 
+ (*-------- Miscellaneous procedures----------*)
+--- 1/Input.Mod
++++ 2/Input.Mod
+@@ -12,18 +12,14 @@
+   including tracking the state of the Shift and Ctrl keys*)
+   
+   PROCEDURE Peek();
++    VAR kbdData: INTEGER;
+   BEGIN
+     IF SYSTEM.BIT(msAdr, 28) THEN
+-      SYSTEM.GET(kbdAdr, kbdCode);
+-      IF kbdCode = 0F0H THEN Up := TRUE
+-      ELSIF kbdCode = 0E0H THEN Ext := TRUE
+-      ELSE
+-        IF (kbdCode = 12H) OR (kbdCode = 59H) THEN (*shift*) Shift := ~Up
+-        ELSIF kbdCode = 14H THEN (*ctrl*) Ctrl := ~Up
+-        ELSIF ~Up THEN Recd := TRUE (*real key going down*)
+-        END ;
+-        Up := FALSE; Ext := FALSE
+-      END
++      REPEAT
++        SYSTEM.GET(kbdAdr, kbdData);
++        kbdCode := kbdData DIV 1000000H;
++      UNTIL Recd OR (kbdCode # 0H) OR SYSTEM.BIT(msAdr, 28);
++      IF kbdCode # 0H THEN Recd := TRUE END;
+     END;
+   END Peek;
+ 
+@@ -35,10 +31,7 @@
+   PROCEDURE Read*(VAR ch: CHAR);
+   BEGIN
+     WHILE ~Recd DO Peek() END ;
+-    IF Shift OR Ctrl THEN INC(kbdCode, 80H) END; (*ctrl implies shift*)
+-  (* ch := kbdTab[kbdCode]; *)
+-    SYSTEM.GET(KTabAdr + kbdCode, ch);
+-    IF Ctrl THEN ch := CHR(ORD(ch) MOD 20H) END;
++    ch := CHR(kbdCode);
+     Recd := FALSE
+   END Read;
+ 
+--- 1/Oberon.Mod
++++ 2/Oberon.Mod
+@@ -360,7 +360,8 @@
+   PROCEDURE Loop*;
+     VAR V: Viewers.Viewer; M: InputMsg; N: ControlMsg;
+        prevX, prevY, X, Y, t: INTEGER; keys: SET; ch: CHAR;
+-  BEGIN
++       minTime: INTEGER;
++  BEGIN minTime := 0;
+     REPEAT
+       Input.Mouse(keys, X, Y);
+       IF Input.Available() > 0 THEN Input.Read(ch);
+@@ -382,9 +383,15 @@
+           IF Y >= Display.Height THEN Y := Display.Height END ;
+           M.Y := Y; M.keys := keys; V := Viewers.This(X, Y); V.handle(V, M); prevX := X; prevY := Y
+         END;
++        SYSTEM.PUT(-64, minTime);
+         CurTask := CurTask.next; t := Kernel.Time();
+         IF t >= CurTask.nextTime THEN
+           CurTask.nextTime := t + CurTask.period; CurTask.state := active; CurTask.handle; CurTask.state := idle
++          ;minTime := CurTask.nextTime;
++          FOR t := 1 TO NofTasks DO
++            CurTask := CurTask.next;
++            IF CurTask.nextTime < minTime THEN minTime := CurTask.nextTime END;
++          END
+         END
+       END
+     UNTIL FALSE
+--- 1/Display.Mod
++++ 2/Display.Mod
+@@ -3,7 +3,7 @@
+ 
+   CONST black* = 0; white* = 1;  (*black = background*)
+     replace* = 0; paint* = 1; invert* = 2;  (*modes*)
+-    base = 0E7F00H;  (*adr of 1024 x 768 pixel, monocolor display frame*)
++    base = 3FE7F00H;  (*adr of 1024 x 768 pixel, monocolor display frame*)
+ 
+   TYPE Frame* = POINTER TO FrameDesc;
+     FrameMsg* = RECORD END ;
+@@ -180,6 +180,11 @@
+   END ReplPattern;
+ 
+ BEGIN Base := base; Width := 1024; Height := 768;
++  SYSTEM.GET(base, arrow);
++  IF arrow = 53697A65H THEN
++    SYSTEM.GET(base+4, Width);
++    SYSTEM.GET(base+8, Height);
++  END;
+   arrow := SYSTEM.ADR($0F0F 0060 0070 0038 001C 000E 0007 8003 C101 E300 7700 3F00 1F00 3F00 7F00 FF00$);
+   star := SYSTEM.ADR($0F0F 8000 8220 8410 8808 9004 A002 C001 7F7F C001 A002 9004 8808 8410 8220 8000$);
+   hook := SYSTEM.ADR($0C0C 070F 8707 C703 E701 F700 7F00 3F00 1F00 0F00 0700 0300 01$);
