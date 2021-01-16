@@ -1,6 +1,6 @@
 /*
- * Copyright © 2014 Peter De Wachter
- * Copyright © 2014 Michael Schierl
+ * Copyright Â© 2014 Peter De Wachter
+ * Copyright Â© 2014, 2021 Michael Schierl
  * 
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
