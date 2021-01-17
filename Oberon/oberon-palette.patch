@@ -46,18 +46,18 @@
      END
    END UpdateMark;
  
-@@ -113,8 +113,10 @@
-     WHILE (nextCh # CR) & (R.fnt # NIL) DO
+@@ -127,8 +127,10 @@
        Fonts.GetPat(R.fnt, nextCh, dx, x, y, w, h, patadr);
+       IF -R.fnt.minY < dsr THEN dy := dsr + R.fnt.minY ELSE dy := 0 END;
        IF (X + x + w <= NX) & (h # 0) THEN
-+        Display.CopyPattern(F.col, patadr, X + x, Y + y, Display.invert);
++        Display.CopyPattern(F.col, patadr, X + x, Y + y - dy, Display.invert);
 +        IF (R.col # 0) THEN
-         Display.CopyPattern(R.col, patadr, X + x, Y + y, Display.invert)
+         Display.CopyPattern(R.col, patadr, X + x, Y + y - dy, Display.invert)
 -      END;
 +      END;END;
        X := X + dx; INC(len); Texts.Read(R, nextCh)
      END;
-     L.len := len + 1; L.wid := X + eolW - (F.X + F.left);
+     IF (R.fnt # NIL) & (L.lsp = 0) THEN L.lsp := R.fnt.height END;
 @@ -135,7 +137,7 @@
    PROCEDURE Mark* (F: Frame; on: BOOLEAN);
    BEGIN
