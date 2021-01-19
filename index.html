@@ -59,12 +59,7 @@ You can copy and paste from there like normal.</p>
 		<option>IntegratedOberonDiskImage</option>
 		<option>BootFromSerialLine</option>
 		<option>ColorDiskImage</option>
-		<option>UnicodeDiskImage</option>
-		<option>FullBigmemDiskImage</option>
-		<option>ColorBigmemDiskImage</option>
 		<option>FullWithRescueDiskImage</option>
-		<option>FullBigmemWithRescueDiskImage</option>
-		<option>ModificationsDiskImage</option>
 		<option>DebuggableDiskImage</option>
 		<option>FullDynmemDiskImage</option>
 	</select>
@@ -74,18 +69,15 @@ You can copy and paste from there like normal.</p>
 	<label><input id="wasmemu" type="radio" name="flavor" value="wasm" disabled>JavaScript+WebAssembly emulator (faster)</label>
 	<h3>Short description of available disk images [with last update dates]:</h3>
 	<dl>
-	<dt>MinimalDiskImage [2020-04-03]</dt><dd>A small (~100KB) disk image containing only the necessary files to start Oberon. No compiler, no tools. So
+	<dt>MinimalDiskImage [2021-01-19]</dt><dd>A small (~100KB) disk image containing only the necessary files to start Oberon. No compiler, no tools. So
 	  all you can use it for is editing Text files.</dd>
-	<dt>FullDiskImage [2020-04-03]</dt><dd>Full content of the original Project Oberon 2013, with some patches to make it more convenient in the emulator.</dd>
-	<dt>VanillaDiskImage [2020-04-03]</dt><dd>Full content of the Origina Project Oberon 2013, with only minimal patches to make it work in the JS emulator.</dd>
+	<dt>FullDiskImage [2021-01-19]</dt><dd>Full content of the original Project Oberon 2013, with some patches to make it more convenient in the emulator.</dd>
+	<dt>VanillaDiskImage [2021-01-19]</dt><dd>Full content of the Origina Project Oberon 2013, with only minimal patches to make it work in the JS emulator.</dd>
 	<dt>ExtendedOberonDiskImage [2020-10-31]</dt><dd>Image based on Andreas Pirklbauer's <a href="https://github.com/andreaspirklbauer/Oberon-extended">Extended Oberon</a></dd>
-	<dt>IntegratedOberonDiskImage [2019-04-21]</dt><dd>Image based on Charles Perkin's <a href="https://github.com/io-core/io">Integrated Oberon</a></dd>
-	<dt>BootFromSerialLine [2019-01-26]</dt><dd>Small image that only boots from a serial line (used with a serial line to another Oberon system)</dd>
-	<dt>ColorDiskImage [2019-03-27]</dt><dd>Image patched to support 16 colors.</dd>
-	<dt>UnicodeDiskImage [2019-01-19]</dt><dd>Image patched to support Unicode characters.</dd>
-	<dt>*BigmemDiskImage</dt><dd>Same as the images without <b>Bigmem</b>, but using a 4MB address space instead of 1MB.</dd>
-	<dt>*WithRescueDiskImage</dt><dd>Same as the images without <b>WithRescue</b>, but these include a <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/RescueSystem">rescue system</a> to fix and recompile in case you break the boot.</dd>
-	<dt>ModificationsDiskImage [2020-01-01]</dt><dd>Image based on my <a href="https://github.com/schierlm/Oberon2013Modifications">Oberon 2013 Modifications</a></dd>
+	<dt>IntegratedOberonDiskImage [2020-11-29]</dt><dd>Image based on Charles Perkin's <a href="https://github.com/io-core/io">Integrated Oberon</a></dd>
+	<dt>BootFromSerialLine [2021-01-19]</dt><dd>Small image that only boots from a serial line (used with a serial line to another Oberon system)</dd>
+	<dt>ColorDiskImage [2021-01-19]</dt><dd>Image patched to support 16 colors.</dd>
+	<dt>FullWithRescueDiskImage [2021-01-19]</dt><dd>Same as the images without <b>WithRescue</b>, but these include a <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/RescueSystem">rescue system</a> to fix and recompile in case you break the boot.</dd>
 	<dt>DebuggableDiskImage [2020-05-29]</dt><dd>Image that includes a <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/RescueSystem">Kernel debugger</a></dd>
 	<dt>FullDynmemDiskImage [2020-09-17]</dt><dd>Image supports changing the memory configuration and color support on every reset.</dd>
 	</dl>
