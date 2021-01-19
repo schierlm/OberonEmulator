@@ -15,15 +15,22 @@ MODULE* BootLoad;
   END RecInt;
 
   PROCEDURE LoadFromLine;
-    VAR len, adr, dat: INTEGER;
+    VAR len, adr, dat, ml: INTEGER;
   BEGIN RecInt(len);
+    SYSTEM.GET(3FFFF80H - 4, ml);
+    IF ml = 4D4C696DH THEN
+      SYSTEM.GET(3FFFF80H - 8, ml)
+    ELSE
+      ml := MemLim
+    END;
     WHILE len > 0 DO
       RecInt(adr);
       REPEAT RecInt(dat); SYSTEM.PUT(adr, dat); adr := adr + 4; len := len - 4 UNTIL len = 0;
       RecInt(len)
-    END
+    END;
+    SYSTEM.LDREG(11, (ml + 70000H) DIV 100000H * stackOrg);
+    SYSTEM.PUT(12, ml); SYSTEM.PUT(24, SYSTEM.REG(11))
   END LoadFromLine;
 
-BEGIN SYSTEM.LDREG(SP, stackOrg); SYSTEM.LDREG(MT, MTOrg); LoadFromLine;
-  SYSTEM.PUT(12, MemLim); SYSTEM.PUT(24, stackOrg); LED(84H)
+BEGIN SYSTEM.LDREG(SP, stackOrg); SYSTEM.LDREG(MT, MTOrg); LoadFromLine; LED(84H)
 END BootLoad.
