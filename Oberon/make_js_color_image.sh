@@ -1,14 +1,8 @@
 #!/bin/sh
 set -e
 
-./get-source.sh
-cd Oberon2013Modifications
-./make_release.sh
-cd ..
-mv Oberon2013Modifications/work/*.txt work
-rm -rf Oberon2013Modifications/work
-cp BootLoad.Mod.txt work
-cp Oberon2013Modifications/DrawAddons/16Color/*.txt work
+./get-source.sh v2
+cp ColorPalette.Mod.txt PaletteEdit.Mod.txt Oberon2013Modifications/DrawAddons/16Color/*.txt work
 
 # TODO: Fix conflicts with emulator patches; revert this patch for now
 patch -d work -R <Oberon2013Modifications/FontConversion/RemoveGlyphWidthLimit.patch
@@ -32,24 +26,18 @@ mv work/BootLoad.Mod.copy.txt work/BootLoad.Mod.txt
 patch -d work <oberon-palette.patch
 
 patch -d work <reduce-filesystem-offset.patch
-patch -d work <js-4mb.patch
+patch -d work <js-64mb.patch
+mv work/Display.Mod.txt work/DisplayX.Mod.txt
+sed 's/white\* = 1;/white\* = 15;/' -i work/DisplayX.Mod.txt
 mv work/Display.Mod.16Colors.txt work/Display.Mod.txt
 
-mv work/Modules.Mod.txt work/Modules0.Mod.txt
-cp wirth-personal/people.inf.ethz.ch/wirth/ProjectOberon/Sources/Modules.Mod.txt work
-dos2unix work/Modules.Mod.txt
-cp work/ImageFileDir.Mod.txt work/ImageFileDir0.Mod.txt
-cp work/ImageFiles.Mod.txt work/ImageFiles0.Mod.txt
-cp work/ImageTool.Mod.txt work/ImageTool0.Mod.txt
-patch -d work -R <Oberon2013Modifications/CrossCompiler/CrossCompiler.patch
-./derive-files.sh
-patch -d work <Oberon2013Modifications/CrossCompiler/CrossCompiler.patch
-mv work/Modules0.Mod.txt work/Modules.Mod.txt
-mv work/ImageTool0.Mod.txt work/ImageTool.Mod.txt
-mv work/ImageFileDir0.Mod.txt work/ImageFileDir.Mod.txt
-mv work/ImageFiles0.Mod.txt work/ImageFiles.Mod.txt
+./derive-files.sh v2
 
 patch -d work <fix-js-start-offset.patch
 rm work/Draw.Tool.txt work/System.Tool.Full.txt
 cp System.Tool.Color work/System.Tool.Full
 cp Draw.Tool.Color work/Draw.Tool
+
+[ -z "$1" ] && exit 0
+
+./compile-image.sh "$1" ColorDiskImage 'CB=?'

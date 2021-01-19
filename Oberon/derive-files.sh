@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+if [ -z "$1" ]; then
+
 cat work/Modules.Mod.txt | \
     sed 's/SYSTEM.PUT(/SYSTEM.PUT(ImageOffset + /' | \
     sed 's/SYSTEM.GET(/SYSTEM.GET(ImageOffset + /' \
@@ -17,6 +19,8 @@ done
 patch -d work <derive-image-orl.patch
 patch -d work <derive-crosscompiler.patch
 patch -d work <derive-imagetool.patch
+
+fi
 
 mv work/System.Tool.txt work/System.Tool.Full.txt
 sed '1s/^/Clipboard.Paste  Clipboard.CopySelection  Clipboard.CopyViewer\n\n/' \

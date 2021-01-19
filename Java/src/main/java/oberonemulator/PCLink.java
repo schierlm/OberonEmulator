@@ -148,7 +148,11 @@ public class PCLink extends JFrame {
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 		String line;
 		File baseDirectory = new File(".").getCanonicalFile();
+		int autosleep = 0;
 		while ((line = br.readLine()) != null) {
+			if (autosleep > 0) {
+				Thread.sleep(autosleep);
+			}
 			if (line.startsWith("!")) {
 				if (line.equalsIgnoreCase("!reset")) {
 					cpu.reset(true);
@@ -180,6 +184,8 @@ public class PCLink extends JFrame {
 					keyboard.release(KeyEvent.KEY_LOCATION_STANDARD, Integer.parseInt(line.substring(6)));
 				} else if (line.toLowerCase().startsWith("!sleep ")) {
 					Thread.sleep(Integer.parseInt(line.substring(7)));
+				} else if (line.toLowerCase().startsWith("!autosleep ")) {
+					autosleep = Integer.parseInt(line.substring(11));
 				} else if (line.toLowerCase().startsWith("!cd ")) {
 					baseDirectory = new File(baseDirectory, line.substring(4)).getCanonicalFile();
 					System.out.println("Now at " + baseDirectory);
