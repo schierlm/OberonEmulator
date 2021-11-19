@@ -17,6 +17,14 @@ window.onload = function() {
 			params.height = h < 576 ? 512 : h < 768 ? 576 : 768;
 		}
 	}
+	if (params.width > 1024) {
+		params.width = 1024;
+	} else if ((params.width % 32) != 0) {
+		params.width -= params.width % 32;
+	}
+	if (params.height > 768) {
+		params.height = 768;
+	}
 	if (params.serialpreview) {
 		document.body.classList.add(params.serialpreview.replace(/,.*/,"")+"preview");
 	}
