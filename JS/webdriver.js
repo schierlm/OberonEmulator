@@ -440,6 +440,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 		if (file === undefined) file = this.ui.diskFileInput.files[0];
 		this.ui.markLoading();
 		this.chooseDisk(null);
+		this.ui.diskFileInput.value = "";
 		var reader = new DiskFileReader(file);
 		reader.prepareContentsThenNotify(this);
 	};
