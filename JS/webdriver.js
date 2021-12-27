@@ -176,6 +176,8 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 			this.ui.autosaveToggle.classList.remove("checked");
 		}
 		this.ui.markLoading();
+		if (/.*\.dsk/.test(name))
+			name = name.substring(0, name.length-4);
 		this.imageName = name;
 		if (rom === undefined) {
 			if (this._hasDirMark(contents, 0)) {
@@ -451,7 +453,10 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 	};
 
 	$proto.exportDiskImage = function() {
-		this.save("oberon.dsk", this.disk);
+		if (window.event.shiftKey) {
+			this.ui.systemButton.value = prompt("Image name", this.ui.systemButton.value);
+		}
+		this.save(this.ui.systemButton.value + ".dsk", this.disk);
 	};
 
 	$proto.toggleAutoSave = function() {
@@ -737,6 +742,10 @@ function ControlBarUI(emulator, dualSerial) {
 	};
 
 	$proto.togglePopup = function(menuButton) {
+		if (menuButton === this.systemButton && window.event.shiftKey && !menuButton.classList.contains("feedback")) {
+			this.systemButton.value = prompt("Image name", this.systemButton.value);
+			return;
+		}
 		var popup = menuButton.parentNode.querySelector(".popup");
 		if (!popup.classList.contains("open")) {
 			this.closeOpenPopups();
@@ -869,7 +878,7 @@ function ControlBarUI(emulator, dualSerial) {
 		var that = this;
 		canvas.toBlob(function(blob) {
 			that.exportOptions.classList.remove("open");
-			that.emulator.save("oberon.png", [ blob ]);
+			that.emulator.save(that.systemButton.value + ".png", [ blob ]);
 		}, "image/png");
 	}
 
