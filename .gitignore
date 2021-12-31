@@ -9,6 +9,12 @@ Java/OberonEmulator.jar
 JS/*.png
 JS/*.zip
 JS/offline-emu.html
+LSPServer/bin
+LSPServer/target
+LSPServer/.classpath
+LSPServer/.project
+LSPServer/.settings
+LSPServer/*.jar
 Oberon/download
 Oberon/work
 WebSocketServer/bin/
