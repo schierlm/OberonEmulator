@@ -1,0 +1,45 @@
+{
+	"comments": {
+		"blockComment": [ "(*", "*)" ]
+	},
+	"brackets": [
+		["{", "}"],
+		["[", "]"],
+		["(", ")"]
+	],
+	"colorizedBracketPairs": [
+		["{", "}"],
+		["[", "]"],
+		["(", ")"]
+	],
+	"autoClosingPairs": [
+		{ "open": "{", "close": "}" },
+		{ "open": "[", "close": "]" },
+		{ "open": "(", "close": ")" },
+		{ "open": "$", "close": "$", "notIn": ["string", "comment"] },
+		{ "open": "\"", "close": "\"", "notIn": ["string"] },
+		{ "open": "(*", "close": " *", "notIn": ["string"] }
+	],
+	"surroundingPairs": [
+		["{", "}"],
+		["[", "]"],
+		["(", ")"],
+		["$", "$"],
+		["\"", "\""]
+	],
+	"wordPattern": "[+-]?[0-9]+([.][0-9]*([DE][+-]?[0-9]+)?)?|[0-9][0-9A-F]*[HRX]|[A-Za-z][A-Za-z0-9]*",
+	"onEnterRules": [
+		{
+			"beforeText": "^([^\"']|\"[^\"']*\"|'[^\"']*)*\\b(BEGIN|THEN|DO|ELSE)\\s*$",
+			"action": {
+				"indent": "indent"
+			}
+		}
+	]
+	/* Removed for now. Those seem to freeze VS Code when pasting large amounts of code
+	"indentationRules": {
+		"unIndentedLinePattern": "^.*\\(\\*([^*]*|\\*[^)])*$",
+		"increaseIndentPattern": "^([^\"']|\"[^\"']*\"|'[^\"']*)*\\b(BEGIN|THEN|DO|ELSE)\\s*$",
+		"decreaseIndentPattern": "^\\s*(ELSE|ELSIF|END|RETURN)\\b.*$"
+	}*/
+}

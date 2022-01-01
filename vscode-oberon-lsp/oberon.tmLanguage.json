@@ -1,0 +1,104 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"fileTypes": [
+		"Mod",
+		"ob",
+		"ob07"
+	],
+	"name": "Oberon",
+	"patterns": [
+		{
+			"match": "\\b(FOR|REPEAT|IF|ELSIF|UNTIL|WHILE|DO|ELSE|THEN|CASE|BY|RETURN|TO)\\b",
+			"name": "keyword.control.oberon"
+		},
+		{
+			"match": "\\b(IS|DIV|MOD|OR|IN)\\b",
+			"name": "keyword.operator.oberon"
+		},
+		{
+			"match": "\\b(IMPORT|BEGIN|TYPE|CONST|MODULE|VAR|PROCEDURE|END)\\b",
+			"name": "keyword.other.oberon"
+		},
+		{
+			"match": "\\b(POINTER|RECORD|ARRAY|MAP|OF)\\b",
+			"name": "storage.type.oberon"
+		},
+		{
+			"match": "\\b(FALSE|NIL|TRUE)\\b",
+			"name": "constant.language.oberon"
+		},
+		{
+			"match": "\\b(ABS|ASR|CHR|FLT|INC|LSL|NEW|ROR|ASSERT|DEC|EXCL|FLOOR|INCL|LEN|ODD|ORD|PACK|UNPK)\\b",
+			"name": "support.function.oberon"
+		},
+		{
+			"match": "\\b(CHAR|REAL|BYTE|INTEGER|SET|BOOLEAN)\\b",
+			"name": "support.type.oberon"
+		},
+		{
+			"match": "\\b([0-9]+([.][0-9]*([DE][+-]?[0-9]+)?)?|[0-9][0-9A-F]*[HR])\\b",
+			"name": "constant.numeric.oberon"
+		},
+		{
+			"begin": "\"",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.definition.string.begin.oberon"
+				}
+			},
+			"end": "\"",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.definition.string.end.oberon"
+				}
+			},
+			"name": "string.quoted"
+		},
+		{
+			"begin": "'",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.definition.string.begin.single.oberon"
+				}
+			},
+			"end": "'",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.definition.string.end.single.oberon"
+				}
+			},
+			"name": "string.quoted.single"
+		},
+		{
+			"begin": "\\$",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.definition.string.begin.hex.oberon"
+				}
+			},
+			"end": "\\$",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.definition.string.end.hex.oberon"
+				}
+			},
+			"name": "string.quoted.hex"
+		},
+		{
+			"match": "\\b([0-9][0-9A-F]*[X])\\b",
+			"name": "string.other.oberon"
+		},
+		{
+			"begin": "\\(\\*",
+			"captures": {
+				"0": {
+					"name": "punctuation.definition.comment.oberon"
+				}
+			},
+			"end": "\\*\\)",
+			"name": "comment.block.oberon"
+		}
+	],
+	"scopeName": "source.oberon",
+	"uuid": "2AA78D88-FD4B-11E6-937E-CFB8A4F7030F"
+}

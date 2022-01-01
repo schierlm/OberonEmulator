@@ -1,0 +1,182 @@
+{
+	"name": "vscode-oberon-lsp",
+	"displayName": "Oberon Language support with LSP wrapper",
+	"description": "Oberon language support for Niklaus Wirth's Project Oberon. Can invoke an Oberon Language Server written in Java.",
+	"author": "Michael Schierl",
+	"license": "MIT",
+	"version": "0.9.0",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/schierlm/OberonEmulator"
+	},
+	"publisher": "Michael Schierl",
+	"engines": {
+		"vscode": "^1.63.0"
+	},
+	"categories": [
+		"Programming Languages"
+	],
+	"activationEvents": [
+		"onLanguage:oberon"
+	],
+	"main": "./dist/extension.js",
+	"contributes": {
+		"languages": [
+			{
+				"id": "oberon",
+				"aliases": [
+					"Oberon",
+					"oberon"
+				],
+				"extensions": [
+					".ob",
+					".ob07",
+					".Mod"
+				],
+				"filenamePatterns": [
+					"*.Mod.txt"
+				],
+				"configuration": "./oberon-language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "oberon",
+				"scopeName": "source.oberon",
+				"path": "./oberon.tmLanguage.json"
+			}
+		],
+		"configuration": {
+			"title": "Oberon LSP",
+			"properties": {
+				"oberonLsp.languageServer.activate": {
+					"type": "boolean",
+					"default": false,
+					"description": "Use a language server to improve Oberon experience."
+				},
+				"oberonLsp.languageServer.cache.activate": {
+					"type": "boolean",
+					"default": false,
+					"description": "Use a cache directory and also scan files that are not opened (may be slow on a new project)."
+				},
+				"oberonLsp.languageServer.cache.directory": {
+					"type": "string",
+					"default": ".vscode/lsp-cache",
+					"description": "Controls the location of the cache directory relative to the workspace."
+				},
+				"oberonLsp.languageServer.javaLocation": {
+					"type": "string",
+					"default": "java",
+					"description": "Controls the location of Java executable."
+				},
+				"oberonLsp.languageServer.launchType": {
+					"type": "string",
+					"default": "po2013",
+					"description": "Controls the launch type for the language server.",
+					"enum": [
+						"po2013",
+						"extended",
+						"retro",
+						"a2",
+						"other1",
+						"other2",
+						"other3"
+					],
+					"enumDescriptions": [
+						"Project Oberon 2013",
+						"Extended Oberon",
+						"Oberon Retro Compiler",
+						"Other 1",
+						"Other 2",
+						"Other 3"
+					]
+				},
+				"oberonLsp.languageServer.launchTypeA2.switches": {
+					"type": "string",
+					"default": "",
+					"description": "Command line switches for the A2 compiler, e.g. to select architecture."
+				},
+				"oberonLsp.languageServer.launchTypeA2.symbolpath": {
+					"scope": "resource",
+					"type": "array",
+					"items": { "type":"string" },
+					"default": [],
+					"description": "List of directories where symbol files are found (for sources not included in the workspace)."
+				},
+				"oberonLsp.languageServer.location": {
+					"type": "string",
+					"default": "",
+					"description": "Controls the location of the installed language server."
+				},
+				"oberonLsp.languageServer.modifiedDiskImage": {
+					"type": "string",
+					"default": "",
+					"description": "Specify the file name of a modified disk image. Useful if you injected some symbol files into a copy of the disk image."
+				},
+				"oberonLsp.languageServer.other1Arguments": {
+					"scope": "resource",
+					"type": "array",
+					"items": { "type":"string" },
+					"default": [
+						"-jar",
+						"LSPServer.jar",
+						"-emulator",
+						"lsph-po2013.dsk",
+						"-autocopy"
+					],
+					"description": "Specify the command line arguments for launch type Other 1 (by default same as po2013)."
+				},
+				"oberonLsp.languageServer.other2Arguments": {
+					"scope": "resource",
+					"type": "array",
+					"items": { "type":"string" },
+					"default": [
+						"-jar",
+						"LSPServer.jar",
+						"-connect",
+						"localhost",
+						"9999"
+					],
+					"description": "Specify the command line arguments for launch type Other 2 (by default, connecting to an external Oberon emulator via TCP)."
+				},
+				"oberonLsp.languageServer.other3Arguments": {
+					"scope": "resource",
+					"type": "array",
+					"items": { "type":"string" },
+					"default": [
+						"-agentlib:jdwp=transport=dt_socket,address=22222,server=y,suspend=n,quiet=y",
+						"-cp",
+						"../../bin;LSPServer0.jar",
+						"lspserver.Main",
+						"-debug",
+						"-emulator",
+						"lsph-po2013.dsk",
+						"-autocopy"
+					],
+					"description": "Specify the command line arguments for launch type Other 3 (by default, running language server under remote Java debugger)."
+				}
+			}
+		}
+	},
+	"scripts": {
+		"prepare": "node .setup.js",
+		"vscode:prepublish": "npm run package",
+		"compile": "webpack",
+		"watch": "webpack --watch",
+		"package": "webpack --mode production --devtool hidden-source-map",
+		"lint": "eslint src --ext ts"
+	},
+	"dependencies": {
+		"vscode-languageclient": "^7.0.0"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.63.0",
+		"@typescript-eslint/eslint-plugin": "^5.1.0",
+		"@typescript-eslint/parser": "^5.1.0",
+		"eslint": "^8.1.0",
+		"ts-loader": "^9.2.5",
+		"typescript": "^4.4.4",
+		"webpack": "^5.52.1",
+		"webpack-cli": "^4.8.0"
+	}
+}
