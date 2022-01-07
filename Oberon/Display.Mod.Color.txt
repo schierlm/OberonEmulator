@@ -23,6 +23,10 @@ MODULE Display;  (*NW 5.11.2013*)
     IF (F # NIL) & (F.handle # NIL) THEN F.handle(F, M) END
   END Handle;
 
+  PROCEDURE SetSize*(w, h: INTEGER) : BOOLEAN;
+  RETURN FALSE
+  END SetSize;
+
   (* raster ops *)
 
   PROCEDURE EnsureOffsetUsable(offs: INTEGER);
