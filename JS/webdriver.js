@@ -206,6 +206,15 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 		return view.getUint32(0) === 0x8DA31E9B;
 	};
 
+	$proto.updateSelectBox = function(box, html) {
+		var oldValue = box.value;
+		box.innerHTML = html;
+		var newValue = box.value;
+		box.value = oldValue;
+		if (box.value != oldValue)
+			box.value = newValue;
+	}
+
 	$proto.bootFromDisk = function(disk, rom) {
 		if (!this.isDisplayReady()) {
 			this.setUpDisplay(this.width, this.height);
@@ -227,7 +236,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 			html +='<option>b/w</option>';
 		if (magic != 0x3D424D)
 			html +='<option>16c</option>';
-		document.querySelector(".colorhint").innerHTML = html;
+		this.updateSelectBox(document.querySelector(".colorhint"), html);
 		if (magicMB != -1) {
 			html = '<option>' + magicMB +' MB</option>';
 		} else {
@@ -236,7 +245,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 				html += '<option>'+magicMB+' MB</option>';
 			}
 		}
-		document.querySelector(".ramhint").innerHTML = html;
+		this.updateSelectBox(document.querySelector(".ramhint"), html);
 
 		this.disk = disk;
 		this.startMillis = Date.now();
