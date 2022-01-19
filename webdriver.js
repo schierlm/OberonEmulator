@@ -109,6 +109,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 	$proto.transferHistory = null;
 	$proto.width = 0;
 	$proto.autosave = false;
+	$proto.debugBuffer = "";
 
 	$proto.setDimensions = function(width, height, resizeControlBar) {
 		this.width = width || 1024;
@@ -422,8 +423,18 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 	};
 
 	$proto.netCommand = function(value, memory) {
-		if (!window.offlineInfo || !window.offlineInfo.netConfig || !this.wiznet)
+		if (!window.offlineInfo || !window.offlineInfo.netConfig || !this.wiznet) {
+			// use same MMIO address for debug console
+			if (value == 0) {
+				if (this.debugBuffer != "") {
+					console.log(this.debugBuffer);
+				}
+				this.debugBuffer = "";
+			} else {
+				this.debugBuffer += String.fromCharCode(value);
+			}
 			return;
+		}
 		this.wiznet.netCommand(value, memory);
 	};
 
