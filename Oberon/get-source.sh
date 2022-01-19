@@ -21,7 +21,7 @@ if [ "$1" == "v2" ]; then
 	cd ..
 	mv Oberon2013Modifications/work/*.txt work
 	rm -rf Oberon2013Modifications/work
-	cp BootLoad.Mod.txt Clipboard.Mod.txt work
+	cp BootLoad.Mod.txt Clipboard.Mod.txt Console.Mod.txt work
 	rm work/SmallPrograms.Mod.txt work/RISC.Mod.txt work/ORC.Mod.txt
 else
 	cp Oberon2013Modifications/*/*.Mod.txt Oberon2013Modifications/*/*.Text.txt Oberon2013Modifications/*/*.Tool.txt work
