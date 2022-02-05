@@ -289,9 +289,10 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 			var d = new Date(Math.floor(Date.now() / 1000) * 1000);
 			var clock = ((d.getYear() % 100) * 16 + d.getMonth() + 1) * 32 + d.getDate();
 			clock = ((clock * 32 + d.getHours()) * 64 + d.getMinutes()) * 64 + d.getSeconds();
+			this.rtchint = [d.getTime() - this.startMillis, clock];
 			this.machine.memWriteWord(0x10000, 0x54696D65); // magic value 'Time'
-			this.machine.memWriteWord(0x10004, d.getTime() - this.startMillis);
-			this.machine.memWriteWord(0x10008, clock);
+			this.machine.memWriteWord(0x10004, this.rtchint[0]);
+			this.machine.memWriteWord(0x10008, this.rtchint[1]);
 
 			var paletteStart = 0x0FFF80 + (base / 0x100000 | 0) * 0x100000;
 			this.machine.memWriteWord(paletteStart-4, 0x4D4C696D); // magic value 'MLim'
@@ -437,6 +438,58 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 		}
 		this.wiznet.netCommand(value, memory);
 	};
+
+	$proto.toHardwareId = function(str) {
+		return (str.charCodeAt(0) << 24) | (str.charCodeAt(1) << 16) | (str.charCodeAt(2) << 8) | str.charCodeAt(3);
+	};
+
+	$proto._runHardwareEnumerator = function(value) {
+		var wiznet = window.offlineInfo && window.offlineInfo.netConfig && this.wiznet;
+		switch(value) {
+			case 0:
+				var result = [1 /*version*/, 'mVid', 'Timr', 'LEDs', 'SPrt', 'MsKb', 'vClp', 'vRTC', 'vDsk', 'Rset'];
+				if (wiznet) {
+					result.push('vNet');
+				} else {
+					result.push('dbgC');
+				}
+				if (this.machine.colorSupported) {
+					result.push('16cV')
+				};
+				return result;
+			case this.toHardwareId('mVid'):
+				var displayStart = (this.machine.getDisplayStart() & ~0xFFFFF) | 0x0E7F00;
+				return [ 1, -16, this.screen.width, this.screen.height, 128, displayStart];
+			case this.toHardwareId('16cV'):
+				var paletteStart = (this.machine.getDisplayStart() & ~0xFFFFF) | 0x0FFF80;
+				var displayStart = (this.machine.getDisplayStart() & ~0xFFFFF) | 0x09FF00;
+				return [ 1, 1, -16, paletteStart, this.screen.width, this.screen.height, 512, displayStart];
+			case this.toHardwareId('Rset'):
+				var romStart = (this.machine.getDisplayStart() & ~0xFFFFF) | 0x0FE000;
+				return [romStart];
+			case this.toHardwareId('SPrt'):
+				var portCount = (this.link instanceof DualLink) ? 2 : 1;
+				return [portCount, -52, -56];
+			case this.toHardwareId('Boot'):
+				return [this.machine.getDisplayStart() - (this.machine.colorSupported ? 0x48010 : 0x10)];
+			case this.toHardwareId('vRTC'): return this.rtchint;
+			case this.toHardwareId('vNet'): return wiznet ? [-32] : [];
+			case this.toHardwareId('dbgC'): return wiznet ? [] : [-32];
+			case this.toHardwareId('Timr'): return [-64, 1];
+			case this.toHardwareId('LEDs'): return [8, -60];
+			case this.toHardwareId('MsKb'): return [-40, -36, 1];
+			case this.toHardwareId('vClp'): return [-24, -20];
+			case this.toHardwareId('vDsk'): return [-28];
+			default: return [];
+		}
+	};
+
+	$proto.runHardwareEnumerator = function(value) {
+		var that = this;
+		return this._runHardwareEnumerator(value).map(function(v) {
+			return (typeof v == 'string' && v.length == 4) ? that.toHardwareId(v) : v;
+		});
+	}
 
 	$proto.registerKey = function(keyCode) {
 		this.keyBuffer.push((keyCode << 24) | (keyCode >>> 8 << 16));
