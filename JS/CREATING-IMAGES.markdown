@@ -1,5 +1,8 @@
 ## Creating images for the JS Oberon Emulator
 
+[This document is outdated. All images that support the Hardware Enumerator will
+likely work unmodified in the JS emulator as well. If not, see below.]
+
 ### Oberon code modifications
 
 As the JS emulator uses a different disk and input interface than the real FPGA board,

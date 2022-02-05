@@ -17,6 +17,7 @@ function RISCMachine(romWords) {
 	var $proto = RISCMachine.prototype;
 
 	$proto.palette = null;
+	$proto.hardwareEnumBuffer = [];
 
 	$proto.memWriteWord = function(address, value) {
 		this.wasm.exports.memWriteWord(address, value);
@@ -41,6 +42,15 @@ function RISCMachine(romWords) {
 		}
 	}
 
+	$proto.setVideoMode = function(val) {
+		if (val == 0 && this.palette != null) {
+			this.palette = null;
+			this.DisplayStart = 0x0E7F00 + this.MemSize - 0x100000;
+		} else if (val == 1 && this.palette == null) {
+			this.memReadPalette(this.PaletteStart);
+		}
+	}
+
 	$proto.memReadIO = function(address0) {
 		switch (address0) {
 			case  0: return emulator.getTickCount();
@@ -50,6 +60,8 @@ function RISCMachine(romWords) {
 			case 28: return emulator.getKeyCode();
 			case 40: return emulator.clipboard.getSize();
 			case 44: return emulator.clipboard.getData();
+			case 48: return this.palette == null ? 0 : 1;
+			case 60: return this.hardwareEnumBuffer.shift() | 0;
 			default: return 0;
 		}
 	}
@@ -64,6 +76,8 @@ function RISCMachine(romWords) {
 			case 36: return void(emulator.storageRequest(val, new Int32Array(this.wasm.exports.memory.buffer, this.wasm.exports.getRAMBase(), this.wasm.exports.getRAMSize()/4)));
 			case 40: return void(emulator.clipboard.expect(val));
 			case 44: return void(emulator.clipboard.putData(val));
+			case 48: return void(this.setVideoMode(val));
+			case 60: return void(this.hardwareEnumBuffer = emulator.runHardwareEnumerator(val));
 		}
 	}
 
