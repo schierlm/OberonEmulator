@@ -428,7 +428,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 			// use same MMIO address for debug console
 			if (value == 0) {
 				if (this.debugBuffer != "") {
-					console.log(this.debugBuffer);
+					console.log(this.debugBuffer.replace("\r", "\n"));
 				}
 				this.debugBuffer = "";
 			} else {
@@ -451,7 +451,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 				if (wiznet) {
 					result.push('vNet');
 				} else {
-					result.push('dbgC');
+					result.push('DbgC');
 				}
 				if (this.machine.colorSupported) {
 					result.push('16cV')
@@ -474,7 +474,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 				return [this.machine.getDisplayStart() - (this.machine.colorSupported ? 0x48010 : 0x10)];
 			case this.toHardwareId('vRTC'): return this.rtchint;
 			case this.toHardwareId('vNet'): return wiznet ? [-32] : [];
-			case this.toHardwareId('dbgC'): return wiznet ? [] : [-32];
+			case this.toHardwareId('DbgC'): return wiznet ? [] : [-32];
 			case this.toHardwareId('Timr'): return [-64, 1];
 			case this.toHardwareId('LEDs'): return [8, -60];
 			case this.toHardwareId('MsKb'): return [-40, -36, 1];
