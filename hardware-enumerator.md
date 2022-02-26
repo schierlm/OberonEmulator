@@ -2,7 +2,7 @@
 
 ### Versioning
 
-This document describes version 1.0.1 of the hardware enumerator. New (major) versions
+This document describes version 1.0.2 of the hardware enumerator. New (major) versions
 may introduce incompatible changes; therefore, when software is unaware of the
 implemented version, the best way to handle is to assume no hardware enumerator
 to be present. Minor versions are backwards compatible. Patch versions only add new
@@ -167,6 +167,16 @@ Values in the `16cD` descriptor:
 - Base address of framebuffer
 - `1` if seamless resize is supported, else `0`.
 
+### `8bcV`, `8bcD`: 8-bit-color video support and dynamic resolution
+
+These descriptors work the same as `16cV` and `16cD`, only that they describe
+256-color (8-bit color) mode.
+
+To choose a dynamic resolution, the value's bit 31 needs to be set, and bit 30
+as well as the most significant bit of the width and height need to be cleared
+(This requirement reduces the resolution to 16384×16384, but provides two more
+available bits for further enhancements).
+
 ### `vRTC`: Provide a real time clock hint
 
 Probably most useful for emulators. It may be used to provide the clock time (as
@@ -283,6 +293,23 @@ to some debug console (e.g. stdout), to provide a slightly
 higher-level debug interface than just LEDs.
 
 Values of the `DbgC` descriptor:
+- MMIO address
+
+### `ICIv`: Instruction cache invalidation
+
+When present, the CPU has an instruction cache that is not automatically
+invalidated when memory (or data cache) is written to. Therefore, before
+newly written code can be executed, the instruction cache needs to be
+invalidated (and any data cache flushed) by writing a `0` to a MMIO
+address. This can also be used by emulators that do just-in-time
+instruction translation to efficiently flush their translated instructions.
+
+In case a value other than `0` is written to the MMIO address, the
+hardware may also invalidate all its instruction cache. Or (if feasible) it
+can only invalidate those instructions whose memory address is greater or
+equal than the written value.
+
+Values of the `ICIv` descriptor:
 - MMIO address
 
 ### 'Rset': Reset vector
