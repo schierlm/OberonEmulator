@@ -36,6 +36,7 @@ var paravirtPtr = 0;
 var keyBuf = [];
 var mouse = 0;
 var clipboardBuffer = '', clipboardRemaining = 0;
+var hardwareEnumBuffer = [];
 
 function memReadIOWord(wordAddress) {
 	switch (wordAddress * 4 - IOStart) {
@@ -64,6 +65,13 @@ function memReadIOWord(wordAddress) {
 		var ch = clipboardBuffer.charCodeAt(0);
 		clipboardBuffer = clipboardBuffer.substring(1);
 		return ch;
+	}
+	case 60: {
+		var val =  this.hardwareEnumBuffer.shift();
+		if (typeof val == 'string' && val.length == 4){
+			val = toHardwareId(val);
+		}
+		return val | 0;
 	}
 	default: {
 			return 0;
@@ -121,6 +129,20 @@ function memWriteIOWord(wordAddress, value) {
 			clipboard.value = clipboardBuffer.split("\r").join("\n");
 		}
 		break;
+	}
+	case 60: {
+		hardwareEnumBuffer = [];
+		switch(value) {
+			case 0: hardwareEnumBuffer = [1 /*version*/, 'mVid', 'Timr', 'LEDs', 'MsKb', 'vClp', 'vDsk', 'Rset']; break;
+			case toHardwareId('mVid'): hardwareEnumBuffer = [ 1, 0, screenCanvas.width, screenCanvas.height, 128, DisplayStart]; break;
+			case toHardwareId('Rset'): hardwareEnumBuffer = [ROMStart]; break;
+			case toHardwareId('Boot'): hardwareEnumBuffer = [DisplayStart - 0x10]; break;
+			case toHardwareId('Timr'): hardwareEnumBuffer = [-64, 1]; break;
+			case toHardwareId('LEDs'): hardwareEnumBuffer =  [8, -60]; break;
+			case toHardwareId('MsKb'): hardwareEnumBuffer =  [-40, -36, 1]; break;
+			case toHardwareId('vClp'): hardwareEnumBuffer =  [-24, -20]; break;
+			case toHardwareId('vDsk'): hardwareEnumBuffer =  [-28]; break;
+		}
 	}
 	}
 }
@@ -186,4 +208,8 @@ function drawBackBuffer() {
 	backBufferMinX = backBufferMinY = 4096;
 	backBufferMaxX = backBufferMaxY = 0;
 	backBufferDirty = false;
+}
+
+function toHardwareId(str) {
+	return (str.charCodeAt(0) << 24) | (str.charCodeAt(1) << 16) | (str.charCodeAt(2) << 8) | str.charCodeAt(3);
 }
