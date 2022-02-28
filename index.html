@@ -20,7 +20,10 @@ dt {font-weight: bold; }
 <p style="margin-right: 5em">Note that the JavaScript emulator does not support
 the original SPI (which is used for network and SD-card) and keyboard interfaces, but
 a simplified "paravirtualized" interface for keyboard, clipboard, sd-card, and
-power management instead. All these interfaces are also supported by the Java
+power management instead, and therefore requires
+<a href="https://github.com/schierlm/OberonEmulator/blob/master/JS/CREATING-IMAGES.markdown">patched images</a>;
+images that support the <a href="https://github.com/schierlm/OberonEmulator/blob/master/hardware-enumerator.md">Hardware Enumerator</a>
+should work unchanged. All these interfaces are also supported by the Java
 emulator (and others can be disabled) to make development easier.</p>
 
 <h2>JavaScript emulator</h2>
