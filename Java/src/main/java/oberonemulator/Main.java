@@ -37,6 +37,12 @@ public class Main {
 	public static void main(String[] args) throws Exception {
 		if (args.length == 3 && args[0].equals("PCLink")) {
 			PCLink.start(args[1], Integer.parseInt(args[2]), null);
+		} else if (args.length == 4 && args[0].equals("--command-line") && args[1].equals("--rom")) {
+			// dirty workaround to support "new" command line syntax in "old" emulator
+			main(new String[] { "0", "0", args[3],args[2], "CommandLine"});
+		} else if (args.length == 5 && args[0].equals("--encode-png") && args[2].equals("--rom")) {
+			// dirty workaround to support "new" command line syntax in "old" emulator
+			main(new String[] { "EncodePNG", args[1], args[4], args[3]});
 		} else if (args.length == 4 && args[0].equals("EncodePNG")) {
 			PNGEncoder.encode(args[1], args[2], args[3]);
 		} else if (args.length == 4 && args[0].equals("DecodePNG")) {

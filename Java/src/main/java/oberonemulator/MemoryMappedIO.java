@@ -25,6 +25,9 @@ public class MemoryMappedIO {
 	private int keyCnt;
 	private int leds;
 
+	private int[] hwEnumBuf = new int[32];
+	private int hwEnumOffs, hwEnumLen;
+
 	private int spiSelected;
 	private Disk sdCard;
 	private byte[][] socketsIn = { null, null };
@@ -174,6 +177,13 @@ public class MemoryMappedIO {
 			Feature.COLOR_GRAPHICS.use();
 			return (mem.getImageMemory().getWidth() << 16) | mem.getImageMemory().getHeight();
 		}
+		case 60: {
+			// hardware enumerator
+			if (hwEnumOffs < hwEnumLen) {
+				return hwEnumBuf[hwEnumOffs++];
+			}
+			return 0;
+		}
 		default: {
 			return 0;
 		}
@@ -304,6 +314,35 @@ public class MemoryMappedIO {
 		case 48: {
 			Feature.COLOR_GRAPHICS.use();
 			mem.getImageMemory().setSlidingWindowBase(value);
+			break;
+		}
+		case 60: {
+			// hardware enumerator (minimal stub implementation)
+			hwEnumOffs = hwEnumLen = 0;
+			switch(value) {
+			case 0:
+				hwEnumBuf[hwEnumLen++] = 1; // version
+				hwEnumBuf[hwEnumLen++] = (('m' << 24) | ('V' << 16) | ('i' << 8) | 'd');
+				hwEnumBuf[hwEnumLen++] = (('T' << 24) | ('i' << 16) | ('m' << 8) | 'r');
+				hwEnumBuf[hwEnumLen++] = (('v' << 24) | ('D' << 16) | ('s' << 8) | 'k');
+				break;
+			case ('m' << 24) | ('V' << 16) | ('i' << 8) | 'd':
+				hwEnumBuf[hwEnumLen++] = 1; // number of modes
+				hwEnumBuf[hwEnumLen++] = 0; // mode switching address
+				hwEnumBuf[hwEnumLen++] = mem.getImageMemory().getWidth();
+				hwEnumBuf[hwEnumLen++] = mem.getImageMemory().getHeight(); // screen height
+				hwEnumBuf[hwEnumLen++] = 128; // scanline span
+				hwEnumBuf[hwEnumLen++] = mem.getImageMemory().getBaseAddress() * 4; // base address
+				break;
+			case ('T' << 24) | ('i' << 16) | ('m' << 8) | 'r':
+				hwEnumBuf[hwEnumLen++] = -64; // MMIO address
+				hwEnumBuf[hwEnumLen++] = 1; // Power management supported
+				break;
+			case ('v' << 24) | ('D' << 16) | ('s' << 8) | 'k':
+				hwEnumBuf[hwEnumLen++] = -28; // MMIO address
+				break;
+			}
+			break;
 		}
 		}
 	}
