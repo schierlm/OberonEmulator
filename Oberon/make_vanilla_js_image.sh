@@ -10,12 +10,12 @@ for FILE in Kernel Input Oberon Display; do
 done
 cp Oberon2013Modifications/ORL.Mod.txt work/ORL.Mod
 cp Oberon2013Modifications/DefragmentFreeSpace/DefragFiles.Mod.txt Oberon2013Modifications/DefragmentFreeSpace/Defragger.Mod.txt work
-patch -d work <vanilla-js.patch
+cp Oberon2013Modifications/CommandLineCompiler/CommandLineDefragger.Mod.txt work
+patch -d work <vanilla-js-hardware-enumerator.patch
 patch -d work <Oberon2013Modifications/ReproducibleBuild/ReproducibleDefragger.patch
-patch -d work <Oberon2013Modifications/CommandLineCompiler/CommandLineDefragger.patch
 sed 's/Modules.Load("System",/Modules.Load("CommandLineSystem",/' <work/Oberon.Mod >work/Oberon1.Mod
 unix2mac work/*.Mod
-sed 's/Oberon.RetVal/0/' <Oberon2013Modifications/CommandLineCompiler/CommandLineSystem.Mod.txt >work/CLS.Mod
+sed 's/Oberon.RetVal/0/;s/BEGIN Texts.OpenWriter(W);/BEGIN Modules.Load("System", Mod); Texts.OpenWriter(W);/;s/LogPos := 0/LogPos := 0; Run/' <Oberon2013Modifications/CommandLineCompiler/CommandLineSystem.Mod.txt >work/CLS.Mod
 
 [ -z "$1" ] && exit 0
 
@@ -26,7 +26,7 @@ wget -nc https://github.com/pdewacht/oberon-risc-emu/raw/master/DiskImage/Oberon
 cd ..
 cp download/Oberon-2020-08-18.dsk work/dsk
 
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar 0 0 work/dsk ../Java/CompatibleBootLoad.rom CommandLine <<'EOF'
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/CompatibleBootLoad.rom work/dsk <<'EOF'
 !mouse 660,730
 !mouse L
 !sleep 1200
@@ -44,7 +44,7 @@ ${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar 0 0 work/dsk ..
 !exit
 EOF
 
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar 0 0 work/dsk ../Java/CompatibleBootLoad.rom CommandLine <<'EOF'
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/CompatibleBootLoad.rom work/dsk <<'EOF'
 !mouse 660,730
 !mouse L
 !sleep 1200
@@ -91,18 +91,20 @@ cat work/tmp work/dsk >download/base.dsk
 rm work/tmp
 cp download/base.dsk work/dsk
 
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar 0 0 work/dsk ../Java/JSBootLoad.rom CommandLine <<'EOF'
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <<'EOF'
 !cd work
 +DefragFiles.Mod.txt
 +Defragger.Mod.txt
-ORP.Compile Oberon.Mod DefragFiles.Mod.txt/s Defragger.Mod.txt/s ~
-Defragger.Load
++CommandLineDefragger.Mod.txt
+ORP.Compile Oberon.Mod DefragFiles.Mod.txt/s Defragger.Mod.txt/s CommandLineDefragger.Mod.txt/s ~
+CommandLineDefragger.Load
 System.DeleteFiles Defragger.Mod.txt Defragger.rsc Defragger.smb DefragFiles.Mod.txt DefragFiles.rsc DefragFiles.smb ~
+System.DeleteFiles CommandLineDefragger.Mod.txt CommandLineDefragger.rsc CommandLineDefragger.smb ~
 System.DeleteFiles CommandLineSystem.smb CommandLineSystem.rsc ~
-Defragger.Defrag
+CommandLineDefragger.Defrag
 !sleep 500
 !exit
 EOF
 
 Oberon2013Modifications/DefragmentFreeSpace/trim_defragmented_image.sh work/dsk
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar EncodePNG ../JS/VanillaDiskImage.png work/dsk_trimmed work/boot.rom
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --encode-png ../JS/VanillaDiskImage.png --rom work/boot.rom work/dsk_trimmed

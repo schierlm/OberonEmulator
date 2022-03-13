@@ -21,37 +21,34 @@ cp download/base.dsk work/dsk
 cd work
 rm *.orig
 sed 's/Modules.Load("System"/Modules.Load("CommandLineSystem"/;s/NewTask(GC, 1000)/NewTask(GC, 10)/' <Oberon.Mod.txt >OberonX.Mod.txt
-cp Defragger.Mod.txt Defragger0.Mod.txt
-patch <../Oberon2013Modifications/CommandLineCompiler/CommandLineDefragger.patch
-mv Defragger.Mod.txt DefraggerX.Mod.txt
-mv Defragger0.Mod.txt Defragger.Mod.txt
 for i in *.txt; do unix2mac $i; mv $i ${i%.txt}; done
 cp ../wirth-personal/people.inf.ethz.ch/wirth/ProjectOberon/Sources/Oberon.Mod.txt .
 cp ../wirth-personal/people.inf.ethz.ch/wirth/ProjectOberon/Sources/System.Mod.txt .
 cp ../wirth-personal/people.inf.ethz.ch/wirth/ProjectOberon/Sources/ORP.Mod.txt .
-cp ../Oberon2013Modifications/CommandLineCompiler/CommandLineSystem.Mod.txt .
+cp ../Oberon2013Modifications/CommandLineCompiler/CommandLineDefragger.Mod.txt .
 dos2unix *.Mod.txt
 patch -p1 <../Oberon2013Modifications/CommandExitCodes/CommandExitCodes.patch
 sed 's/Modules.Load("System"/Modules.Load("CommandLineSystem"/;s/NewTask(GC, 1000)/NewTask(GC, 10)/' <Oberon.Mod.txt >OberonY.Mod
+sed 's/BEGIN Texts.OpenWriter(W);/BEGIN Modules.Load("System", Mod); Texts.OpenWriter(W);/;s/LogPos := 0/LogPos := 0; Run/' <../Oberon2013Modifications/CommandLineCompiler/CommandLineSystem.Mod.txt >CommandLineSystemY.Mod
 rm System.Mod.txt ORP.Mod.txt Oberon.Mod.txt
-mv CommandLineSystem.Mod.txt CommandLineSystem.Mod
+mv CommandLineDefragger.Mod.txt CommandLineDefragger.Mod
 cd ..
 echo '!cd work' > work/.cmds
 echo '+OberonY.Mod' >> work/.cmds
-echo '+CommandLineSystem.Mod' >> work/.cmds
+echo '+CommandLineSystemY.Mod' >> work/.cmds
 echo '!exit' >> work/.cmds
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar 0 0 work/dsk ../Java/JSBootLoad.rom CommandLine <work/.cmds
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <work/.cmds
 : > work/.cmds
-for FILE in OberonY MenuViewers TextFrames System CommandLineSystem Edit ORS ORB ORG ORP; do
+for FILE in OberonY MenuViewers TextFrames System CommandLineSystemY Edit ORS ORB ORG ORP; do
 	echo "ORP.Compile $FILE.Mod/s ~" >> work/.cmds
 	echo "!sleep 300" >> work/.cmds
 done
 echo 'System.DeleteFiles OberonY.Mod ~' >> work/.cmds
 echo '!exit' >> work/.cmds
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar 0 0 work/dsk ../Java/JSBootLoad.rom CommandLine <work/.cmds
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <work/.cmds
 
 cd work
-rm OberonY.Mod CommandLineSystem.Mod
+rm OberonY.Mod CommandLineSystemY.Mod
 mv System.Tool.Full System.Tool
 echo '!cd work' > .cmds
 for FILE in *.Fnt *.Mod *.Lib *.Text *.Tool; do
@@ -59,18 +56,14 @@ for FILE in *.Fnt *.Mod *.Lib *.Text *.Tool; do
 done
 cd ..
 echo '!exit' >> work/.cmds
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar 0 0 work/dsk ../Java/JSBootLoad.rom CommandLine <work/.cmds
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <work/.cmds
 head -n 4 Oberon2013Modifications/BuildModifications.Tool.txt > work/.cmds
 echo '!exit' >> work/.cmds
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar 0 0 work/dsk ../Java/JSBootLoad.rom CommandLine <work/.cmds
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <work/.cmds
 
 echo '!autosleep 150' > work/.cmds
 head -n -6 Oberon2013Modifications/BuildModifications.Tool.txt | tail -n +6 >> work/.cmds
-if [ -f work/DisplayX.Mod ]; then
-	echo "ORP.Compile DisplayX.Mod ~" >> work/.cmds
-	echo "!sleep 300" >> work/.cmds
-fi
-for FILE in PIO Net CommandLineSystem OberonX PCLink1 Clipboard SCC Net Blink Checkers Clipboard EBNF GraphTool Hilbert Sierpinski Stars Tools; do
+for FILE in PIO Net CommandLineSystemY OberonX PCLink1 Clipboard SCC Net Blink Checkers Clipboard EBNF GraphTool Hilbert Sierpinski Stars Tools; do
 	echo "ORP.Compile ${FILE}.Mod ~" >> work/.cmds
 done
 for FILE in ColorPalette PaletteEdit ColorPictureTiles ColorPictureGrab; do
@@ -79,21 +72,18 @@ done
 
 echo 'System.DeleteFiles ORC.Mod RISC.Mod SmallPrograms.Mod ~' >> work/.cmds
 echo '!exit' >> work/.cmds
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar 0 0 work/dsk ../Java/JSBootLoad.rom CommandLine <work/.cmds
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <work/.cmds
 cp work/dsk work/mindsk
 cp work/dsk work/rscdsk
-echo 'ORP.Compile DefraggerX.Mod/s ~' > work/.cmds
-echo 'System.DeleteFiles OberonX.Mod DefraggerX.Mod CommandLineSystem.Mod CommandLineSystem.rsc CommandLineSystem.smb ~' >> work/.cmds
-if [ -f work/DisplayX.Mod ]; then
-	echo 'ORP.Compile Display.Mod ~' >> work/.cmds
-	echo 'System.DeleteFiles DisplayX.Mod ~' >> work/.cmds
-fi
-echo 'Defragger.Load' >> work/.cmds
-echo 'ORP.Compile Oberon.Mod Defragger.Mod/s ~' >> work/.cmds
-echo 'Defragger.Defrag' >> work/.cmds
+echo 'ORP.Compile CommandLineDefragger.Mod/s ~' > work/.cmds
+echo 'System.DeleteFiles OberonX.Mod CommandLineDefragger.Mod CommandLineSystemY.Mod CommandLineSystem.rsc CommandLineSystem.smb ~' >> work/.cmds
+echo 'CommandLineDefragger.Load' >> work/.cmds
+echo 'System.DeleteFiles CommandLineDefragger.rsc CommandLineDefragger.smb ~' >> work/.cmds
+echo 'ORP.Compile Oberon.Mod ~' >> work/.cmds
+echo 'CommandLineDefragger.Defrag' >> work/.cmds
 echo '!exit' >> work/.cmds
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar 0 0 work/dsk ../Java/JSBootLoad.rom CommandLine <work/.cmds
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar EncodePNG ../JS/$2.png work/dsk work/boot.rom
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <work/.cmds
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --encode-png ../JS/$2.png --rom work/boot.rom work/dsk
 
 [ -z "$4" ] && exit 0
 
@@ -113,13 +103,13 @@ echo ' ||' >> work/Minify.Script
 echo '!cd work' > work/.cmds
 echo '+System.Tool' >> work/.cmds
 echo '+Minify.Script' >> work/.cmds
-echo 'ORP.Compile Oberon.Mod DefraggerX.Mod/s ~' >> work/.cmds
-echo 'Defragger.Load' >> work/.cmds
+echo 'ORP.Compile Oberon.Mod CommandLineDefragger.Mod/s ~' >> work/.cmds
+echo 'CommandLineDefragger.Load' >> work/.cmds
 echo 'Script.RunFile Minify.Script ~' >> work/.cmds
-echo 'Defragger.Defrag' >> work/.cmds
+echo 'CommandLineDefragger.Defrag' >> work/.cmds
 echo '!exit' >> work/.cmds
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar 0 0 work/mindsk ../Java/JSBootLoad.rom CommandLine <work/.cmds
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar EncodePNG ../JS/$4.png work/mindsk work/boot.rom
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/mindsk <work/.cmds
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --encode-png ../JS/$4.png --rom work/boot.rom work/mindsk 
 
 cp work/Kernel.Mod work/Kernel.Mod.txt
 cp work/System.Mod work/System.RS.Mod.txt
@@ -129,11 +119,9 @@ mac2unix work/Kernel.Mod.txt work/System.RS.Mod.txt work/Modules.RS.Mod.txt work
 cp Oberon2013Modifications/MinimalFonts/Fonts.Embedded.Mod.txt work
 cp Oberon2013Modifications/RescueSystem/*.txt work
 
-sed 's/FSoffset = 0H;/FSoffset = 80000H;/' -i work/Kernel.Mod.txt
 patch -d work <Oberon2013Modifications/RescueSystem/RescueSystem.patch -F 3
 patch -d work <Oberon2013Modifications/RescueSystem/POSTPATCH_after_DefragSupport.patch
 patch -d work <rescue-system-paravirtualized-disk.patch
-sed 's/FSoffset = 80080H;/FSoffset = 80H;/' -i work/Kernel.Mod.txt
 
 for FILE in Kernel.Mod System.RS.Mod Modules.RS.Mod Oberon.Mod Fonts.Embedded.Mod RescueSystemLoader.Mod RescueSystemTool.Mod System.Tool.RS; do
 	unix2mac work/$FILE.txt
@@ -149,7 +137,7 @@ echo 'ORL.Link Modules ~' >> work/.cmds
 echo 'ORL.Load Modules.bin ~' >> work/.cmds
 echo 'RescueSystemTool.MoveFilesystem' >> work/.cmds
 echo '!exit' >> work/.cmds
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar 0 0 work/rscdsk ../Java/JSBootLoad.rom CommandLine <work/.cmds
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/rscdsk <work/.cmds
 
 sed 's/Modules.Load("System"/Modules.Load("CommandLineSystem"/;s/NewTask(GC, 1000)/NewTask(GC, 10)/' <work/Oberon.Mod >work/OberonX.Mod
 echo '!cd work' > work/.cmds
@@ -166,16 +154,17 @@ echo 'System.CopyFiles Input.rsc => Input.rsc.RS Display.rsc => Display.rsc.RS V
 echo 'RescueSystemTool.LoadRescue' >> work/.cmds
 echo 'System.DeleteFiles Fonts.Embedded.Mod Modules.RS.Mod System.RS.Mod ~' >> work/.cmds
 echo '!exit' >> work/.cmds
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar 0 0 work/rscdsk ../Java/JSBootLoad.rom CommandLine <work/.cmds
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/rscdsk <work/.cmds
 
-echo 'ORP.Compile DefraggerX.Mod/s ~' > work/.cmds
-echo 'System.DeleteFiles OberonX.Mod DefraggerX.Mod CommandLineSystem.Mod CommandLineSystem.rsc CommandLineSystem.smb ~' >> work/.cmds
-echo 'Defragger.Load' >> work/.cmds
-echo 'ORP.Compile Oberon.Mod Defragger.Mod/s ~' >> work/.cmds
-echo 'Defragger.Defrag' >> work/.cmds
+echo 'ORP.Compile CommandLineDefragger.Mod/s ~' > work/.cmds
+echo 'System.DeleteFiles OberonX.Mod CommandLineDefragger.Mod CommandLineSystemY.Mod CommandLineSystem.rsc CommandLineSystem.smb ~' >> work/.cmds
+echo 'CommandLineDefragger.Load' >> work/.cmds
+echo 'System.DeleteFiles CommandLineDefragger.rsc CommandLineDefragger.smb ~' >> work/.cmds
+echo 'ORP.Compile Oberon.Mod ~' >> work/.cmds
+echo 'CommandLineDefragger.Defrag' >> work/.cmds
 echo '!exit' >> work/.cmds
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar 0 0 work/rscdsk ../Java/JSBootLoad.rom CommandLine <work/.cmds
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar EncodePNG ../JS/${2/Disk/WithRescueDisk}.png work/rscdsk work/boot.rom
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/rscdsk <work/.cmds
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --encode-png ../JS/${2/Disk/WithRescueDisk}.png --rom work/boot.rom work/rscdsk
 
 # TODO rescue system does not boot to rescue mode!
 # TODO check RESCUE images: RebuildToolBuilder find nothing uncompiled and mods all have valid keys! Also test RAM sizes

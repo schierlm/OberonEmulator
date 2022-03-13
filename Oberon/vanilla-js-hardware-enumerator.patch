@@ -1,0 +1,219 @@
+--- 1/Kernel.Mod
++++ 2/Kernel.Mod
+@@ -11,7 +11,7 @@
+   VAR allocated*, NofSectors*: INTEGER;
+     heapOrg*, heapLim*: INTEGER; 
+     stackOrg* ,  stackSize*, MemLim*: INTEGER;
+-    clock: INTEGER;
++    clock, pvAddr: INTEGER;
+     list0, list1, list2, list3: INTEGER;  (*lists of free blocks of size n*256, 128, 64, 32 bytes*)
+     data: INTEGER; (*SPI data in*)
+     sectorMap: ARRAY mapsize DIV 32 OF SET;
+@@ -222,14 +222,24 @@
+ 
+   PROCEDURE GetSector*(src: INTEGER; VAR dst: Sector);
+   BEGIN src := src DIV 29; ASSERT(SYSTEM.H(0) = 0);
++   IF pvAddr # 0 THEN
++    SYSTEM.PUT(pvAddr, SYSTEM.ADR(dst));
++    SYSTEM.PUT(pvAddr, 080000000H + src)
++   ELSE
+     src := src * 2 + FSoffset;
+     ReadSD(src, SYSTEM.ADR(dst)); ReadSD(src+1, SYSTEM.ADR(dst)+512) 
++   END
+   END GetSector;
+   
+   PROCEDURE PutSector*(dst: INTEGER; VAR src: Sector);
+   BEGIN dst := dst DIV 29; ASSERT(SYSTEM.H(0) =  0);
++   IF pvAddr # 0 THEN
++    SYSTEM.PUT(pvAddr, SYSTEM.ADR(src));
++    SYSTEM.PUT(pvAddr, 0C0000000H + dst)
++   ELSE
+     dst := dst * 2 + FSoffset;
+     WriteSD(dst, SYSTEM.ADR(src)); WriteSD(dst+1, SYSTEM.ADR(src)+512)
++   END
+   END PutSector;
+ 
+ (*-------- Miscellaneous procedures----------*)
+@@ -265,6 +275,7 @@
+     stackOrg := heapOrg; stackSize := 8000H; heapLim := MemLim;
+     list1 := 0; list2 := 0; list3 := 0; list0 := heapOrg;
+     SYSTEM.PUT(list0, heapLim - heapOrg); SYSTEM.PUT(list0+4, -1); SYSTEM.PUT(list0+8, 0);
++    SYSTEM.PUT(-4, 7644736BH (* 'vDsk' *)); SYSTEM.GET(-4, pvAddr);
+     allocated := 0; clock := 0; InitSecMap
+   END Init;
+ 
+--- 1/Input.Mod
++++ 2/Input.Mod
+@@ -7,13 +7,22 @@
+     KTabAdr: INTEGER;  (*keyboard code translation table*)
+     MW, MH, MX, MY: INTEGER; (*mouse limits and coords*)
+     MK: SET; (*mouse keys*)
++    pvKbd: BOOLEAN;
+ 
+ (*FIFO implemented in hardware, because every read must be handled,
+   including tracking the state of the Shift and Ctrl keys*)
+   
+   PROCEDURE Peek();
++    VAR kbdData: INTEGER;
+   BEGIN
+     IF SYSTEM.BIT(msAdr, 28) THEN
++     IF pvKbd THEN
++      REPEAT
++        SYSTEM.GET(kbdAdr, kbdData);
++        kbdCode := kbdData DIV 1000000H;
++      UNTIL Recd OR (kbdCode # 0H) OR SYSTEM.BIT(msAdr, 28);
++      IF kbdCode # 0H THEN Recd := TRUE END
++     ELSE
+       SYSTEM.GET(kbdAdr, kbdCode);
+       IF kbdCode = 0F0H THEN Up := TRUE
+       ELSIF kbdCode = 0E0H THEN Ext := TRUE
+@@ -24,6 +33,7 @@
+         END ;
+         Up := FALSE; Ext := FALSE
+       END
++     END
+     END;
+   END Peek;
+ 
+@@ -35,10 +45,13 @@
+   PROCEDURE Read*(VAR ch: CHAR);
+   BEGIN
+     WHILE ~Recd DO Peek() END ;
++   IF pvKbd THEN
++    ch := CHR(kbdCode)
++   ELSE
+     IF Shift OR Ctrl THEN INC(kbdCode, 80H) END; (*ctrl implies shift*)
+-  (* ch := kbdTab[kbdCode]; *)
+     SYSTEM.GET(KTabAdr + kbdCode, ch);
+     IF Ctrl THEN ch := CHR(ORD(ch) MOD 20H) END;
++   END;
+     Recd := FALSE
+   END Read;
+ 
+@@ -55,7 +68,13 @@
+   END SetMouseLimits;
+ 
+   PROCEDURE Init*;
++    VAR val: INTEGER;
+   BEGIN Up := FALSE; Shift := FALSE; Ctrl := FALSE; Recd := FALSE;
++    SYSTEM.PUT(-4, 4D734B62H (* MsKb *));
++    SYSTEM.GET(-4, val);
++    SYSTEM.GET(-4, val);
++    SYSTEM.GET(-4, val);
++    pvKbd := val = 1;
+     KTabAdr := SYSTEM.ADR($
+       00 00 00 00 00 1A 00 00  00 00 00 00 00 09 60 00
+       00 00 00 00 00 71 31 00  00 00 7A 73 61 77 32 00
+--- 1/Oberon.Mod
++++ 2/Oberon.Mod
+@@ -62,7 +62,7 @@
+ 
+     CurFnt*: Fonts.Font;
+     CurCol*, CurOff*: INTEGER;
+-    NofTasks*: INTEGER;
++    NofTasks*, timerAdr: INTEGER;
+ 
+     CurTask: Task;
+     DW, DH, CL: INTEGER;
+@@ -360,7 +360,8 @@
+   PROCEDURE Loop*;
+     VAR V: Viewers.Viewer; M: InputMsg; N: ControlMsg;
+        prevX, prevY, X, Y, t: INTEGER; keys: SET; ch: CHAR;
+-  BEGIN
++       minTime: INTEGER;
++  BEGIN minTime := 0;
+     REPEAT
+       Input.Mouse(keys, X, Y);
+       IF Input.Available() > 0 THEN Input.Read(ch);
+@@ -382,9 +383,15 @@
+           IF Y >= Display.Height THEN Y := Display.Height END ;
+           M.Y := Y; M.keys := keys; V := Viewers.This(X, Y); V.handle(V, M); prevX := X; prevY := Y
+         END;
++        IF timerAdr # 0 THEN SYSTEM.PUT(timerAdr, minTime) END;
+         CurTask := CurTask.next; t := Kernel.Time();
+         IF t >= CurTask.nextTime THEN
+           CurTask.nextTime := t + CurTask.period; CurTask.state := active; CurTask.handle; CurTask.state := idle
++          ;minTime := CurTask.nextTime;
++          FOR t := 1 TO NofTasks DO
++            CurTask := CurTask.next;
++            IF CurTask.nextTime < minTime THEN minTime := CurTask.nextTime END;
++          END
+         END
+       END
+     UNTIL FALSE
+@@ -400,6 +407,11 @@
+   Arrow.Fade := FlipArrow; Arrow.Draw := FlipArrow;
+   Star.Fade := FlipStar; Star.Draw := FlipStar;
+   OpenCursor(Mouse); OpenCursor(Pointer);
++
++  SYSTEM.PUT(-4, 54696D72H (* Timr *));
++  SYSTEM.GET(-4, timerAdr);
++  SYSTEM.GET(-4, ActCnt);
++  IF ActCnt # 1 THEN timerAdr := 0 END;
+ 
+   DW := Display.Width; DH := Display.Height; CL := DW;
+   OpenDisplay(DW DIV 8 * 5, DW DIV 8 * 3, DH);
+--- 1/Display.Mod
++++ 2/Display.Mod
+@@ -3,7 +3,6 @@
+ 
+   CONST black* = 0; white* = 1;  (*black = background*)
+     replace* = 0; paint* = 1; invert* = 2;  (*modes*)
+-    base = 0E7F00H;  (*adr of 1024 x 768 pixel, monocolor display frame*)
+ 
+   TYPE Frame* = POINTER TO FrameDesc;
+     FrameMsg* = RECORD END ;
+@@ -13,7 +12,7 @@
+         handle*: Handler
+       END ;
+ 
+-  VAR Base*, Width*, Height*: INTEGER;
++  VAR base, Base*, Width*, Height*: INTEGER;
+     arrow*, star*, hook*, updown*, block*, cross*, grey*: INTEGER;
+     (*a pattern is an array of bytes; the first is its width (< 32), the second its height, the rest the raster*)
+ 
+@@ -179,7 +178,43 @@
+     END
+   END ReplPattern;
+ 
+-BEGIN Base := base; Width := 1024; Height := 768;
++  PROCEDURE InitResolution;
++  VAR val, modes, modeaddr, currmode: INTEGER;
++  BEGIN
++    SYSTEM.PUT(-4, 6D566964H (* 'mVid' *)); SYSTEM.GET(-4, modes); SYSTEM.GET(-4, modeaddr);
++    IF (modeaddr # 0) THEN SYSTEM.GET(modeaddr, currmode) ELSE currmode := 0 END;
++    IF currmode < modes THEN
++      WHILE currmode > 0 DO
++        SYSTEM.GET(-4, val); SYSTEM.GET(-4, val); SYSTEM.GET(-4, val); SYSTEM.GET(-4, val); DEC(currmode)
++      END;
++      SYSTEM.GET(-4, Width);
++      SYSTEM.GET(-4, Height);
++      SYSTEM.GET(-4, val);
++      SYSTEM.GET(-4, base);
++      IF (val # 128) & (modeaddr # 0) THEN
++        SYSTEM.PUT(-4, 6D566964H (* 'mVid' *)); SYSTEM.GET(-4, modes); SYSTEM.GET(-4, modeaddr);
++        SYSTEM.GET(-4, val); currmode := 0;
++        WHILE currmode < modes DO
++          SYSTEM.GET(-4, Width);
++          SYSTEM.GET(-4, Height);
++          SYSTEM.GET(-4, val);
++          SYSTEM.GET(-4, base);
++          IF val = 128 THEN
++            SYSTEM.PUT(modeaddr, currmode);
++            currmode := modes; (* break loop *)
++          ELSE
++            INC(currmode)
++          END
++        END
++      END
++    ELSE
++      base := 0E7F00H;
++      Width := 1024;
++      Height := 768
++    END
++  END InitResolution;
++
++BEGIN InitResolution; Base := base;
+   arrow := SYSTEM.ADR($0F0F 0060 0070 0038 001C 000E 0007 8003 C101 E300 7700 3F00 1F00 3F00 7F00 FF00$);
+   star := SYSTEM.ADR($0F0F 8000 8220 8410 8808 9004 A002 C001 7F7F C001 A002 9004 8808 8410 8220 8000$);
+   hook := SYSTEM.ADR($0C0C 070F 8707 C703 E701 F700 7F00 3F00 1F00 0F00 0700 0300 01$);
