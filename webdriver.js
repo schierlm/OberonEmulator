@@ -461,9 +461,13 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 				var displayStart = (this.machine.getDisplayStart() & ~0xFFFFF) | 0x0E7F00;
 				return [ 1, -16, this.screen.width, this.screen.height, 128, displayStart];
 			case this.toHardwareId('16cV'):
-				var paletteStart = (this.machine.getDisplayStart() & ~0xFFFFF) | 0x0FFF80;
-				var displayStart = (this.machine.getDisplayStart() & ~0xFFFFF) | 0x09FF00;
-				return [ 1, 1, -16, paletteStart, this.screen.width, this.screen.height, 512, displayStart];
+				if (this.machine.colorSupported) {
+					var paletteStart = (this.machine.getDisplayStart() & ~0xFFFFF) | 0x0FFF80;
+					var displayStart = (this.machine.getDisplayStart() & ~0xFFFFF) | 0x09FF00;
+					return [ 1, 1, -16, paletteStart, this.screen.width, this.screen.height, 512, displayStart];
+				} else {
+					return [];
+				}
 			case this.toHardwareId('Rset'):
 				var romStart = (this.machine.getDisplayStart() & ~0xFFFFF) | 0x0FE000;
 				return [romStart];
