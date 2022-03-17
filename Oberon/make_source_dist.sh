@@ -15,10 +15,14 @@ integrate() {
 	done
 }
 
-rm -rf source
-./make_experimental_oberon_tools.sh
-mkdir -p source/ExperimentalOberonTools
-mv work/* source/ExperimentalOberonTools
+./make_compatible_image.sh
+integrate Compatible
+./make_bigmem_image.sh
+integrate Bigmem
+./make_js_image.sh
+integrate JS
+./make_js_color_image.sh
+integrate JSColor
 
 ./make_compatible_image.sh
 integrate Compatible
@@ -26,13 +30,8 @@ integrate Compatible
 integrate Bigmem
 ./make_js_image.sh
 integrate JS
-
-./make_compatible_image.sh
-integrate Compatible
-./make_bigmem_image.sh
-integrate Bigmem
-./make_js_image.sh
-integrate JS
+./make_js_color_image.sh
+integrate JSColor
 
 find source -type f -a -size 0 -delete
 

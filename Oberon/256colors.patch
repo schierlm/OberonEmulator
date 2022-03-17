@@ -1,0 +1,189 @@
+--- 1/Display.Mod.txt
++++ 2/Display.Mod.txt
+@@ -1,5 +1,5 @@
+ MODULE Display;  (*autodetect color or b/w*)
+-  IMPORT SYSTEM, DisplayM, DisplayC;
++  IMPORT SYSTEM, DisplayM, DisplayC, DisplayC8;
+ 
+   CONST black* = 0; white* = 15;  (*black = background*)
+     replace* = 0; paint* = 1; invert* = 2;  (*modes*)
+@@ -16,7 +16,7 @@
+     arrow*, star*, hook*, updown*, block*, cross*, grey*: INTEGER;
+     (*a pattern is an array of bytes; the first is its width (< 32), the second its height, the rest the raster*)
+ 
+-    depth4Supported, depth1Supported: BOOLEAN;
++    depth8Supported, depth4Supported, depth1Supported: BOOLEAN;
+ 
+   PROCEDURE Handle*(F: Frame; VAR M: FrameMsg);
+   BEGIN
+@@ -26,6 +26,7 @@
+   PROCEDURE InitResolution*;
+   BEGIN
+     IF Depth = 4 THEN DisplayC.InitResolution
++    ELSIF Depth = 8 THEN DisplayC8.InitResolution
+     ELSE DisplayM.InitResolution
+     END
+   END InitResolution;
+@@ -62,10 +63,27 @@
+     grey := DisplayC.grey;
+   END SwitchTo4BitColor;
+ 
++  PROCEDURE SwitchTo8BitColor;
++  BEGIN
++    Base := DisplayC8.Base;
++    Width := DisplayC8.Width;
++    Height := DisplayC8.Height;
++    Span := DisplayC8.Span;
++    Depth := 8;
++    arrow := DisplayC8.arrow;
++    star := DisplayC8.star;
++    hook := DisplayC8.hook;
++    updown := DisplayC8.updown;
++    block := DisplayC8.block;
++    cross := DisplayC8.cross;
++    grey := DisplayC8.grey;
++  END SwitchTo8BitColor;
++
+   PROCEDURE SetSize*(w, h: INTEGER) : BOOLEAN;
+     VAR result: BOOLEAN;
+   BEGIN
+     IF Depth = 4 THEN result := DisplayC.SetSize(w, h); SwitchTo4BitColor
++    ELSIF Depth = 8 THEN result := DisplayC8.SetSize(w, h); SwitchTo8BitColor
+     ELSE result := DisplayM.SetSize(w, h); SwitchToMono
+     END
+   RETURN result
+@@ -75,6 +93,7 @@
+     VAR w, h: INTEGER; sizeset, result: BOOLEAN;
+   BEGIN w := Width; h := Height; result := FALSE;
+     IF (depth = 4) & depth4Supported  THEN SwitchTo4BitColor; result := TRUE
++    ELSIF (depth = 8) & depth8Supported  THEN SwitchTo8BitColor; result := TRUE
+     ELSIF (depth = 1) & depth1Supported THEN SwitchToMono; result := TRUE
+     END;
+     IF result THEN
+@@ -89,6 +108,7 @@
+   PROCEDURE Dot*(col, x, y, mode: INTEGER);
+   BEGIN
+     IF Depth = 4 THEN DisplayC.Dot(col, x, y, mode)
++    ELSIF Depth = 8 THEN DisplayC8.Dot(col, x, y, mode)
+     ELSE DisplayM.Dot(col, x, y, mode)
+     END
+   END Dot;
+@@ -96,6 +116,7 @@
+   PROCEDURE ReplConst*(col, x, y, w, h, mode: INTEGER);
+   BEGIN
+     IF Depth = 4 THEN DisplayC.ReplConst(col, x, y, w, h, mode)
++    ELSIF Depth = 8 THEN DisplayC8.ReplConst(col, x, y, w, h, mode)
+     ELSE DisplayM.ReplConst(col, x, y, w, h, mode)
+     END
+   END ReplConst;
+@@ -103,6 +124,7 @@
+   PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);
+   BEGIN
+     IF Depth = 4 THEN DisplayC.CopyPattern(col, patadr, x, y, mode)
++    ELSIF Depth = 8 THEN DisplayC8.CopyPattern(col, patadr, x, y, mode)
+     ELSE DisplayM.CopyPattern(col, patadr, x, y, mode)
+     END
+   END CopyPattern;
+@@ -110,6 +132,7 @@
+   PROCEDURE CopyBlock*(sx, sy, w, h, dx, dy, mode: INTEGER);
+   BEGIN
+     IF Depth = 4 THEN DisplayC.CopyBlock(sx, sy, w, h, dx, dy, mode)
++    ELSIF Depth = 8 THEN DisplayC8.CopyBlock(sx, sy, w, h, dx, dy, mode)
+     ELSE DisplayM.CopyBlock(sx, sy, w, h, dx, dy, mode)
+     END
+   END CopyBlock;
+@@ -117,6 +140,7 @@
+   PROCEDURE ReplPattern*(col, patadr, x, y, w, h, mode: INTEGER);
+   BEGIN
+     IF Depth = 4 THEN DisplayC.ReplPattern(col, patadr, x, y, w, h, mode)
++    ELSIF Depth = 8 THEN DisplayC8.ReplPattern(col, patadr, x, y, w, h, mode)
+     ELSE DisplayM.ReplPattern(col, patadr, x, y, w, h, mode)
+     END
+   END ReplPattern;
+@@ -125,6 +149,7 @@
+     VAR result: BOOLEAN;
+   BEGIN
+     IF Depth = 4 THEN result := DisplayC.GetPalette(col, val)
++    ELSIF Depth = 8 THEN result := DisplayC8.GetPalette(col, val)
+     ELSE result := DisplayM.GetPalette(col, val)
+     END
+   RETURN result
+@@ -133,6 +158,7 @@
+   PROCEDURE SetPalette*(col, val: INTEGER);
+   BEGIN
+     IF Depth = 4 THEN DisplayC.SetPalette(col, val)
++    ELSIF Depth = 8 THEN DisplayC8.SetPalette(col, val)
+     ELSE DisplayM.SetPalette(col, val)
+     END
+   END SetPalette;
+@@ -146,7 +172,10 @@
+     SYSTEM.PUT(-4, 31366356H); (* '16cV' *)
+     SYSTEM.GET(-4, modes);
+     depth4Supported := modes > 0;
+-    IF ~depth4Supported THEN depth1Supported := TRUE END;
++    SYSTEM.PUT(-4, 38626356H); (* '8bcV' *)
++    SYSTEM.GET(-4, modes);
++    depth8Supported := modes > 0;
++    IF ~depth4Supported & ~depth8Supported THEN depth1Supported := TRUE END;
+     IF depth1Supported THEN
+       DisplayM.InitResolution;
+       IF DisplayM.Span # 0 THEN SwitchToMono END
+@@ -155,9 +184,14 @@
+       DisplayC.InitResolution;
+       IF DisplayC.Span # 0 THEN SwitchTo4BitColor END
+     END;
++    IF depth8Supported THEN
++      DisplayC8.InitResolution;
++      IF DisplayC8.Span # 0 THEN SwitchTo8BitColor END
++    END;
+     IF Depth = 0 THEN (* unknown/unsupported mode active *)
+       IF depth1Supported THEN SwitchToMono
+       ELSIF depth4Supported THEN SwitchTo4BitColor
++      ELSIF depth8Supported THEN SwitchTo8BitColor
+       END;
+       IF Depth # 0 THEN tmp := SetSize(Width, Height) END
+     END
+--- 1/DisplayGrab.Mod.txt
++++ 2/DisplayGrab.Mod.txt
+@@ -9,6 +9,8 @@
+       col := 1; SYSTEM.GET(a, s); IF (s * {x MOD 32} = {}) THEN col := 0 END
+     ELSIF Display.Depth = 4 THEN
+       SYSTEM.GET(a, col); col := ASR(col, (x MOD 8) * 4) MOD 10H;
++    ELSIF Display.Depth = 8 THEN
++      SYSTEM.GET(a, col); col := ASR(col, (x MOD 4) * 8) MOD 100H;
+     ELSE
+       col := 0
+     END
+--- 1/SeamlessResize.Mod.txt
++++ 2/SeamlessResize.Mod.txt
+@@ -26,6 +26,7 @@
+     VAR w, h, val: INTEGER;
+   BEGIN val := 40000000H;
+     IF Display.Depth = 4 THEN val := 0C0000000H END;
++    IF Display.Depth = 8 THEN val := 080000000H END;
+     SYSTEM.PUT(hwAddr, val);
+     SYSTEM.GET(hwAddr, val);
+     w := val DIV 8000H MOD 8000H;
+@@ -42,6 +43,7 @@
+   BEGIN
+     hwid := Kernel.ToHardwareID("mDyn");
+     IF Display.Depth = 4 THEN hwid := Kernel.ToHardwareID("16cD") END;
++    IF Display.Depth = 8 THEN hwid := Kernel.ToHardwareID("8bcD") END;
+     SYSTEM.PUT(Kernel.hwEnumerator, hwid);
+     SYSTEM.GET(Kernel.hwEnumerator, hwAddr);
+     SYSTEM.GET(Kernel.hwEnumerator, val);
+@@ -51,12 +53,12 @@
+     SYSTEM.GET(Kernel.hwEnumerator, val);
+     SYSTEM.GET(Kernel.hwEnumerator, val);
+     SYSTEM.GET(Kernel.hwEnumerator, val);
+-    IF Display.Depth = 4 THEN SYSTEM.GET(Kernel.hwEnumerator, val) END;
++    IF (Display.Depth = 4) OR (Display.Depth = 8) THEN SYSTEM.GET(Kernel.hwEnumerator, val) END;
+     IF val # 1 THEN hwAddr := 0 END;
+   END Init;
+ 
+ BEGIN
+   installed := FALSE;
+-  IF (Display.Depth = 1) OR (Display.Depth = 4) THEN Init ELSE hwAddr := 0 END;
++  IF (Display.Depth = 1) OR (Display.Depth = 4) OR (Display.Depth = 8) THEN Init ELSE hwAddr := 0 END;
+   t := Oberon.NewTask(Check, 5000);
+ END SeamlessResize.

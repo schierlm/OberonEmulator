@@ -1,0 +1,4 @@
+Script.Run
+ |> System.SetScreenSize 0 0 4 ~
+ |> System.SetColorTheme * 0 12 13 14 1 3 15 ~
+ ||

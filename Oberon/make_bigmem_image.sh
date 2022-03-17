@@ -5,13 +5,12 @@ set -e
 ./apply-proposed-patches.sh
 ./apply-emulator-patches.sh
 
-cp Display.Mod.Color.txt work/Display.Mod.txt
-patch -d work <bigmem.patch
+cp DisplayC8.Mod.txt work
+patch -d work <256colors.patch
 patch -d work <clipboard-integration.patch
 
-patch -d work <paravirtualized-keyboard.patch
-patch -d work <paravirtualized-disk.patch
-patch -d work <power-management.patch
-patch -d work <power-management-keyboard-unresponsive.patch
-
 ./derive-files.sh
+
+[ -z "$1" ] && exit 0
+
+./compile-image.sh "$1" ../Java/BigmemDiskImage '?B=?'

@@ -1,0 +1,332 @@
+MODULE DisplayC8;  (*NW 5.11.2013*)
+  IMPORT SYSTEM;
+
+  CONST black* = 0; white* = 15;  (*black = background*)
+    replace* = 0; paint* = 1; invert* = 2;  (*modes*)
+
+  TYPE Frame* = POINTER TO FrameDesc;
+    FrameMsg* = RECORD END ;
+    Handler* = PROCEDURE (F: Frame; VAR M: FrameMsg);
+    FrameDesc* = RECORD next*, dsc*: Frame;
+        X*, Y*, W*, H*: INTEGER;
+        handle*: Handler
+      END ;
+
+  VAR Base*, Width*, Height*, Depth*, Span*, Palette: INTEGER;
+    arrow*, star*, hook*, updown*, block*, cross*, grey*: INTEGER;
+    (*a pattern is an array of bytes; the first is its width (< 32), the second its height, the rest the raster*)
+
+  PROCEDURE Handle*(F: Frame; VAR M: FrameMsg);
+  BEGIN
+    IF (F # NIL) & (F.handle # NIL) THEN F.handle(F, M) END
+  END Handle;
+
+  PROCEDURE InitResolution*;
+  VAR val, modes, firstmode, currmode: INTEGER;
+  BEGIN
+    SYSTEM.PUT(-4, 38626356H); (* '8bcV' *)
+    SYSTEM.GET(-4, modes);
+    SYSTEM.GET(-4, firstmode);
+    SYSTEM.GET(-4, currmode);
+    SYSTEM.GET(-4, Palette);
+    IF (currmode # 0) THEN
+      SYSTEM.GET(currmode, val); currmode := val;
+    END;
+    IF (currmode >= firstmode) & (currmode < modes + firstmode) THEN
+      WHILE currmode > firstmode DO
+        SYSTEM.GET(-4, val); SYSTEM.GET(-4, val); SYSTEM.GET(-4, val); SYSTEM.GET(-4, val); DEC(currmode)
+      END;
+      SYSTEM.GET(-4, Width);
+      SYSTEM.GET(-4, Height);
+      SYSTEM.GET(-4, Span);
+      SYSTEM.GET(-4, Base);
+    ELSIF ASR(currmode, 30) MOD 4 = 2 THEN
+      Width := currmode DIV 8000H MOD 8000H;
+      Height := currmode MOD 8000H;
+      SYSTEM.PUT(-4, 38626344H); (* '8bcD' *)
+      SYSTEM.GET(-4, val);
+      SYSTEM.GET(-4, Palette);
+      SYSTEM.GET(-4, val); SYSTEM.GET(-4, val); SYSTEM.GET(-4, val); SYSTEM.GET(-4, val);
+      SYSTEM.GET(-4, Span);
+      SYSTEM.GET(-4, Base);
+      IF Span = -1 THEN Span := Width END
+    ELSIF modes > 0 THEN
+      SYSTEM.GET(-4, Width);
+      SYSTEM.GET(-4, Height);
+      Base := 0E7F00H; Span := 0
+    ELSE
+      Base := 0E7F00H; Width := 0; Height := 0; Span := 0
+    END
+  END InitResolution;
+
+  PROCEDURE SetSize*(w, h: INTEGER) : BOOLEAN;
+    VAR val, modes, firstmode, modeaddr, i, mw, mh: INTEGER; success: BOOLEAN;
+  BEGIN success := FALSE;
+    SYSTEM.PUT(-4, 38626356H); (* '8bcV' *)
+    SYSTEM.GET(-4, modes);
+    SYSTEM.GET(-4, firstmode);
+    SYSTEM.GET(-4, modeaddr);
+    SYSTEM.GET(-4, val); (* palette start *)
+    IF modeaddr # 0 THEN
+      FOR i := 0 TO modes DO
+        SYSTEM.GET(-4, mw); SYSTEM.GET(-4, mh); SYSTEM.GET(-4, val); SYSTEM.GET(-4, val);
+        IF ~success & (mw = w) & (mh = h) THEN
+          SYSTEM.PUT(modeaddr, firstmode + i); success := TRUE
+        END
+      END
+    END;
+    IF ~success & (w > 0) & (h > 0) THEN
+      SYSTEM.PUT(-4, 38626344H); (* '8bcD' *)
+      SYSTEM.GET(-4, modeaddr);
+      IF modeaddr # 0 THEN
+        success := TRUE;
+        SYSTEM.GET(-4, val); (* palette address *)
+        SYSTEM.GET(-4, val); (* max width *)
+        IF w > val THEN success := FALSE END;
+        SYSTEM.GET(-4, val); (* max height *)
+        IF h > val THEN success := FALSE END;
+        SYSTEM.GET(-4, val); (* width increment *)
+        IF w MOD val # 0 THEN success := FALSE END;
+        SYSTEM.GET(-4, val); (* height increment *)
+        IF h MOD val # 0 THEN success := FALSE END;
+        IF success THEN
+          SYSTEM.PUT(modeaddr, 80000000H + w * 8000H + h)
+        END
+      END
+    END;
+    IF success THEN InitResolution END
+  RETURN success
+  END SetSize;
+
+  PROCEDURE SetDepth*(depth: INTEGER): BOOLEAN;
+  BEGIN
+  RETURN depth = 8
+  END SetDepth;
+
+  (* raster ops *)
+
+  PROCEDURE MakeMask(col: BYTE; x1, x2: INTEGER) : SET;
+    VAR r: SET; i: INTEGER;
+  BEGIN r := {};
+    FOR i := x1 MOD 4 TO x2 MOD 4 DO
+      SYSTEM.PUT(SYSTEM.ADR(r)+i, col);
+    END
+  RETURN r
+  END MakeMask;
+
+  PROCEDURE Dot*(col, x, y, mode: INTEGER);
+    VAR a: INTEGER; u, s: SET; cb, b0: BYTE;
+  BEGIN a := Base + (x DIV 4)*4 + y*Span; cb := col; b0 := 0;
+    s := {};
+    SYSTEM.PUT(SYSTEM.ADR(s) + x MOD 4, cb);
+    SYSTEM.GET(a, u);
+    IF mode # invert THEN SYSTEM.PUT(SYSTEM.ADR(u) + x MOD 4, b0) END;
+    SYSTEM.PUT(a, u / s)
+  END Dot;
+
+  PROCEDURE ReplConst*(col, x, y, w, h, mode: INTEGER);
+    VAR al, ar, a0, a1: INTEGER; left, right, mid, pix, pixl, pixr, mleft, mright, mmid, color: SET; tmp: BOOLEAN;
+  BEGIN
+    IF Span = 0 THEN tmp := SetSize(Width, Height) END;
+    al := Base + y*Span;
+    ar := ((x+w-1) DIV 4)*4 + al; al := (x DIV 4)*4 + al;
+    IF ar = al THEN
+      mid := MakeMask(col, x, x+w-1);
+      IF mode # invert THEN mmid := MakeMask(0FFH, x, x+w-1) END;
+      a1 := al;
+      WHILE a1 <= al + (h-1)*Span DO
+        SYSTEM.GET(a1, pix);
+        IF mode = invert THEN SYSTEM.PUT(a1, pix / mid)
+        ELSE SYSTEM.PUT(a1, pix - mmid + mid)
+        END;
+        INC(a1, Span)
+      END
+    ELSE
+      left := MakeMask(col, x, 3); right := MakeMask(col, 0, x+w-1);
+      mid := MakeMask(col, 0, 3);
+      IF mode # invert THEN
+        mleft := MakeMask(0FFH, x, 3); mright := MakeMask(0FFH, 0, x+w-1);
+      END;
+      a0 := al;
+      WHILE a0 <= al + (h-1)*Span DO
+        SYSTEM.GET(a0, pixl); SYSTEM.GET(ar, pixr);
+        IF mode = invert THEN
+          SYSTEM.PUT(a0, pixl / left);
+          FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.GET(a1, pix); SYSTEM.PUT(a1, pix / mid) END;
+          SYSTEM.PUT(ar, pixr / right)
+        ELSE
+          SYSTEM.PUT(a0, pixl - mleft + left);
+          FOR a1 := a0+4 TO ar-4 BY 4 DO SYSTEM.PUT(a1, mid) END;
+          SYSTEM.PUT(ar, pixr - mright + right)
+        END;
+        INC(ar, Span); INC(a0, Span)
+      END
+    END
+  END ReplConst;
+
+  PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
+    VAR a, a0, a1, i, j, k, len, scrAdr, ww, pwd, xx: INTEGER;
+      w, h, pbt, b: BYTE;
+      pat, pix, mask, color: SET;
+  BEGIN SYSTEM.GET(patadr, w); SYSTEM.GET(patadr+1, h); INC(patadr, 2);
+    a := Base + (x DIV 4)*4 + y*Span;
+    ww := (x + w - 1) DIV 4 - x DIV 4;
+    a0 := a;
+    WHILE a0 <= a + (h-1)*Span DO
+      (*build pattern line; w < 32*)
+      SYSTEM.GET(patadr, pbt); INC(patadr); pwd := pbt;
+      IF w > 8 THEN SYSTEM.GET(patadr, pbt); INC(patadr); pwd := pbt*100H + pwd;
+        IF w > 16 THEN SYSTEM.GET(patadr, pbt); INC(patadr); pwd := pbt*10000H + pwd;
+          IF w > 24 THEN SYSTEM.GET(patadr, pbt); INC(patadr); pwd := pbt*1000000H + pwd END
+        END
+      END;
+      xx := x DIV 4 * 4;
+      FOR a1 := a0 TO a0 + ww * 4 BY 4 DO
+        SYSTEM.GET(a1, pix);
+        FOR i := xx TO xx+3 DO
+          IF (i >= x) & (i < x+w) THEN
+            IF (mode # invert) THEN
+              pix := pix - MakeMask(0FFH, i-xx, i-xx)
+            END;
+            IF SYSTEM.VAL(SET, pwd) * {i-x} # {} THEN
+              pix := pix / MakeMask(col, i-xx, i-xx)
+            END
+          END
+        END;
+        SYSTEM.PUT(a1, pix);
+        INC(xx, 4);
+      END;
+      INC(a0, Span)
+    END
+  END CopyPattern;
+
+  PROCEDURE CopyBlock*(sx, sy, w, h, dx, dy, mode: INTEGER); (*only for mode = replace*)
+    VAR sa, da, sa0, sa1, d, len: INTEGER;
+      u0, u1, u2, u3, v0, v1, v2, v3, n: INTEGER;
+      end, step: INTEGER;
+      src, dst, spill: SET;
+      m0, m1, m2, m3: SET;
+  BEGIN
+    u0 := sx DIV 4; u1 := sx MOD 4; u2 := (sx+w) DIV 4; u3 := (sx+w) MOD 4;
+    v0 := dx DIV 4; v1 := dx MOD 4; v2 := (dx+w) DIV 4; v3 := (dx+w) MOD 4;
+    sa := Base + u0*4 + sy*Span; da := Base + v0*4 + dy*Span;
+    d := da - sa; n := u1 - v1;   (*displacement in words and bits*)
+    len := (u2 - u0) * 4;
+    m0 := MakeMask(0FFH, v1, 3); m2 := MakeMask(0FFH, v3, 2); m3 := m0 / m2;
+    IF d >= 0 THEN (*copy up, scan down*) sa0 := sa + (h-1)*Span; end := sa-Span; step := -Span
+    ELSE (*copy down, scan up*) sa0 := sa; end := sa + h*Span; step := Span
+    END ;
+    WHILE sa0 # end DO
+      IF n >= 0 THEN (*shift right*) m1 := MakeMask(0FFH, n, 3);
+        IF v1 + w >= 4 THEN
+          SYSTEM.GET(sa0+len, src); src := ROR(src, n * 8);
+          SYSTEM.GET(sa0+len+d, dst);
+          SYSTEM.PUT(sa0+len+d, (dst * m2) + (src - m2));
+          spill := src - m1;
+          FOR sa1 := sa0 + len-4 TO sa0+4  BY -4 DO
+            SYSTEM.GET(sa1, src); src := ROR(src, n * 8);
+            SYSTEM.PUT(sa1+d, spill + (src * m1));
+            spill := src - m1
+          END ;
+          SYSTEM.GET(sa0, src); src := ROR(src, n*8);
+          SYSTEM.GET(sa0+d, dst);
+          SYSTEM.PUT(sa0+d, (src * m0) + (dst - m0))
+        ELSE
+          SYSTEM.GET(sa0, src); src := ROR(src, n*8);
+          SYSTEM.GET(sa0+d, dst);
+          SYSTEM.PUT(sa0+d, (src * m3) + (dst - m3))
+        END
+      ELSE (*shift left*) m1 := MakeMask(0FFH, -n, 3);
+        SYSTEM.GET(sa0, src); src := ROR(src, n*8);
+        SYSTEM.GET(sa0+d, dst);
+        IF v1 + w < 4 THEN
+          SYSTEM.PUT(sa0+d, (dst - m3) + (src * m3))
+        ELSE SYSTEM.PUT(sa0+d, (dst - m0) + (src * m0));
+          spill := src - m1;
+          FOR sa1 := sa0+4 TO sa0 + len-4 BY 4 DO
+            SYSTEM.GET(sa1, src); src := ROR(src, n*8);
+            SYSTEM.PUT(sa1+d, spill + (src * m1));
+            spill := src - m1
+          END ;
+          SYSTEM.GET(sa0+len, src); src := ROR(src, n*8);
+          SYSTEM.GET(sa0+len+d, dst);
+          SYSTEM.PUT(sa0+len+d, (src - m2) + (dst * m2))
+        END
+      END ;
+      INC(sa0, step)
+    END
+  END CopyBlock;
+
+  PROCEDURE ConvPattern(col: INTEGER; VAR ptw: SET);
+  VAR i: INTEGER; x : SET;
+  BEGIN
+    x := ptw;
+    ptw := {};
+    FOR i := 0 TO 3 DO
+        IF x * {i} # {} THEN ptw := ptw + MakeMask(col, i, i) END
+    END
+  END ConvPattern;
+
+  PROCEDURE ReplPattern*(col, patadr, x, y, w, h, mode: INTEGER);
+  (* pattern width = 32, fixed; pattern starts at patadr+4, for mode = invert only *)
+    VAR al, ar, a0, a1: INTEGER;
+      pta0, pta1: INTEGER;  (*pattern addresses*)
+      pw, ph: BYTE;
+      left, right, mid, pix, pixl, pixr, ptw, pat, color: SET;
+  BEGIN al := Base + y*Span; SYSTEM.GET(patadr+1, ph);
+    pta0 := patadr+4; pta1 := ph*4 + pta0;
+    ar := ((x+w-1) DIV 4)*4 + al; al := (x DIV 4)*4 + al;
+    IF ar = al THEN
+      mid := MakeMask(0FFH, x, x+w-1);
+      a1 := al;
+      WHILE a1 <= al + (h-1)*Span DO
+        SYSTEM.GET(a1, pix);
+        SYSTEM.GET(pta0, ptw);
+        ConvPattern(col, ptw);
+        SYSTEM.PUT(a1, (pix - mid) + (pix/ptw * mid)); INC(pta0, 4); INC(a1, Span);
+        IF pta0 = pta1 THEN pta0 := patadr+4 END
+      END
+    ELSE
+      left := MakeMask(0FFH, x, 3); right := MakeMask(0FFH, 0, x+w-1);
+      a0 := al;
+      WHILE a0 <= al + (h-1)*Span DO
+        SYSTEM.GET(a0, pixl);
+        SYSTEM.GET(pta0, ptw);
+        ConvPattern(col, ptw);
+        SYSTEM.PUT(a0, (pixl - left) + (pixl/ptw * left));
+        FOR a1 := a0+4 TO ar-4 BY 4 DO
+          SYSTEM.GET(a1, pix);
+          SYSTEM.PUT(a1, pix/ptw)
+        END;
+        SYSTEM.GET(ar, pixr);
+        SYSTEM.PUT(ar, (pixr - right) + (pixr/ptw * right));
+        INC(pta0, 4); INC(ar, Span); INC(a0, Span);
+        IF pta0 = pta1 THEN pta0 := patadr+4 END
+      END
+    END
+  END ReplPattern;
+
+  PROCEDURE GetPalette*(col: INTEGER; VAR val: INTEGER): BOOLEAN;
+    VAR result: BOOLEAN;
+  BEGIN result := FALSE;
+    IF (Palette # 0) & (col < 256) THEN
+      SYSTEM.GET(Palette + col * 4, val);
+      result := TRUE;
+    END;
+  RETURN result
+  END GetPalette;
+
+  PROCEDURE SetPalette*(col, val: INTEGER);
+  BEGIN
+    IF (Palette # 0) & (col < 256) THEN SYSTEM.PUT(Palette + col * 4, val) END
+  END SetPalette;
+
+BEGIN Depth := 8; InitResolution;
+  arrow := SYSTEM.ADR($0F0F 0060 0070 0038 001C 000E 0007 8003 C101 E300 7700 3F00 1F00 3F00 7F00 FF00$);
+  star := SYSTEM.ADR($0F0F 8000 8220 8410 8808 9004 A002 C001 7F7F C001 A002 9004 8808 8410 8220 8000$);
+  hook := SYSTEM.ADR($0C0C 070F 8707 C703 E701 F700 7F00 3F00 1F00 0F00 0700 0300 01$);
+  updown := SYSTEM.ADR($080E 183C 7EFF 1818 1818 1818 FF7E3C18$);
+  block := SYSTEM.ADR($0808 FFFF C3C3 C3C3 FFFF$);
+  cross := SYSTEM.ADR($0F0F 0140 0220 0410 0808 1004 2002 4001 0000 4001 2002 1004 0808 0410 0220 0140$);
+  grey := SYSTEM.ADR($2002 0000 5555 5555 AAAA AAAA$)
+END DisplayC8.

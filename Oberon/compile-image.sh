@@ -58,13 +58,14 @@ cd ..
 echo '!exit' >> work/.cmds
 ${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <work/.cmds
 head -n 4 Oberon2013Modifications/BuildModifications.Tool.txt > work/.cmds
+[ -f work/DisplayC8.Mod ] && echo 'ORP.Compile DisplayC8.Mod/s ~' >> work/.cmds
 echo '!exit' >> work/.cmds
 ${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <work/.cmds
 
 echo '!autosleep 150' > work/.cmds
 head -n -6 Oberon2013Modifications/BuildModifications.Tool.txt | tail -n +6 >> work/.cmds
-for FILE in PIO Net CommandLineSystemY OberonX PCLink1 Clipboard SCC Net Blink Checkers Clipboard EBNF GraphTool Hilbert Sierpinski Stars Tools; do
-	echo "ORP.Compile ${FILE}.Mod ~" >> work/.cmds
+for FILE in PIO Net CommandLineSystemY OberonX PCLink1 SCC Net Blink Checkers Clipboard EBNF GraphTool Hilbert Sierpinski Stars Tools; do
+	echo "ORP.Compile ${FILE}.Mod/s ~" >> work/.cmds
 done
 for FILE in ColorPalette PaletteEdit ColorPictureTiles ColorPictureGrab; do
 	[ -f work/${FILE}.Mod ] && echo "ORP.Compile ${FILE}.Mod ~" >> work/.cmds
@@ -80,6 +81,9 @@ echo 'System.DeleteFiles OberonX.Mod CommandLineDefragger.Mod CommandLineSystemY
 echo 'CommandLineDefragger.Load' >> work/.cmds
 echo 'System.DeleteFiles CommandLineDefragger.rsc CommandLineDefragger.smb ~' >> work/.cmds
 echo 'ORP.Compile Oberon.Mod ~' >> work/.cmds
+if [ -f work/System.Final.Tool ]; then
+	echo 'System.RenameFiles System.Final.Tool => System.Tool ~' >> work/.cmds
+fi
 echo 'CommandLineDefragger.Defrag' >> work/.cmds
 echo '!exit' >> work/.cmds
 ${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <work/.cmds
