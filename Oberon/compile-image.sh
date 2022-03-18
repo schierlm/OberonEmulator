@@ -99,7 +99,7 @@ echo ' |> ScriptVars.SetChars Newline 13 ~' >> work/Minify.Script
 echo ' |> ScriptVars.Replace FileList 0 Newline 9999 " " ~' >> work/Minify.Script
 echo ' |> ScriptVars.Insert FileList "System.DeleteFiles " 0 ~' >> work/Minify.Script
 echo ' |> ScriptVars.Insert FileList " ~" -1 ~' >> work/Minify.Script
-for FILE in System.Tool Oberon10.Scn.Fnt Input.rsc Display.rsc Viewers.rsc Fonts.rsc Texts.rsc Oberon.rsc MenuViewers.rsc TextFrames.rsc System.rsc Edit.rsc Clipboard.rsc PCLink1.rsc; do
+for FILE in System.Tool Oberon10.Scn.Fnt Input.rsc DisplayM.rsc DisplayC.rsc Display.rsc Viewers.rsc Fonts.rsc Texts.rsc Oberon.rsc MenuViewers.rsc TextFrames.rsc System.rsc Edit.rsc Clipboard.rsc PCLink1.rsc; do
 	echo ' |> ScriptVars.Replace FileList 0 " '$FILE' " 1 " " ~' >> work/Minify.Script
 done
 echo ' |> ScriptVars.Expand %FileList% ~ %~' >> work/Minify.Script
