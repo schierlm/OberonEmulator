@@ -1,1 +1,1 @@
-{"images": ["MinimalDiskImage", "FullDiskImage", "VanillaDiskImage", "ExtendedOberonDiskImage", "IntegratedOberonDiskImage", "BootFromSerialLine", "ColorDiskImage", "FullWithRescueDiskImage", "DebuggableDiskImage", "FullDynmemDiskImage"]}
+{"images": ["MinimalDiskImage", "FullDiskImage", "VanillaDiskImage", "ExtendedOberonDiskImage", "IntegratedOberonDiskImage", "BootFromSerialLine", "ColorDiskImage", "FullWithRescueDiskImage", "DebuggableDiskImage"]}
