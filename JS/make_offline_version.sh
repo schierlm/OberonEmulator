@@ -23,7 +23,7 @@ perl -- - boot.rom >>offline-emu.html <<'EOF'
 EOF
 
 echo '])};' >>offline-emu.html
-cat risc.js webdriver.js wiznet.js >>offline-emu.html
+cat risc${1:+-$1}.js risc-common.js webdriver.js wiznet.js >>offline-emu.html
 echo '</script>' >>offline-emu.html
 sed '1,4d' < emu.html | grep -v '<script' >>offline-emu.html
 

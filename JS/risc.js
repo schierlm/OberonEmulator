@@ -2,13 +2,8 @@ function RISCMachine(romWords) {
 	this.registers = new Int32Array(
 		this.GeneralRegisterCount + this.SpecialRegisterCount
 	);
-	var magic = (romWords[255] & 0xFFFFFF)
-	if (magic == 0x3D424D || magic == 0x3D4243 || magic == 0x3D423F) {
-		var mb = (romWords[255] >>> 24) & 0xF;
-		if ((romWords[255] >>> 24) == 0x3F) {
-			mb = 1;
-		}
-		if (mb == 0) mb = 16;
+	var mb = this.ParseROM(romWords);
+	if (mb != 1) {
 		this.MemSize = 0x100000 * mb;
 		this.MemWords = (this.MemSize / 4);
 		var offset = (mb - 1) * 0x100000;
@@ -17,12 +12,10 @@ function RISCMachine(romWords) {
 		this.PaletteStart += offset;
 		this.IOStart += offset;
 	}
-	this.colorSupported = magic == 0x3D4243;
 	this.mainMemory = new Int32Array(this.MemWords);
 	this.flag_Z = false, this.flag_N = false;
 	this.flag_C = false, this.flag_V = false;
 	this.lastLoadRegister = 0;
-	this.bootROM = romWords;
 }
 
 (function($proto) {
@@ -39,9 +32,7 @@ function RISCMachine(romWords) {
 	RISCMachine.IOStart = $proto.IOStart = 0x0FFFC0;
 	RISCMachine.MemSize = $proto.MemSize = 0x100000;
 	RISCMachine.MemWords = $proto.MemWords = (RISCMachine.MemSize / 4);
-	$proto.palette = null;
 	$proto.waitMillis = 0;
-	$proto.hardwareEnumBuffer = [];
 
 	$proto.cpuRegisterSlot = function(id) {
 		if (id < 0 && -id <= this.SpecialRegisterCount) {
@@ -70,7 +61,7 @@ function RISCMachine(romWords) {
 		if (mapROM && address >= this.ROMStart) {
 			return this.bootROM[(address - this.ROMStart) / 4 | 0];
 		} else if (address >= this.IOStart) {
-			return this.memReadIO(address);
+			return this.memReadIO(address - this.IOStart);
 		} else if (address >= this.PaletteStart) {
 			return this.memReadPalette(address);
 		} else {
@@ -80,7 +71,7 @@ function RISCMachine(romWords) {
 
 	$proto.memWriteWord = function(address, value) {
 		if (address >= this.IOStart) {
-			this.memWriteIO(address, value);
+			this.memWriteIO(address - this.IOStart, value);
 		} else if (address >= this.PaletteStart) {
 			this.memWritePalette(address, value);
 		} else if (address >= this.DisplayStart) {
@@ -95,10 +86,7 @@ function RISCMachine(romWords) {
 			return 0;
 		if (this.palette == null) {
 			this.DisplayStart = 0x09FF00 + this.MemSize - 0x100000;
-			this.palette = [
-				0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0xff00ff, 0xffff00, 0x00ffff, 0xaa0000,
-				0x009a00, 0x00009a, 0x0acbf3, 0x008282, 0x8a8a8a, 0xbebebe, 0xdfdfdf, 0x000000
-			];
+			this.InitPalette();
 		}
 		return this.palette[(address - this.PaletteStart) / 4 | 0];
 	}
@@ -113,43 +101,8 @@ function RISCMachine(romWords) {
 		}
 	}
 
-	$proto.setVideoMode = function(val) {
-		if (val == 0 && this.palette != null) {
-			this.palette = null;
-			this.DisplayStart = 0x0E7F00 + this.MemSize - 0x100000;
-		} else if (val == 1 && this.palette == null) {
-			this.memReadPalette(this.PaletteStart);
-		}
-	}
-
-	$proto.memReadIO = function(address) {
-		switch (address - this.IOStart) {
-			case  0: return emulator.getTickCount();
-			case  8: return emulator.link.getData();
-			case 12: return emulator.link.getStatus();
-			case 24: return emulator.getInputStatus();
-			case 28: return emulator.getKeyCode();
-			case 40: return emulator.clipboard.getSize();
-			case 44: return emulator.clipboard.getData();
-			case 48: return this.palette == null ? 0 : 1;
-			case 60: return this.hardwareEnumBuffer.shift() | 0;
-			default: return 0;
-		}
-	}
-
-	$proto.memWriteIO = function(address, val) {
-		switch (address - this.IOStart) {
-			case  0: return void(this.wait(val));
-			case  4: return void(emulator.registerLEDs(val));
-			case  8: return void(emulator.link.setData(val));
-			case 12: return void(emulator.link.setStatus(val));
-			case 32: return void(emulator.netCommand(val, this.mainMemory));
-			case 36: return void(emulator.storageRequest(val, this.mainMemory));
-			case 40: return void(emulator.clipboard.expect(val));
-			case 44: return void(emulator.clipboard.putData(val));
-			case 48: return void(this.setVideoMode(val));
-			case 60: return void(this.hardwareEnumBuffer = emulator.runHardwareEnumerator(val));
-		}
+	$proto.getMainMemory = function() {
+		return this.mainMemory;
 	}
 
 	$proto.wait = function(x) {
@@ -411,10 +364,6 @@ function RISCMachine(romWords) {
 		} else {
 			this.memWriteWord(address | 0, value & 0xFF);
 		}
-	}
-
-	$proto.getBootROM = function() {
-		return this.bootROM;
 	}
 
 	$proto.getDisplayStart = function() {
