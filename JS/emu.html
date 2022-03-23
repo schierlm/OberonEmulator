@@ -144,6 +144,14 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   display: inline-block;
 }
 
+#controlbar .showwhenserial {
+display: none;
+}
+
+#controlbar.seriallink .showwhenserial {
+display: block;
+}
+
 #serialpreview {
 	display: none;
 	position: fixed;
@@ -246,18 +254,32 @@ body.leftpreview #emulatorface {
           1024×768
         </button>
 
-        <button id="romdumpbutton" class="midflight menuitem"
-                onclick="emulator.dumpROM();"
-                title="Dump ROM image to local file">Dump ROM…</button>
-
         <button id="breakbutton" class="midflight menuitem"
                 onclick="emulator.reset(false);">Break</button>
 
-        <button id="resetbutton" class="midflight menuitem" onclick="emulator.reset(true);">
+        <button id="resetbutton" class="midflight menuitem" onclick="emulator.reset(true, false);">
 		<span>Reset
-			<select class="ramhint" onclick="event.stopPropagation()"><option>1 MB</option></select>
-			<select class="colorhint" onclick="event.stopPropagation()"><option>b/w</option></select>
+			<select class="ramhint" onclick="event.stopPropagation()">
+				<option value="1">1 MB</option>
+				<option value="2">2 MB</option>
+				<option value="4">4 MB</option>
+				<option value="8">8 MB</option>
+				<option value="16">16 MB</option>
+				<option value="32">32 MB</option>
+				<option value="64">64 MB</option>
+			</select>
+			<select class="disphint" onclick="event.stopPropagation()">
+				<option value="96">96 KB</option>
+				<option value="256">256 KB</option>
+				<option value="384">384 KB</option>
+				<option value="512">512 KB</option>
+				<option value="1024">1 MB</option>
+				<option value="2048">2 MB</option>
+			</select>
 		</span>
+	</button>
+	<button id="resetserialbutton" class="midflight menuitem showwhenserial" onclick="emulator.reset(true, true);">
+		<span>Reset (Boot from serial)</span>
 	</button>
       </div>
     </div>
@@ -315,23 +337,6 @@ body.leftpreview #emulatorface {
  --></div>
   </div>
 </div>
-<form id="exportoptions">
-<h2>Save PNG (compressed emulator image)</h2>
-<p><b>ROM:</b> <label><input type="radio" name="romtype" value="current" id="romtypecurrent"> Currently running</label>
-<label><input type="radio" name="romtype" value="file" id="romtypefile">Chosen RAW rom file</label>
-<label><input type="radio" name="romtype" value="rsc" id="romtypersc">Chosen .rsc rom file</label>
-<input type="file" name="romfile" id="romfile"></p>
-<p><b>RAM size:</b> <select name="ramsize">
-	<option value="1">1 MB</option><option value="2">2 MB</option>
-	<option value="4">4 MB</option><option value="8">8 MB</option>
-	<option value="0">16 MB</option><option value="?">selectable</option>
-</select></p>
-<p><b>Color:</b> <select name="colorchoice">
-	<option value="M">b/w</option><option value="C">16c</option><option value="?">selectable</option>
-</select></p>
-<p><b>Disk:</b> Currently loaded disk</p>
-<input type="button" name="pngexport" value="Export" onclick="emulator.ui.doExportPNG();">
-</form>
 <canvas id="screen" tabindex="1000" height="0"></canvas>
 <textarea id="clipboardinput"></textarea>
 </div>

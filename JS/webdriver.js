@@ -25,6 +25,14 @@ window.onload = function() {
 	if (params.height > 768) {
 		params.height = 768;
 	}
+	params.mem = +params.mem;
+	params.dismem = +params.dismem;
+	if ([1,2,4,8,16,32,64].indexOf(params.mem) == -1) {
+		params.mem = 1;
+	}
+	if ([96,256,384,512,1024,2048].indexOf(params.dismem) == -1 || params.dismem > params.mem * 384) {
+		params.dismem = 96;
+	}
 	if (params.serialpreview) {
 		document.body.classList.add(params.serialpreview.replace(/,.*/,"")+"preview");
 	}
@@ -37,11 +45,11 @@ window.onload = function() {
 		request.responseType = "arraybuffer";
 		request.send(null);
 	}, function() {
-		emulator = new WebDriver(params.image, params.width, params.height, params.pclink == "2", params.configfile || "config.json");
+		emulator = new WebDriver(params.image, params.width, params.height, params.pclink == "2", params.configfile || "config.json", params.mem, params.dismem);
 	});
 }
 
-function WebDriver(imageName, width, height, dualSerial, configFile) {
+function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem) {
 	this.disk = [];
 	this.keyBuffer = [];
 	this.transferHistory = [];
@@ -58,10 +66,14 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 		this.imageName = imageName;
 	}
 
+	document.querySelector(".ramhint").value = mem;
+	document.querySelector(".disphint").value = dismem;
+
 	this.clipboard = new Clipboard(this.ui.clipboardInput);
 	this.virtualKeyboard = new VirtualKeyboard(this.screen, this);
 	this.filelink = new FileLink(this);
 	this.link = dualSerial ? new DualLink(this.filelink, this.filelink) : this.filelink;
+	this.bootFromSerial = false;
 
 	if (window.offlineInfo) {
 		if (/https?:\/\/[^\/]+\//.test(window.location)) {
@@ -73,7 +85,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 			request.open("GET", "/net/config.json");
 			request.send(null);
 		}
-		this.useConfiguration(offlineInfo.config);
+		this.useConfiguration(offlineInfo.config, offlineInfo.rom);
 	} else {
 		SiteConfigLoader.read(configFile, this);
 	}
@@ -110,6 +122,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 	$proto.width = 0;
 	$proto.autosave = false;
 	$proto.debugBuffer = "";
+	$proto.rom = null;
 
 	$proto.setDimensions = function(width, height, resizeControlBar) {
 		this.width = width || 1024;
@@ -127,11 +140,12 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 		this.ui.closeOpenPopups();
 	};
 
-	$proto.useConfiguration = function(config) {
+	$proto.useConfiguration = function(config, rom) {
 		var images = config.images;
 		if (window.localStorage.getItem("AUTOSAVE") !== null) {
 			this.ui.addSystemItem("(Autosaved)");
 		}
+		this.rom = rom;
 		for (var i = 0; i < images.length; ++i) {
 			this.ui.addSystemItem(images[i]);
 		}
@@ -147,11 +161,9 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 		if (name == "(Autosaved)") {
 			var contents = [];
 			var size = window.localStorage.getItem("AUTOSAVE")-0;
-			var arr = Uint8Array.from(atob(window.localStorage.getItem("AUTOSAVE-ROM")), function(c) { return c.charCodeAt(0)});
-			contents[0] = new Int32Array(arr.buffer);
 			for (var i = 0; i < size; i++) {
 				var arr = Uint8Array.from(atob(window.localStorage.getItem("AUTOSAVE-"+i)), function(c) { return c.charCodeAt(0)});
-				contents[i+1] = new Int32Array(arr.buffer);
+				contents[i] = new Int32Array(arr.buffer);
 			}
 			this.useSystemImage("(Autosaved)", contents);
 			this.autosave = true;
@@ -163,15 +175,9 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 		}
 	};
 
-	// Two system image formats are supported: one with 1024-byte sectors
-	// in the format used for Peter De Wachter's RISC emulator, and another in
-	// the same form, except with the first disk sector preceded by another
-	// "sector" (1024-byte region) dedicated to the preferred boot ROM.
-	//
-	// If the image doesn't have a ROM, on our first boot we load our default,
-	// unless we've already booted once before, in which case we use whatever
-	// is already "burned in".
-	$proto.useSystemImage = function(name, contents, rom) {
+	// The system image format uses 1024-byte sectors in the format used for
+	// Peter De Wachter's RISC emulator.
+	$proto.useSystemImage = function(name, contents) {
 		if (this.autosave) {
 			this.autosave = false;
 			this.ui.autosaveToggle.classList.remove("checked");
@@ -180,26 +186,8 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 		if (/.*\.dsk/.test(name))
 			name = name.substring(0, name.length-4);
 		this.imageName = name;
-		if (rom === undefined) {
-			if (this._hasDirMark(contents, 0)) {
-				if (!this.machine) {
-					if (window.offlineInfo) {
-						rom = offlineInfo.rom;
-					} else {
-						var reader = new ROMFileReader("boot.rom", contents, name);
-						return void(reader.prepareContentsThenNotify(this));
-					}
-				} else {
-					rom = this.machine.getBootROM();
-				}
-			} else if (this._hasDirMark(contents, 1)) {
-				rom = contents.shift();
-			} else {
-				throw new Error("Invalid system image");
-			}
-		}
 		this.ui.markName(this.imageName);
-		this.bootFromDisk(contents, rom);
+		this.bootFromDisk(contents);
 	};
 
 	$proto._hasDirMark = function(contents, sectorNumber) {
@@ -216,44 +204,16 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 			box.value = newValue;
 	}
 
-	$proto.bootFromDisk = function(disk, rom) {
+	$proto.bootFromDisk = function(disk) {
 		if (!this.isDisplayReady()) {
 			this.setUpDisplay(this.width, this.height);
 		}
-
-		var magic = rom[255] & 0xFFFFFF;
-		var magicMB = (rom[255] >>> 24) & 0xF;
-		if (magic == 0x3D424D || magic == 0x3D4243 || magic == 0x3D423F) {
-			if (magicMB == 0) magicMB = 16;
-			if ((rom[255] >>> 24) == 0x3F) {
-				magicMB = -1;
-			}
-		} else {
-			magic = 0x3D424D;
-			magicMB = 1;
-		}
-		var html = '';
-		if (magic != 0x3D4243)
-			html +='<option>b/w</option>';
-		if (magic != 0x3D424D)
-			html +='<option>16c</option>';
-		this.updateSelectBox(document.querySelector(".colorhint"), html);
-		if (magicMB != -1) {
-			html = '<option>' + magicMB +' MB</option>';
-		} else {
-			html = '';
-			for(magicMB = 1; magicMB <= 64; magicMB *= 2) {
-				html += '<option>'+magicMB+' MB</option>';
-			}
-		}
-		this.updateSelectBox(document.querySelector(".ramhint"), html);
-
 		this.disk = disk;
 		this.startMillis = Date.now();
 		var that = this;
-		this.machine = new RISCMachine(rom);
+		this.machine = new RISCMachine(this.rom);
 		this.machine.Initialize(function() {
-			that.reset(true);
+			that.reset(true, false);
 		});
 	};
 
@@ -276,13 +236,15 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 		this.previewcontext.fillRect(0,0, width, height);
 	};
 
-	$proto.reset = function(cold) {
-		var ramhint = +document.querySelector(".ramhint").value.replace(" MB","");
-		var colorhint = document.querySelector(".colorhint").value == "16c";
-		this.machine.cpuReset(cold, ramhint, colorhint);
+	$proto.reset = function(cold, serialBoot) {
+		var ramhint = +document.querySelector(".ramhint").value;
+		var disphint = +document.querySelector(".disphint").value;
+		this.bootFromSerial = serialBoot;
+		this.machine.setStall(false);
+		this.machine.cpuReset(cold, ramhint, disphint);
 		if (cold) {
 			var base = this.machine.getDisplayStart();
-			this.machine.memWriteWord(base, 0x53697A65); // magic value 'Size'
+			this.machine.memWriteWord(base, 0x53697A65); // magic value 'Size' -- legacy
 			this.machine.memWriteWord(base + 4, this.screen.width);
 			this.machine.memWriteWord(base + 8, this.screen.height);
 
@@ -290,14 +252,6 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 			var clock = ((d.getYear() % 100) * 16 + d.getMonth() + 1) * 32 + d.getDate();
 			clock = ((clock * 32 + d.getHours()) * 64 + d.getMinutes()) * 64 + d.getSeconds();
 			this.rtchint = [d.getTime() - this.startMillis, clock];
-			this.machine.memWriteWord(0x10000, 0x54696D65); // magic value 'Time'
-			this.machine.memWriteWord(0x10004, this.rtchint[0]);
-			this.machine.memWriteWord(0x10008, this.rtchint[1]);
-
-			var paletteStart = 0x0FFF80 + (base / 0x100000 | 0) * 0x100000;
-			this.machine.memWriteWord(paletteStart-4, 0x4D4C696D); // magic value 'MLim'
-			var mLimOffs = this.machine.colorSupported ? 0x48010 : 0x10;
-			this.machine.memWriteWord(paletteStart-8, base - mLimOffs);
 		}
 		this.reschedule();
 	};
@@ -458,24 +412,24 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 				};
 				return result;
 			case this.toHardwareId('mVid'):
-				var displayStart = (this.machine.getDisplayStart() & ~0xFFFFF) | 0x0E7F00;
+				var displayStart = this.machine.getDisplayStart();
 				return [ 1, -16, this.screen.width, this.screen.height, 128, displayStart];
 			case this.toHardwareId('16cV'):
 				if (this.machine.colorSupported) {
-					var paletteStart = (this.machine.getDisplayStart() & ~0xFFFFF) | 0x0FFF80;
-					var displayStart = (this.machine.getDisplayStart() & ~0xFFFFF) | 0x09FF00;
+					var paletteStart = this.machine.getRAMSize() - 0x80;
+					var displayStart = this.machine.getDisplayStart();
 					return [ 1, 1, -16, paletteStart, this.screen.width, this.screen.height, 512, displayStart];
 				} else {
 					return [];
 				}
 			case this.toHardwareId('Rset'):
-				var romStart = (this.machine.getDisplayStart() & ~0xFFFFF) | 0x0FE000;
+				var romStart = this.machine.getRAMSize() - 0x2000;
 				return [romStart];
 			case this.toHardwareId('SPrt'):
 				var portCount = (this.link instanceof DualLink) ? 2 : 1;
 				return [portCount, -52, -56];
 			case this.toHardwareId('Boot'):
-				return [this.machine.getDisplayStart() - (this.machine.colorSupported ? 0x48010 : 0x10)];
+				return [this.machine.getDisplayStart() - 0x10, this.bootFromSerial ? 1 : 0];
 			case this.toHardwareId('vRTC'): return this.rtchint;
 			case this.toHardwareId('vNet'): return wiznet ? [-32] : [];
 			case this.toHardwareId('DbgC'): return wiznet ? [] : [-32];
@@ -542,7 +496,6 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 		this.ui.autosaveToggle.classList.toggle("checked");
 		if (this.autosave) {
 			window.localStorage.setItem("AUTOSAVE", this.disk.length);
-			window.localStorage.setItem("AUTOSAVE-ROM", btoa(String.fromCharCode.apply(null, new Uint8Array(this.machine.getBootROM().buffer))));
 			for(var i = 0; i < this.disk.length; i++) {
 				window.localStorage.setItem("AUTOSAVE-"+i, btoa(String.fromCharCode.apply(null, new Uint8Array(this.disk[i].buffer))));
 			}
@@ -550,10 +503,6 @@ function WebDriver(imageName, width, height, dualSerial, configFile) {
 			window.localStorage.clear();
 		}
 	}
-
-	$proto.dumpROM = function() {
-		this.save("boot.rom", [ this.machine.getBootROM() ]);
-	};
 
 	$proto.save = function(name, content) {
 		var blob = new Blob(content, { type: "application/octet-stream" });
@@ -674,7 +623,6 @@ function ControlBarUI(emulator, dualSerial) {
 	$proto.clipboardInput = null;
 	$proto.clipboardToggle = null;
 	$proto.autosaveToggle = null;
-	$proto.exportOptions = null;
 	$proto.controlBarBox = null;
 	$proto.diskFileInput = null;
 	$proto.diskImportButton = null;
@@ -706,8 +654,6 @@ function ControlBarUI(emulator, dualSerial) {
 		this.linkFileInput = $("linkfileinput");
 		this.linkNameInput = $("linknameinput");
 		this.linkExportButton = $("linkexportbutton");
-
-		this.exportOptions = $("exportoptions");
 
 		$ = document.querySelector.bind(document);
 		this.clickLeft = $(".mousebtn[name='1']");
@@ -755,7 +701,6 @@ function ControlBarUI(emulator, dualSerial) {
 	$proto.resize = function(width, height) {
 		this.controlBarBox.style.width = width + "px";
 		this.clipboardInput.style.width = width + "px";
-		this.exportOptions.style.width = width + "px";
 		document.getElementById("emulatorface").style.width = (width - -5)+"px";
 	};
 
@@ -889,59 +834,13 @@ function ControlBarUI(emulator, dualSerial) {
 	};
 
 	$proto.exportCustomImage = function() {
-		this.exportOptions.romtype[0].checked=true;
-		this.exportOptions.romfile.value="";
-		var magic = emulator.machine.getBootROM()[255] & 0xFFFFFF;
-		var mb = (magic == 0x3D424D || magic == 0x3D4243 || magic == 0x3D423F) ? String.fromCharCode(emulator.machine.getBootROM()[255] >>> 24) : "1";
-		this.exportOptions.ramsize.value=mb;
-		this.exportOptions.colorchoice.value = (magic == 0x3D424D || magic == 0x3D4243 || magic == 0x3D423F) ? String.fromCharCode(magic & 0xFF) : "M";
-		this.exportOptions.classList.add("open");
-		this.togglePopup(this.systemButton);
-	}
-
-	$proto.doExportPNG = function() {
-		var reader = new FileReader();
-		var that = this;
-		if (document.getElementById("romtypecurrent").checked) {
-			return this.doExportPNGWithROM(emulator.machine.getBootROM());
-		} else if (document.getElementById("romtypefile").checked) {
-			reader.onload = function() {
-				that.doExportPNGWithROM(DiskFileReader.getContents(reader.result)[0]);
-			};
-		} else if (document.getElementById("romtypersc").checked) {
-			reader.onload = function() {
-				var rom = new Int32Array(256);
-				var buf = reader.result;
-				if (buf.byteLength < 35 + 1024) {
-					buf = new ArrayBuffer(35 + 1024);
-					new Uint8Array(buf).set(new Uint8Array(reader.result));
-				}
-				var view = new DataView(buf);
-				for (var i = 0; i < 256; i++) {
-					rom[i] = view.getInt32(35 + i * 4, true);
-				}
-				that.doExportPNGWithROM(rom);
-			};
-		}
-		reader.readAsArrayBuffer(document.getElementById("romfile").files[0]);
-	}
-
-	$proto.doExportPNGWithROM = function(rom) {
-		var mb = this.exportOptions.ramsize.value;
-		var cc = this.exportOptions.colorchoice.value;
-		var magic = 0x3D4200 | (cc.charCodeAt(0)) | (mb.charCodeAt(0) << 24);
-		if (magic != 0x313D424D) {
-			rom[255] = magic;
-		} else if ((rom[255] & 0xFFFF00) == 0x3D4200) {
-			rom[255] = 0;
-		}
 		var canvas = document.createElement("canvas");
 		canvas.width = 1024;
 		canvas.height = emulator.disk.length + 1;
 		var context = canvas.getContext("2d");
 		var imageData = context.createImageData(canvas.width, canvas.height);
 		for (var i = 0; i < canvas.height; i++) {
-			var sector = i == 0 ? rom : emulator.disk[i-1];
+			var sector = i == 0 ? emulator.rom : emulator.disk[i-1];
 			for (var j = 0; j < 256; j++) {
 				var b = i * 4096 + j * 16 + 2;
 				imageData.data[b + 0] = sector[j] & 0xFF;
@@ -954,7 +853,6 @@ function ControlBarUI(emulator, dualSerial) {
 		context.putImageData(imageData, 0, 0);
 		var that = this;
 		canvas.toBlob(function(blob) {
-			that.exportOptions.classList.remove("open");
 			that.emulator.save(that.systemButton.value + ".png", [ blob ]);
 		}, "image/png");
 	}
@@ -1612,7 +1510,8 @@ function SiteConfigLoader(emulator) {
 		);
 
 		var config = JSON.parse(event.target.responseText);
-		this.emulator.useConfiguration(config);
+		var reader = new ROMFileReader(config.rom, config);
+		return void(reader.prepareContentsThenNotify(this.emulator));
 	};
 })();
 
@@ -1648,7 +1547,8 @@ function PNGImageReader(name) {
 
 	$proto._unpack = function(imageData, width, height) {
 		var contents = [];
-		for (var i = 0; i < height; i++) {
+		// skip boot ROM
+		for (var i = 1; i < height; i++) {
 			var sectorWords = new Int32Array(width / 4);
 			for (var j = 0; j < width / 4; j++) {
 				var b = i * 4096 + j * 16 + 2;
@@ -1659,9 +1559,8 @@ function PNGImageReader(name) {
 					((imageData[b + 12] & 0xFF) << 24) |
 					0;
 			}
-			contents[i] = sectorWords;
+			contents[i-1] = sectorWords;
 		}
-
 		return contents;
 	};
 })();
@@ -1705,10 +1604,9 @@ function DiskFileReader(file) {
 	};
 })();
 
-function ROMFileReader(uri, disk, name) {
+function ROMFileReader(uri, config) {
 	this.uri = uri;
-	this.disk = disk;
-	this.name = name;
+	this.config = config;
 }
 
 (function(){
@@ -1727,8 +1625,7 @@ function ROMFileReader(uri, disk, name) {
 		if (event.type !== "load") throw new Error(
 			"Unexpected event: " + event.type
 		);
-
-		var contents = DiskFileReader.getContents(event.target.response);
-		this.listener.useSystemImage(this.name, this.disk, contents[0]);
+		var rom = DiskFileReader.getContents(event.target.response);
+		this.listener.useConfiguration(this.config, rom[0]);
 	};
 })();

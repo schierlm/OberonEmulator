@@ -3,32 +3,55 @@ MODULE* BootLoad;
   CONST MT = 12; SP = 14; LNK = 15;
     MTOrg = 20H; MemLim = 0E7EF0H; stackOrg = 80000H;
     FSoffset = 0H;   (*block offset*)
+    rsData = -56; rsCtrl = -52;
 
-  PROCEDURE LoadFromDisk;
+  PROCEDURE RecInt(VAR x: INTEGER);
+    VAR z, y, i: INTEGER;
+  BEGIN z := 0;  i := 4;
+    REPEAT i := i-1;
+      WHILE ~SYSTEM.BIT(rsCtrl, 0) DO SYSTEM.PUT(-64, 7FFFFFFFH) END;
+      SYSTEM.GET(rsData, y); z := ROR(z+y, 8)
+    UNTIL i = 0;
+    x := z
+  END RecInt;
+
+  PROCEDURE LoadFromDiskOrLine;
     VAR
-      src, dst, lim, ml: INTEGER;
+      src, dst, lim, ml, mode, len, adr, dat: INTEGER;
   BEGIN
-    SYSTEM.GET(3FFFF80H - 4, ml);
-    IF ml = 4D4C696DH THEN
-      SYSTEM.GET(3FFFF80H - 8, ml)
+    SYSTEM.PUT(-4, 426F6F74H);
+    SYSTEM.GET(-4, ml);
+    IF ml = 0 THEN ml := MemLim END;
+    SYSTEM.GET(-4, mode);
+    IF mode = 1 THEN
+      RecInt(len);
+      WHILE len > 0 DO
+        RecInt(adr);
+        REPEAT RecInt(dat); SYSTEM.PUT(adr, dat); adr := adr + 4; len := len - 4 UNTIL len = 0;
+        RecInt(len)
+      END
     ELSE
-      ml := MemLim
+      src := (FSoffset + 4) DIV 2;
+      dst := 0;
+      REPEAT
+        SYSTEM.PUT(-28, dst);
+        SYSTEM.PUT(-28, 080000000H + src);
+        IF dst = 0 THEN SYSTEM.GET(16, lim) END;
+        INC(src); INC(dst, 1024);
+      UNTIL dst >= lim;
     END;
-    src := (FSoffset + 4) DIV 2;
-    dst := 0;
-    REPEAT
-      SYSTEM.PUT(-28, dst);
-      SYSTEM.PUT(-28, 080000000H + src);
-      IF dst = 0 THEN SYSTEM.GET(16, lim) END;
-      INC(src); INC(dst, 1024);
-    UNTIL dst >= lim;
+    SYSTEM.PUT(-4, 49434976H);
+    SYSTEM.GET(-4, adr);
+    IF adr # 0 THEN
+      SYSTEM.PUT(adr, 0)
+    END;
     SYSTEM.LDREG(11, (ml + 70000H) DIV 100000H * stackOrg);
     SYSTEM.PUT(12, ml); SYSTEM.PUT(24, SYSTEM.REG(11))
-  END LoadFromDisk;
+  END LoadFromDiskOrLine;
 
 BEGIN
   SYSTEM.LDREG(MT, MTOrg);
-  IF SYSTEM.REG(LNK) = 0 THEN SYSTEM.LDREG(SP, stackOrg); LED(82H); LoadFromDisk END;
+  IF SYSTEM.REG(LNK) = 0 THEN SYSTEM.LDREG(SP, stackOrg); LED(82H); LoadFromDiskOrLine END;
   IF SYSTEM.REG(11) # 0 THEN
     SYSTEM.LDREG(SP, SYSTEM.REG(11))
   ELSE

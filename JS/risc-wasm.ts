@@ -18,7 +18,7 @@ var regPC: i32 = 0;
 var regH: i32 = 0;
 
 var ROMStart: i32 = 0x0FE000;
-var DisplayStart: i32 = 0x0E7F00;
+var DisplayStart: i32 = 0;
 var PaletteStart: i32 = 0x0FFF80;
 var IOStart: i32 = 0x0FFFC0;
 var MemSize: i32 = 0x100000;
@@ -29,7 +29,6 @@ export function Initialize(mb: i32): i32 {
 	if (mb != MemSize / 0x100000) {
 		var offset: i32 = (mb - MemSize / 0x100000) * 0x100000;
 		MemSize = 0x100000 * mb;
-		DisplayStart += offset;
 		ROMStart += offset;
 		PaletteStart += offset;
 		IOStart += offset;
@@ -59,7 +58,6 @@ function memReadWord(address: i32, mapROM: bool): i32 {
 	} else if (address >= IOStart) {
 		return memReadIO(address - IOStart);
 	} else if (address >= PaletteStart) {
-		DisplayStart = 0x09FF00 + MemSize - 0x100000;
 		return memReadPalette(address - PaletteStart);
 	} else {
 		return load<i32>(RAM_BASE + address);
@@ -295,6 +293,10 @@ export function setWaitMillis(val: i32): void {
 
 export function getDisplayStart(): i32 {
 	return DisplayStart;
+}
+
+export function setDisplayStart(val: i32): void {
+	DisplayStart = val;
 }
 
 export function getWaitMillis(): i32 {

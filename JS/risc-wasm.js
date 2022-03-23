@@ -1,5 +1,6 @@
 function RISCMachine(romWords) {
-	this.megabytes = this.ParseROM(romWords);
+	this.bootROM = romWords;
+	this.megabytes = 1;
 }
 
 (function($proto) {
@@ -13,9 +14,6 @@ function RISCMachine(romWords) {
 	$proto.memReadPalette = function(address0) {
 		if (!this.colorSupported)
 			return 0;
-		if (this.palette == null) {
-			this.InitPalette();
-		}
 		return this.palette[address0 / 4 | 0];
 	}
 
@@ -38,17 +36,15 @@ function RISCMachine(romWords) {
 		}
 	}
 
-	$proto.cpuReset = function(cold, ramhint, colorhint) {
+	$proto.cpuReset = function(cold, memSize, dispMemSize) {
 		if (cold) {
 			var magic = this.bootROM[255];
-			if ((magic == 0x3F3D424D || magic == 0x3F3D4243 || magic == 0x3F3D423F) && this.megabytes != ramhint) {
-				this.megabytes = ramhint;
+			if (this.megabytes != memSize) {
+				this.megabytes = memSize;
 				var romBase = this.wasm.exports.Initialize(this.megabytes);
 				new Int32Array(this.wasm.exports.memory.buffer).set(this.bootROM, romBase/4);
 			}
-			if ((magic & 0xFFFFFF) == 0x3D423F) {
-				this.colorSupported = colorhint;
-			}
+			this.wasm.exports.setDisplayStart(this.CalculateDisplayStart(memSize, dispMemSize));
 		}
 		this.wasm.exports.cpuReset(cold);
 	}
@@ -65,18 +61,22 @@ function RISCMachine(romWords) {
 		return this.wasm.exports.getDisplayStart();
 	}
 
+	$proto.getRAMSize = function() {
+		return this.wasm.exports.getRAMSize();
+	}
+
 	$proto.getWaitMillis = function() {
 		return this.wasm.exports.getWaitMillis() + emulator.startMillis;
 	}
 
 	$proto.resetWaitMillis = function() {
-		if (this.wasm.exports.getWaitMillis() != 0x7fffffff)
+		if (this.wasm.exports.getWaitMillis() != 0x7ffffffe)
 			this.wasm.exports.setWaitMillis(-1);
 	}
 
 	$proto.setStall = function(stalling) {
 		if (stalling) {
-			this.wasm.exports.setWaitMillis(0x7fffffff);
+			this.wasm.exports.setWaitMillis(0x7ffffffe);
 		} else {
 			this.wasm.exports.setWaitMillis(-1);
 		}

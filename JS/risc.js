@@ -2,16 +2,7 @@ function RISCMachine(romWords) {
 	this.registers = new Int32Array(
 		this.GeneralRegisterCount + this.SpecialRegisterCount
 	);
-	var mb = this.ParseROM(romWords);
-	if (mb != 1) {
-		this.MemSize = 0x100000 * mb;
-		this.MemWords = (this.MemSize / 4);
-		var offset = (mb - 1) * 0x100000;
-		this.DisplayStart += offset;
-		this.ROMStart += offset;
-		this.PaletteStart += offset;
-		this.IOStart += offset;
-	}
+	this.bootROM = romWords;
 	this.mainMemory = new Int32Array(this.MemWords);
 	this.flag_Z = false, this.flag_N = false;
 	this.flag_C = false, this.flag_V = false;
@@ -26,7 +17,6 @@ function RISCMachine(romWords) {
 	RISCMachine.PCID = $proto.PCID = -1;
 	RISCMachine.HID = $proto.HID =   -2;
 
-	RISCMachine.DisplayStart = $proto.DisplayStart = 0x0E7F00;
 	RISCMachine.ROMStart = $proto.ROMStart = 0x0FE000;
 	RISCMachine.PaletteStart = $proto.PaletteStart = 0x0FFF80;
 	RISCMachine.IOStart = $proto.IOStart = 0x0FFFC0;
@@ -84,10 +74,6 @@ function RISCMachine(romWords) {
 	$proto.memReadPalette = function(address) {
 		if (!this.colorSupported)
 			return 0;
-		if (this.palette == null) {
-			this.DisplayStart = 0x09FF00 + this.MemSize - 0x100000;
-			this.InitPalette();
-		}
 		return this.palette[(address - this.PaletteStart) / 4 | 0];
 	}
 
@@ -119,28 +105,23 @@ function RISCMachine(romWords) {
 		emulator.registerVideoChange(offset, val, this.palette);
 	}
 
-	$proto.cpuReset = function(cold, ramhint, colorhint) {
+	$proto.cpuReset = function(cold, memSize, dispMemSize) {
 		this.cpuPutRegister(this.PCID, this.ROMStart / 4);
 		if (cold) {
 			this.cpuPutRegister(15, 0);
-			var magic = this.bootROM[255];
-			if ((magic == 0x3F3D424D || magic == 0x3F3D4243 || magic == 0x3F3D423F) && this.MemSize != 0x100000 * ramhint) {
-				var offset = (ramhint - this.MemSize / 0x100000) * 0x100000;
-				this.MemSize = 0x100000 * ramhint;
+			if (this.MemSize != 0x100000 * memSize) {
+				var offset = (memSize - this.MemSize / 0x100000) * 0x100000;
+				this.MemSize = 0x100000 * memSize;
 				this.MemWords = (this.MemSize / 4);
-				this.DisplayStart += offset;
 				this.ROMStart += offset;
 				this.PaletteStart += offset;
 				this.IOStart += offset;
 				this.mainMemory = new Int32Array(this.MemWords);
 			}
-			if ((magic & 0xFFFFFF) == 0x3D423F) {
-				this.colorSupported = colorhint;
-			}
 			if (this.palette != null) {
-				this.DisplayStart = 0x0E7F00 + this.MemSize - 0x100000;
 				this.palette = null;
 			}
+			this.DisplayStart = this.CalculateDisplayStart(memSize, dispMemSize);
 		}
 	}
 
@@ -370,18 +351,22 @@ function RISCMachine(romWords) {
 		return this.DisplayStart;
 	}
 
+	$proto.getRAMSize = function() {
+		return this.MemSize;
+	}
+
 	$proto.getWaitMillis = function() {
 		return this.waitMillis;
 	}
 
 	$proto.resetWaitMillis = function() {
-		if (this.waitMillis != emulator.startMillis + 0x7fffffff)
+		if (this.waitMillis != emulator.startMillis + 0x7ffffffe)
 			this.waitMillis = -1;
 	}
 
 	$proto.setStall = function(stalling) {
 		if (stalling) {
-			this.waitMillis = emulator.startMillis + 0x7fffffff;
+			this.waitMillis = emulator.startMillis + 0x7ffffffe;
 		} else {
 			this.waitMillis = -1;
 		}

@@ -4,34 +4,21 @@
 	$proto.palette = null;
 	$proto.hardwareEnumBuffer = [];
 
-	$proto.ParseROM = function(romWords) {
-		var mb = 1;
-		var magic = (romWords[255] & 0xFFFFFF)
-		if (magic == 0x3D424D || magic == 0x3D4243 || magic == 0x3D423F) {
-			mb = (romWords[255] >>> 24) & 0xF;
-			if ((romWords[255] >>> 24) == 0x3F) {
-				mb = 1;
-			}
-			if (mb == 0) mb = 16;
-		}
-		this.colorSupported = magic == 0x3D4243;
-		this.bootROM = romWords;
-		return mb;
-	}
-
-	$proto.InitPalette = function(address0) {
-		this.palette = [
-			0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0xff00ff, 0xffff00, 0x00ffff, 0xaa0000,
-			0x009a00, 0x00009a, 0x0acbf3, 0x008282, 0x8a8a8a, 0xbebebe, 0xdfdfdf, 0x000000
-		];
+	$proto.CalculateDisplayStart = function(memSize, dispMemSize) {
+		if (dispMemSize > memSize * 384)
+			dispMemSize = 96;
+		this.colorSupported = dispMemSize >= 384;
+		return memSize * 0x100000 - dispMemSize * 1024 - 0x100;
 	}
 
 	$proto.setVideoMode = function(val) {
 		if (val == 0 && this.palette != null) {
 			this.palette = null;
-			this.DisplayStart = 0x0E7F00 + this.MemSize - 0x100000;
 		} else if (val == 1 && this.palette == null) {
-			this.memReadPalette(this.PaletteStart);
+			this.palette = [
+				0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0xff00ff, 0xffff00, 0x00ffff, 0xaa0000,
+				0x009a00, 0x00009a, 0x0acbf3, 0x008282, 0x8a8a8a, 0xbebebe, 0xdfdfdf, 0x000000
+			];
 		}
 	}
 
@@ -63,10 +50,6 @@
 			case 48: return void(this.setVideoMode(val));
 			case 60: return void(this.hardwareEnumBuffer = emulator.runHardwareEnumerator(val));
 		}
-	}
-
-	$proto.getBootROM = function() {
-		return this.bootROM;
 	}
 
 })();

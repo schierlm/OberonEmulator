@@ -1,1 +1,1 @@
-{"images": ["MinimalDiskImage", "FullDiskImage"]}
+{"rom": "boot.rom", "images": ["MinimalDiskImage", "FullDiskImage"]}
