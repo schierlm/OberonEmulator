@@ -410,6 +410,9 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 				if (this.machine.colorSupported) {
 					result.push('16cV')
 				};
+				if ('InvalidateCodeCache' in this.machine) {
+					result.push('ICIv');
+				}
 				return result;
 			case this.toHardwareId('mVid'):
 				var displayStart = this.machine.getDisplayStart();
@@ -430,6 +433,12 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 				return [portCount, -52, -56];
 			case this.toHardwareId('Boot'):
 				return [this.machine.getDisplayStart() - 0x10, this.bootFromSerial ? 1 : 0];
+			case this.toHardwareId('ICIv'):
+				if ('InvalidateCodeCache' in this.machine) {
+					return [-40];
+				} else {
+					return [];
+				}
 			case this.toHardwareId('vRTC'): return this.rtchint;
 			case this.toHardwareId('vNet'): return wiznet ? [-32] : [];
 			case this.toHardwareId('DbgC'): return wiznet ? [] : [-32];

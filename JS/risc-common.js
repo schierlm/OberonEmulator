@@ -43,6 +43,7 @@
 			case  4: return void(emulator.registerLEDs(val));
 			case  8: return void(emulator.link.setData(val));
 			case 12: return void(emulator.link.setStatus(val));
+			case 24: return void(this.InvalidateCodeCache(val));
 			case 32: return void(emulator.netCommand(val, this.getMainMemory()));
 			case 36: return void(emulator.storageRequest(val, this.getMainMemory()));
 			case 40: return void(emulator.clipboard.expect(val));
