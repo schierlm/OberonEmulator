@@ -23,6 +23,8 @@ integrate Bigmem
 integrate JS
 ./make_js_color_image.sh
 integrate JSColor
+./make_js_debuggable_image.sh
+integrate JSDebug
 
 ./make_compatible_image.sh
 integrate Compatible
@@ -32,6 +34,8 @@ integrate Bigmem
 integrate JS
 ./make_js_color_image.sh
 integrate JSColor
+./make_js_debuggable_image.sh
+integrate JSDebug
 
 find source -type f -a -size 0 -delete
 

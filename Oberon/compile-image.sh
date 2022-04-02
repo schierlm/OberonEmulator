@@ -17,7 +17,6 @@ echo -n "$3" >>work/boot.rom
 cat work/tmp >>work/boot.rom
 rm work/tmp
 cp download/base.dsk work/dsk
-
 cd work
 rm *.orig
 sed 's/Modules.Load("System"/Modules.Load("CommandLineSystem"/;s/NewTask(GC, 1000)/NewTask(GC, 10)/' <Oberon.Mod.txt >OberonX.Mod.txt
@@ -55,21 +54,33 @@ for FILE in *.Fnt *.Mod *.Lib *.Text *.Tool; do
 	echo +$FILE >> .cmds
 done
 cd ..
+
+if ! [ -f work/build.cmds ]; then
+	head -n -6 Oberon2013Modifications/BuildModifications.Tool.txt >work/build.cmds
+	for FILE in PIO Net CommandLineSystemY OberonX PCLink1 SCC Net Blink Checkers Clipboard EBNF GraphTool Hilbert Sierpinski Stars Tools; do
+		echo "ORP.Compile ${FILE}.Mod/s ~" >> work/build.cmds
+	done
+fi
+
 echo '!exit' >> work/.cmds
 ${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <work/.cmds
-head -n 4 Oberon2013Modifications/BuildModifications.Tool.txt > work/.cmds
+head -n 4 work/build.cmds > work/.cmds
 [ -f work/DisplayC8.Mod ] && echo 'ORP.Compile DisplayC8.Mod/s ~' >> work/.cmds
 echo '!exit' >> work/.cmds
 ${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <work/.cmds
 
 echo '!autosleep 150' > work/.cmds
-head -n -6 Oberon2013Modifications/BuildModifications.Tool.txt | tail -n +6 >> work/.cmds
-for FILE in PIO Net CommandLineSystemY OberonX PCLink1 SCC Net Blink Checkers Clipboard EBNF GraphTool Hilbert Sierpinski Stars Tools; do
-	echo "ORP.Compile ${FILE}.Mod/s ~" >> work/.cmds
-done
-for FILE in ColorPalette PaletteEdit ColorPictureTiles ColorPictureGrab; do
-	[ -f work/${FILE}.Mod ] && echo "ORP.Compile ${FILE}.Mod ~" >> work/.cmds
-done
+tail -n +6 work/build.cmds >> work/.cmds
+if [ -f work/build-extra1.cmds ]; then
+	echo "ORP.Compile CommandLineSystemY.Mod/s ~" >> work/.cmds
+	echo "ORP.Compile OberonX.Mod/s ~" >> work/.cmds
+	for extra in work/build-extra*.cmds; do
+		echo '!exit' >> work/.cmds
+		${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <work/.cmds
+		echo '!autosleep 150' > work/.cmds
+		cat $extra >> work/.cmds
+	done
+fi
 
 echo 'System.DeleteFiles ORC.Mod RISC.Mod SmallPrograms.Mod ~' >> work/.cmds
 echo '!exit' >> work/.cmds
