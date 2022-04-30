@@ -1,0 +1,38 @@
+Index: Windows.Kernel32.Mod
+===================================================================
+--- Windows.Kernel32.Mod	(revision 10148)
++++ Windows.Kernel32.Mod	(working copy)
+@@ -1117,7 +1117,7 @@
+ 	PROCEDURE SetTraceConsole;
+ 	VAR res: INTEGER;
+ 	BEGIN
+-		hout := GetStdHandle (STDOutput);
++		hout := GetStdHandle (STDError);
+ 		Trace.Char := TraceChar;
+ 	END SetTraceConsole;
+ 
+Index: Windows.Machine.Mod
+===================================================================
+--- Windows.Machine.Mod	(revision 10148)
++++ Windows.Machine.Mod	(working copy)
+@@ -1026,5 +1026,7 @@
+ 	IF ~Kernel32.Generic THEN
+ 		Init
+ 	END;
++	#IF ~QUIETOUTPUT THEN
+ 	Trace.String(version); Trace.Ln;
++	#END
+ END Machine.
+Index: Windows.WinTrace.Mod
+===================================================================
+--- Windows.WinTrace.Mod	(revision 10148)
++++ Windows.WinTrace.Mod	(working copy)
+@@ -114,7 +114,7 @@
+ VAR len: SIGNED32; b: Kernel32.BOOL;
+ BEGIN
+ 	len := 1;
+-	b := Kernel32.WriteFile(hout,c,len,len,NIL);
++	b := Kernel32.WriteFile(herr,c,len,len,NIL);
+ END Char;
+ 
+ BEGIN
