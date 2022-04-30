@@ -404,6 +404,28 @@ public class Bridge {
 			case ANSWER_RecordEnd:
 				outlineStack.remove(outlineStack.size() - 1);
 				break;
+			case ANSWER_RecordEndAsProcedure:
+				int procStart = readIntLE(), procEnd = readIntLE(), procIdentEnd = readIntLE();
+				if (procIdentEnd == -1) {
+					// A2: OBJECT
+					procIdentEnd = ar.getIdReferences().get(procEnd).getDefinition().getEndPos();
+					if (procStart >= procIdentEnd) procStart = procIdentEnd - 1;
+				}
+				Range procRange = new Range(file.getPos(procStart), file.getPos(procEnd));
+				outlineStack.remove(outlineStack.size() - 1);
+				List<DocumentSymbol> oldOutline2 = outlineStack.get(outlineStack.size() - 1);
+				if (!oldOutline2.isEmpty()) {
+					oldOutline2.get(oldOutline2.size() - 1).setRange(procRange);
+				}
+				ar.getFunctionDefinitions().put(procEnd, ar.getIdDefinitions().get(procEnd));
+				List<Integer> funcRangeKeys = new ArrayList<>(ar.getFunctionRanges().subMap(procStart, procEnd).keySet());
+				for(Integer funcRangeKey : funcRangeKeys) {
+					int[] oldRange = ar.getFunctionRanges().get(funcRangeKey);
+					if (oldRange.length == 2)
+						ar.getFunctionRanges().put(funcRangeKey, new int[] { oldRange[0], oldRange[1], procStart});
+				}
+				ar.getFunctionRanges().put(procStart, new int[] { procIdentEnd, procEnd });
+				break;
 			default:
 				throw new IOException("Invalid response: " + res);
 			}
@@ -590,6 +612,7 @@ public class Bridge {
 
 		/* answer packets / A2 */
 		ANSWER_Warning(60), ANSWER_Information(61), ANSWER_NameExportedAt(62), ANSWER_VarProcParam(63),
+		ANSWER_RecordEndAsProcedure(64),
 
 		/* autocomplete answer packets */
 		ANSWER_Completion(80),
