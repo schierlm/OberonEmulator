@@ -9,8 +9,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
@@ -99,8 +101,9 @@ public class Bridge {
 		outlineStack.add(new ArrayList<>());
 		SortedMap<Integer,int[]> semanticTokenInformation = new TreeMap<>();
 		List<int[]> definitionLists = new ArrayList<>();
+		Set<Integer> overridingPositions = new HashSet<>();
 		boolean inProcParam = false;
-		Identifier lastUndefinedSymbol = null;
+		Identifier lastUndefinedSymbol = null, lastExport = null;
 		loop: while (true) {
 			ProtocolConstant res = ProtocolConstant.read(dis);
 			switch (res) {
@@ -176,6 +179,22 @@ public class Bridge {
 				String name = file.getContent().substring(start, end);
 				IdentifierReference definition = defEnd == -1 ? null : new IdentifierReference(defModName, defEnd);
 				boolean declaration = defEnd == end && (defModName.equals(ar.getModuleName()) || ar.getModuleName() == null);
+				if (synElem == SyntaxElement.SynOverrideReference) {
+					if (defEnd != -1) {
+						OberonFile.Identifier id = new OberonFile.Identifier(start, end, SyntaxElement.SynProcedure.kind, definition);
+						ar.getIdReferences().put(end, id);
+						ar.getModuleDeps().computeIfAbsent(defModName, x -> new EnumMap<>(ModuleDepType.class)).computeIfAbsent(ModuleDepType.DEFINITION, x -> new HashMap<>()).computeIfAbsent(defEnd, x -> new ArrayList<>()).add(end);
+						ar.getModuleDeps().computeIfAbsent(defModName, x -> new EnumMap<>(ModuleDepType.class)).computeIfAbsent(ModuleDepType.OVERRIDING, x -> new HashMap<>()).computeIfAbsent(defEnd, x -> new ArrayList<>()).add(end);
+						Identifier overridingDefinition = ar.getIdDefinitions().get(end);
+						if (overridingDefinition != null) {
+							overridingDefinition.setUsed(true);
+							overridingDefinition.setOverriding(true);
+						} else {
+							overridingPositions.add(end);
+						}
+					}
+					break;
+				}
 				int[] semanticInfo = new int[] {
 						end - start, synElem.tokenType,
 						synElem.tokenModifiers | (declaration ? (1 << TOKEN_MODIFIERS.indexOf(SemanticTokenModifiers.Declaration)) : 0)
@@ -196,6 +215,10 @@ public class Bridge {
 					Range range = new Range(file.getPos(start), file.getPos(end));
 					DocumentSymbol ds = new DocumentSymbol(name, synElem.kind, range, range);
 					OberonFile.Identifier newId = new OberonFile.Identifier(start, end, synElem.kind, null);
+					if (synElem == SyntaxElement.SynProcedure && overridingPositions.contains(end)) {
+						newId.setUsed(true);
+						newId.setOverriding(true);
+					}
 					if (synElem.kind == SymbolKind.Function && functionPending) {
 						functionPending = false;
 						ds.setRange(procRangeStack.get(procRangeStack.size() - 1));
@@ -307,12 +330,31 @@ public class Bridge {
 					varId.setWrittenTo(true);
 				}
 				break;
+			case ANSWER_VarProcParam:
+				Identifier varId2 = ar.getIdDefinitions().get(lastSymbolEnd);
+				if (varId2 != null) {
+					varId2.setProcedureParameter(true);
+				}
+				break;
 			case ANSWER_NameExported:
 				Identifier expoId = ar.getIdDefinitions().get(prevSymbolEnd);
 				if (expoId != null) {
 					expoId.setExportedPos(lastSymbolEnd);
+					lastExport = expoId;
 				}
 				break;
+			case ANSWER_NameExportedAt:
+				int exportedPos = readIntLE();
+				Identifier expoId2 = ar.getIdDefinitions().get(lastSymbolEnd);
+				if (expoId2 != null) {
+					expoId2.setExportedPos(exportedPos);
+					lastExport = expoId2;
+				}
+				break;
+			case ANSWER_CommandExported:
+				if (lastExport != null) {
+					lastExport.setCommand(true);
+				}
 			case ANSWER_DefinitionRepeat:
 				Identifier repeatId = ar.getIdReferences().get(lastSymbolEnd);
 				if (repeatId != null) {
@@ -448,7 +490,7 @@ public class Bridge {
 		dos.write(content.getBytes(StandardCharsets.ISO_8859_1));
 		dos.flush();
 		List<FormatTokenInfo> result = new ArrayList<>();
-		FormatTokenInfo lastToken = null;
+		FormatTokenInfo lastToken = null, lastCommentToken = null;
 		loop: while (true) {
 			ProtocolConstant res = ProtocolConstant.read(dis);
 			switch (res) {
@@ -460,11 +502,15 @@ public class Bridge {
 				int start = readIntLE();
 				int end = readIntLE();
 				int categories = dis.readByte() & 0xFF;
+				if (lastCommentToken != null && lastCommentToken != lastToken)
+					lastCommentToken = null;
+				if (lastCommentToken != null && categories / 10 == 3) categories -= 10;
 				lastToken = new FormatTokenInfo(start, end, categories);
 				result.add(lastToken);
 				break;
 			case ANSWER_FormatTokenUpdate:
 				int catUpdate = dis.readByte() & 0xFF;
+				if (lastCommentToken != null && catUpdate / 10 == 3) catUpdate -= 10;
 				lastToken.updateCategories(catUpdate);
 				break;
 			case ANSWER_IndentNextLine:
@@ -472,6 +518,16 @@ public class Bridge {
 				break;
 			case ANSWER_OutdentThisLine:
 				lastToken.outdentThisLine();
+				break;
+			case ANSWER_OutdentThisLineAndComment:
+				if (lastCommentToken != null) {
+					lastCommentToken.outdentThisLine();
+				} else {
+					lastToken.outdentThisLine();
+				}
+				break;
+			case ANSWER_TokenIsComment:
+				lastCommentToken = lastToken;
 				break;
 			default:
 				throw new IOException("Invalid response: " + res);
@@ -530,16 +586,17 @@ public class Bridge {
 		ANSWER_ForwardPointer(26), ANSWER_ForwardPointerFixup(27), ANSWER_DefinitionRepeat(28),
 		ANSWER_DefinitionUsed(29), ANSWER_DeclarationBlockStart(30), ANSWER_DeclarationBlockEnd(31),
 		ANSWER_DefinitionListStart(32), ANSWER_DefinitionListValue(33), ANSWER_DefinitionListEnd(34),
-		ANSWER_SymbolFileIndex(35),
+		ANSWER_SymbolFileIndex(35), ANSWER_CommandExported(36),
 
 		/* answer packets / A2 */
-		ANSWER_Warning(60), ANSWER_Information(61),
+		ANSWER_Warning(60), ANSWER_Information(61), ANSWER_NameExportedAt(62), ANSWER_VarProcParam(63),
 
 		/* autocomplete answer packets */
 		ANSWER_Completion(80),
 
 		/* reformat answer packets */
 		ANSWER_FormatToken(90), ANSWER_FormatTokenUpdate(91), ANSWER_IndentNextLine(92), ANSWER_OutdentThisLine(93),
+		ANSWER_OutdentThisLineAndComment(94), ANSWER_TokenIsComment(95),
 
 		/* status codes, where needed */
 		STATUS_OK(0), STATUS_Invalid(1);
@@ -572,6 +629,7 @@ public class Bridge {
 		SynComment(5, null, null, SemanticTokenTypes.Comment),
 		SynConstant(6, SymbolKind.Constant, CompletionItemKind.Constant, SemanticTokenTypes.Variable, SemanticTokenModifiers.Readonly),
 		SynUndefined(7, null, null, null),
+		SynOverrideReference(13, null, null, null),
 		SynModule(8, SymbolKind.Module, CompletionItemKind.Module, SemanticTokenTypes.Namespace),
 		SynVariable(9, SymbolKind.Variable, CompletionItemKind.Variable, SemanticTokenTypes.Variable),
 		SynParameter(10, SymbolKind.TypeParameter, CompletionItemKind.Variable, SemanticTokenTypes.Parameter),
