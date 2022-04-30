@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import lspserver.OberonFile.AnalysisResult;
 import lspserver.OberonFile.Identifier;
 import lspserver.OberonFile.IdentifierReference;
+import lspserver.OberonFile.ModuleDepType;
 import lspserver.OberonFile.ParamTag;
 import lspserver.OberonFormatter.FormatTokenInfo;
 
@@ -140,9 +142,27 @@ public class Bridge {
 				int symIdx = readIntLE();
 				String symMod = readCStr();
 				int symEndPos = readIntLE();
+				if (ar.getExportedSymbolRefs().containsKey(symIdx)) {
+					IdentifierReference ir = ar.getExportedSymbolRefs().get(symIdx);
+					if (ir.getModule().equals(symMod) && ir.getEndPos() == symEndPos) {
+						ar.getExportedSymbolRefs().remove(symIdx);
+						Diagnostic diag_X = new Diagnostic(new Range(file.getPos(symEndPos-1), file.getPos(symEndPos)), "LSP: Symbol reported more than once");
+						diag_X.setSeverity(DiagnosticSeverity.Information);
+						ar.getErrors().add(diag_X);
+					} else if (ir.getModule().equals(symMod)) {
+						ar.getExportedSymbolRefs().remove(symIdx);
+						Diagnostic diag_X = new Diagnostic(new Range(file.getPos(symEndPos-1), file.getPos(symEndPos)), "LSP: Symbol index "+symIdx+" reported at different positions: " + ir.getEndPos()+ " and "+symEndPos);
+						diag_X.setSeverity(DiagnosticSeverity.Error);
+						ar.getErrors().add(diag_X);
+						Diagnostic diag_Y = new Diagnostic(new Range(file.getPos(ir.getEndPos()-1), file.getPos(ir.getEndPos())), "LSP: Symbol index "+symIdx+" reported at different positions: " + ir.getEndPos()+ " and "+symEndPos);
+						diag_Y.setSeverity(DiagnosticSeverity.Error);
+						ar.getErrors().add(diag_Y);
+					}
+				}
 				if (ar.getExportedSymbolRefs().containsKey(symIdx))
 					throw new IllegalStateException("Duplicate symbol index "+symIdx);
 				ar.getExportedSymbolRefs().put(symIdx, new IdentifierReference(symMod, symEndPos));
+				ar.getModuleDeps().computeIfAbsent(symMod, x -> new EnumMap<>(ModuleDepType.class)).computeIfAbsent(ModuleDepType.DEFINITION, x -> new HashMap<>()).computeIfAbsent(symEndPos, x -> new ArrayList<>()).add(symIdx);
 				break;
 			case ANSWER_SyntaxElement:
 				int start = readIntLE();
@@ -175,16 +195,16 @@ public class Bridge {
 					List<DocumentSymbol> outline = outlineStack.get(outlineStack.size() - 1);
 					Range range = new Range(file.getPos(start), file.getPos(end));
 					DocumentSymbol ds = new DocumentSymbol(name, synElem.kind, range, range);
+					OberonFile.Identifier newId = new OberonFile.Identifier(start, end, synElem.kind, null);
 					if (synElem.kind == SymbolKind.Function && functionPending) {
 						functionPending = false;
 						ds.setRange(procRangeStack.get(procRangeStack.size() - 1));
 						ds.setChildren(new ArrayList<>());
-						ar.getFunctionDefinitions().put(end, new OberonFile.Identifier(start, end, synElem.kind, null));
+						ar.getFunctionDefinitions().put(end, newId);
 						ar.getFunctionRanges().get(functionNamePosStack.get(functionNamePosStack.size() - 1))[0] = end;
 						outlineStack.add(ds.getChildren());
 					}
 					outline.add(ds);
-					OberonFile.Identifier newId = new OberonFile.Identifier(start, end, synElem.kind, null);
 					if (inProcParam)
 						newId.setProcedureParameter(true);
 					ar.getIdDefinitions().put(end, newId);
@@ -194,7 +214,7 @@ public class Bridge {
 				} else if (defEnd != -1 && synElem.kind != null) {
 					OberonFile.Identifier id = new OberonFile.Identifier(start, end, synElem.kind, definition);
 					ar.getIdReferences().put(end, id);
-					ar.getModuleDeps().computeIfAbsent(defModName, x -> new HashMap<>()).computeIfAbsent(defEnd, x -> new ArrayList<>()).add(end);
+					ar.getModuleDeps().computeIfAbsent(defModName, x -> new EnumMap<>(ModuleDepType.class)).computeIfAbsent(ModuleDepType.DEFINITION, x -> new HashMap<>()).computeIfAbsent(defEnd, x -> new ArrayList<>()).add(end);
 					if (defEnd == 1) {
 						if (!defModName.equals(ar.getModuleName())) {
 							// import statement
@@ -203,9 +223,9 @@ public class Bridge {
 							} else {
 								ar.getIdDefinitions().put(end, id);
 							}
-						} else {
+						} else if (ar.getIdDefinitions().get(1) != null) {
 							// Module END.
-							ar.getModuleDeps().get(defModName).computeIfAbsent(ar.getIdDefinitions().get(1).getEndPos(), x -> new ArrayList<>()).add(end);
+							ar.getModuleDeps().get(defModName).get(ModuleDepType.DEFINITION).computeIfAbsent(ar.getIdDefinitions().get(1).getEndPos(), x -> new ArrayList<>()).add(end);
 						}
 					}
 				} else if (synElem == SyntaxElement.SynUndefined) {
@@ -236,7 +256,7 @@ public class Bridge {
 				// find last reference and remove it
 				int lastPos = ar.getIdReferences().lastKey();
 				Identifier id = ar.getIdReferences().remove(lastPos);
-				ar.getModuleDeps().get(id.getDefinition().getModule()).remove(id.getDefinition().getEndPos());
+				ar.getModuleDeps().get(id.getDefinition().getModule()).get(ModuleDepType.DEFINITION).remove(id.getDefinition().getEndPos());
 				if (id.getKind() != SymbolKind.Module) {
 					throw new IllegalStateException("Last symbol to remove is not an imported module");
 				}
@@ -275,7 +295,7 @@ public class Bridge {
 				int targetPos = readIntLE();
 				OberonFile.Identifier pointerId = ar.getIdReferences().get(pointerPos);
 				pointerId.setDefinition(new IdentifierReference(pointerId.getDefinition().getModule(), targetPos));
-				ar.getModuleDeps().computeIfAbsent(pointerId.getDefinition().getModule(), x -> new HashMap<>()).computeIfAbsent(targetPos, x -> new ArrayList<>()).add(pointerPos);
+				ar.getModuleDeps().computeIfAbsent(pointerId.getDefinition().getModule(), x -> new EnumMap<>(ModuleDepType.class)).computeIfAbsent(ModuleDepType.DEFINITION, x -> new HashMap<>()).computeIfAbsent(targetPos, x -> new ArrayList<>()).add(pointerPos);
 				break;
 			case ANSWER_VarModified:
 				Identifier varId = ar.getIdReferences().get(lastSymbolEnd);
@@ -352,11 +372,11 @@ public class Bridge {
 		}
 		for(Identifier id : ar.getIdDefinitions().values()) {
 			if (id.isExported() || id.isUsed()) continue;
-			if (id.getEndPos() == 1 || id.getEndPos() == ar.getIdDefinitions().get(1).getEndPos())
+			if (id.getEndPos() == 1 || (ar.getIdDefinitions().get(1) != null && id.getEndPos() == ar.getIdDefinitions().get(1).getEndPos()))
 				continue;
-			Map<Integer, List<Integer>> deps = ar.getModuleDeps().get(ar.getModuleName());
-
-			if (deps == null || deps.get(id.getEndPos()) == null || deps.get(id.getEndPos()).stream().map(ep -> ar.getIdReferences().get(ep)).allMatch(rid -> rid.isDefinitionRepeat())) {
+			Map<ModuleDepType, Map<Integer, List<Integer>>> deps0 = ar.getModuleDeps().get(ar.getModuleName());
+			Map<Integer, List<Integer>> deps = deps0 == null ? null : deps0.get(ModuleDepType.DEFINITION);
+			if (deps == null || deps.get(id.getEndPos()) == null || deps.get(id.getEndPos()).stream().filter(ep -> ep >= 0).map(ep -> ar.getIdReferences().get(ep)).allMatch(rid -> rid.isDefinitionRepeat())) {
 				Diagnostic diag = new Diagnostic(new Range(file.getPos(id.getStartPos()), file.getPos(id.getEndPos())), id.isProcedureParameter() ? OberonFile.UNUSED_PARAM : OberonFile.UNUSED_DEFINITION);
 				diag.setSeverity(DiagnosticSeverity.Hint);
 				diag.setTags(Arrays.asList(DiagnosticTag.Unnecessary));

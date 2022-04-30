@@ -50,6 +50,9 @@ public class OberonFormatter {
 	}
 
 	private String makeSpaces(int count) {
+		if (count < 0) {
+			return "(* INDENT " + count + "*) ";
+		}
 		char[] spaces = new char[count];
 		Arrays.fill(spaces, ' ');
 		return new String(spaces);

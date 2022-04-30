@@ -37,6 +37,7 @@ public class OberonFile {
 	public static final String UNUSED_PARAM = "Unused procedure parameter";
 	public static final String UNUSED_DEFINITION = "Unused definition";
 	public static final String UNUSED_EXPORT = "Unused export";
+	public static final String UNUSED_COMMAND = "Unused command";
 
 	private final String uri, normalizedUri;
 	private boolean dirty, unusedExportsFound;
@@ -110,7 +111,11 @@ public class OberonFile {
 			 this.lineByOffset.clear();
 			 contentVersion++;
 		}
-		pendingContentChanges.decrementAndGet();
+		if (pendingContentChanges.decrementAndGet() == 0) {
+			synchronized(this) {
+				notifyAll();
+			}
+		}
 	}
 
 	public synchronized String getCachedModuleName() {
@@ -208,7 +213,7 @@ public class OberonFile {
 			try {
 				T value;
 				synchronized(this) {
-					while (!isDirty() && pendingContentChanges.get() == 0)
+					while (isDirty() || pendingContentChanges.get() != 0)
 						wait();
 					value = lambda.apply(analysisResult);
 				}
@@ -240,12 +245,14 @@ public class OberonFile {
 
 	public static enum ParamTag { PROC_START, CALL_START, NEXT, END, END_LAST }
 
+	public static enum ModuleDepType { DEFINITION, OVERRIDING }
+
 	public static class AnalysisResult implements Serializable {
 		private boolean cached = false;
 		private String moduleName, contentHash;
 		private int[] semanticTokens = new int[0];
 		private final List<Diagnostic> errors = new ArrayList<>();
-		private final Map<String, Map<Integer,List<Integer>>> moduleDeps = new HashMap<>();
+		private final Map<String, Map<ModuleDepType,Map<Integer,List<Integer>>>> moduleDeps = new HashMap<>();
 		private final List<Either<SymbolInformation, DocumentSymbol>> outline = new ArrayList<>();
 		private final SortedMap<Integer, Identifier> idDefinitions = new TreeMap<>(), idReferences = new TreeMap<>();
 		private final SortedMap<Integer, Identifier> functionDefinitions = new TreeMap<>();
@@ -317,7 +324,7 @@ public class OberonFile {
 			return errors;
 		}
 
-		public Map<String, Map<Integer,List<Integer>>> getModuleDeps() {
+		public Map<String, Map<ModuleDepType,Map<Integer,List<Integer>>>> getModuleDeps() {
 			return moduleDeps;
 		}
 
@@ -499,7 +506,7 @@ public class OberonFile {
 		private int exportedPos;
 		private IdentifierReference definition;
 		private final SymbolKind kind;
-		private boolean writtenTo, used, procedureParameter, definitionRepeat;
+		private boolean writtenTo, used, procedureParameter, definitionRepeat, overriding, command;
 
 		public Identifier(int startPos, int endPos, SymbolKind kind, IdentifierReference definition) {
 			this.startPos = startPos;
@@ -572,6 +579,22 @@ public class OberonFile {
 
 		public void setProcedureParameter(boolean procedureParameter) {
 			this.procedureParameter = procedureParameter;
+		}
+
+		public boolean isOverriding() {
+			return overriding;
+		}
+
+		public void setOverriding(boolean overriding) {
+			this.overriding = overriding;
+		}
+
+		public boolean isCommand() {
+			return command;
+		}
+
+		public void setCommand(boolean command) {
+			this.command = command;
 		}
 	}
 }

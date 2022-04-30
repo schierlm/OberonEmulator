@@ -108,6 +108,7 @@ import com.google.gson.JsonArray;
 import lspserver.OberonFile.AnalysisResult;
 import lspserver.OberonFile.Identifier;
 import lspserver.OberonFile.IdentifierReference;
+import lspserver.OberonFile.ModuleDepType;
 import lspserver.OberonFile.ParamTag;
 import lspserver.OberonFormatter.FormatTokenInfo;
 
@@ -154,13 +155,13 @@ public class Server implements LanguageServer, LanguageClientAware {
 
 	@Override
 	public CompletableFuture<Object> shutdown() {
-		for (OberonFile of : openFiles.values()) {
-			fileClosed(of);
-		}
 		try {
 			bridge.shutdown();
 		} catch (Exception ex) {
 			ex.printStackTrace();
+		}
+		for (OberonFile of : openFiles.values()) {
+			fileClosed(of);
 		}
 		return CompletableFuture.completedFuture(null);
 	}
@@ -325,7 +326,7 @@ public class Server implements LanguageServer, LanguageClientAware {
 		}
 	}
 
-	protected void addCodeAction(List<Either<Command, CodeAction>> actions, CodeActionParams params, AnalysisResult ar, JsonArray data, String message, String what) {
+	protected void addCodeAction(List<Either<Command, CodeAction>> actions, CodeActionParams params, AnalysisResult ar, JsonArray data, List<Diagnostic> errors, String message, String what) {
 		List<Diagnostic> relevantDiags = new ArrayList<>();
 		for (Diagnostic diag : params.getContext().getDiagnostics()) {
 			if (diag.getTags() != null && diag.getTags().contains(DiagnosticTag.Unnecessary) && diag.getMessage().equals(message)) {
@@ -339,7 +340,7 @@ public class Server implements LanguageServer, LanguageClientAware {
 			ca.setDiagnostics(relevantDiags);
 			ca.setKind(CodeActionKind.QuickFix);
 			actions.add(Either.forRight(ca));
-			List<Diagnostic> allDiags = ar.getErrors().stream().filter(
+			List<Diagnostic> allDiags = errors.stream().filter(
 					d -> d.getTags() != null && d.getTags().contains(DiagnosticTag.Unnecessary) &&
 							d.getMessage().equals(message))
 					.collect(Collectors.toList());
@@ -353,13 +354,15 @@ public class Server implements LanguageServer, LanguageClientAware {
 		}
 	}
 
-	protected List<Either<Command, CodeAction>> fillCodeActions(CodeActionParams params, OberonFile of, AnalysisResult ar) {
+	protected List<Either<Command, CodeAction>> fillCodeActions(CodeActionParams params, OberonFile of, AnalysisResult ar, List<Diagnostic> errors) {
 		JsonArray data = new JsonArray();
 		data.add("REMOVE");
 		data.add(of.getUri());
 		List<Either<Command, CodeAction>> actions = new ArrayList<>();
-		addCodeAction(actions, params, ar, data, OberonFile.UNUSED_DEFINITION, "definition");
-		addCodeAction(actions, params, ar, data, OberonFile.UNUSED_PARAM, "procedure parameter");
+		if (!ar.getDefinitionLists().isEmpty()) {
+			addCodeAction(actions, params, ar, data, errors, OberonFile.UNUSED_DEFINITION, "definition");
+			addCodeAction(actions, params, ar, data, errors, OberonFile.UNUSED_PARAM, "procedure parameter");
+		}
 		return actions;
 	}
 
@@ -406,6 +409,10 @@ public class Server implements LanguageServer, LanguageClientAware {
 			});
 		}
 		return CompletableFuture.completedFuture(unresolved);
+	}
+
+	protected boolean allowGlobalRename() {
+		return false;
 	}
 
 	@Override
@@ -548,6 +555,7 @@ public class Server implements LanguageServer, LanguageClientAware {
 
 			private CallHierarchyItem buildCallHierarchyItem(OberonFile of, AnalysisResult ar, Identifier id) {
 				CallHierarchyItem chi = new CallHierarchyItem();
+				chi.setUri(of.getUri());
 				chi.setName(of.getContent().substring(id.getStartPos(), id.getEndPos()));
 				chi.setKind(id.getKind());
 				chi.setData(new Two<>(ar.getModuleName(), id.getEndPos()));
@@ -597,9 +605,13 @@ public class Server implements LanguageServer, LanguageClientAware {
 
 			@Override
 			public CompletableFuture<List<? extends Location>> references(ReferenceParams params) {
-				OberonFile of = fileForURI(params.getTextDocument().getUri());
+				return computeReferences(params.getTextDocument().getUri(), params.getPosition());
+			}
+
+			private CompletableFuture<List<? extends Location>> computeReferences(String uri, Position position){
+				OberonFile of = fileForURI(uri);
 				return of.waitWhenDirty(backgroundExecutor, ar -> {
-					int pos = of.getRawPos(params.getPosition());
+					int pos = of.getRawPos(position);
 					Identifier def = findAt(ar.getIdDefinitions(), pos);
 					if (def != null) {
 						return new IdentifierReference(def.isExported() ? ar.getModuleName() : "<local>", def.getEndPos());
@@ -622,7 +634,7 @@ public class Server implements LanguageServer, LanguageClientAware {
 					if (pendingRef == null)
 						return result;
 					List<IdentifierReference> pendingRefs = new ArrayList<>();
-					pendingRefs.add(ref);
+					pendingRefs.add(pendingRef);
 					while (!pendingRefs.isEmpty()) {
 						IdentifierReference reference = pendingRefs.remove(0);
 						if (reference == null)
@@ -645,7 +657,8 @@ public class Server implements LanguageServer, LanguageClientAware {
 										locations.add(new Location(of2.getUri(), new Range(of2.getPos(rid.getStartPos()), of2.getPos(rid.getEndPos()))));
 									}
 								}
-								Map<Integer, List<Integer>> modRefs = ar2.getModuleDeps().get(defModule);
+								Map<ModuleDepType,Map<Integer, List<Integer>>> modRefs0 = ar2.getModuleDeps().get(defModule);
+								Map<Integer, List<Integer>> modRefs = modRefs0 == null ? null : modRefs0.get(ModuleDepType.DEFINITION);
 								if (modRefs != null) {
 									List<Integer> refs = modRefs.get(reference.getEndPos());
 									if (refs != null) {
@@ -698,7 +711,9 @@ public class Server implements LanguageServer, LanguageClientAware {
 							result.add(new DocumentHighlight(new Range(of.getPos(rid.getStartPos()), of.getPos(rid.getEndPos())), DocumentHighlightKind.Read));
 						}
 					}
-					Map<Integer, List<Integer>> modRefs = ar.getModuleDeps().get(defReference.getModule());
+					Map<ModuleDepType,Map<Integer, List<Integer>>> modRefs0 = ar.getModuleDeps().get(defReference.getModule());
+					Map<Integer, List<Integer>> modRefs = modRefs0 == null ? null : modRefs0.get(ModuleDepType.DEFINITION);
+
 					if (modRefs != null) {
 						List<Integer> refs = modRefs.get(defReference.getEndPos());
 						if (refs != null) {
@@ -716,10 +731,10 @@ public class Server implements LanguageServer, LanguageClientAware {
 				});
 			}
 
-			private CompletableFuture<List<Range>> editingRanges(String uri, Position position) {
+			private CompletableFuture<List<? extends Location>> editingRanges(String uri, Position position, boolean global) {
 				OberonFile of = fileForURI(uri);
 				return of.waitWhenDirty(backgroundExecutor, ar -> {
-					final List<Range> ranges = new ArrayList<>();
+					final List<Location> locations = new ArrayList<>();
 					int pos = of.getRawPos(position);
 					IdentifierReference defReference = null;
 					Identifier definition = findAt(ar.getIdDefinitions(), pos);
@@ -734,15 +749,20 @@ public class Server implements LanguageServer, LanguageClientAware {
 					if (defReference != null && defReference.getModule().equals(ar.getModuleName())) {
 						if (ar.getIdReferences().containsKey(defReference.getEndPos())) {
 							// do not allow to rename unaliased IMPORTs!
-							return ranges;
+							return locations;
 						}
 						Identifier id = ar.getIdDefinitions().get(defReference.getEndPos());
 						if (id.isExported()) {
-							// do not allow to rename exported definitions
-							return ranges;
+							// do not allow to locally rename exported definitions
+							if (global) {
+								locations.add(new Location("<exported>", new Range(new Position(0, 0), new Position(0,0))));
+							}
+							return locations;
 						}
-						ranges.add(new Range(of.getPos(id.getStartPos()), of.getPos(id.getEndPos())));
-						Map<Integer, List<Integer>> modRefs = ar.getModuleDeps().get(defReference.getModule());
+						locations.add(new Location(of.getUri(),new Range(of.getPos(id.getStartPos()), of.getPos(id.getEndPos()))));
+						Map<ModuleDepType,Map<Integer, List<Integer>>> modRefs0 = ar.getModuleDeps().get(defReference.getModule());
+						Map<Integer, List<Integer>> modRefs = modRefs0 == null ? null : modRefs0.get(ModuleDepType.DEFINITION);
+
 						if (modRefs != null) {
 							List<Integer> refs = modRefs.get(defReference.getEndPos());
 							if (refs != null) {
@@ -750,30 +770,46 @@ public class Server implements LanguageServer, LanguageClientAware {
 									if (rend < 0)
 										continue;
 									Identifier ref = ar.getIdReferences().get(rend);
-									ranges.add(new Range(of.getPos(ref.getStartPos()), of.getPos(ref.getEndPos())));
+									locations.add(new Location(of.getUri(), new Range(of.getPos(ref.getStartPos()), of.getPos(ref.getEndPos()))));
 								}
 							}
 						}
+					} else if (defReference != null && global) {
+						// rename export from other module
+						locations.add(new Location("<exported>", new Range(new Position(0, 0), new Position(0,0))));
 					}
-					return ranges;
+					return locations;
+				}).thenApply(r -> {
+					if (r.size() == 1 && r.get(0).getUri().equals("<exported>")) {
+						try {
+							return computeReferences(uri, position).get();
+						} catch (InterruptedException|ExecutionException ex) {
+							ex.printStackTrace();
+							r.clear();
+						}
+					}
+					return r;
 				});
 			}
 
 			@Override
 			public CompletableFuture<LinkedEditingRanges> linkedEditingRange(LinkedEditingRangeParams params) {
-				return editingRanges(params.getTextDocument().getUri(), params.getPosition()).thenApply(LinkedEditingRanges::new);
+				return editingRanges(params.getTextDocument().getUri(), params.getPosition(), false)
+						.thenApply(r -> new LinkedEditingRanges(r.stream().map(l -> l.getRange())
+								.collect(Collectors.toList())));
 			}
 
 			private boolean positionBefore(Position p1, Position p2) {
 				return p1.getLine() < p2.getLine() || (p1.getLine() == p2.getLine() && p1.getCharacter() <= p2.getCharacter());
 			}
 
+
 			@Override
 			public CompletableFuture<Either<Range, PrepareRenameResult>> prepareRename(PrepareRenameParams params) {
-				return editingRanges(params.getTextDocument().getUri(), params.getPosition()).thenApply(rs -> {
-					for (Range r : rs) {
-						if (positionBefore(r.getStart(), params.getPosition()) && positionBefore(params.getPosition(), r.getEnd()))
-							return Either.forLeft(r);
+				return editingRanges(params.getTextDocument().getUri(), params.getPosition(), allowGlobalRename()).thenApply(ls -> {
+					for (Location l : ls) {
+						if (l.getUri().equals(params.getTextDocument().getUri()) && positionBefore(l.getRange().getStart(), params.getPosition()) && positionBefore(params.getPosition(), l.getRange().getEnd()))
+							return Either.forLeft(l.getRange());
 					}
 					return null;
 				});
@@ -781,13 +817,11 @@ public class Server implements LanguageServer, LanguageClientAware {
 
 			@Override
 			public CompletableFuture<WorkspaceEdit> rename(RenameParams params) {
-				return editingRanges(params.getTextDocument().getUri(), params.getPosition()).thenApply(rs -> {
-					List<TextEdit> edits = new ArrayList<>();
-					for (Range r : rs) {
-						edits.add(new TextEdit(r, params.getNewName()));
-					}
+				return editingRanges(params.getTextDocument().getUri(), params.getPosition(), allowGlobalRename()).thenApply(ls -> {
 					Map<String, List<TextEdit>> changes = new HashMap<>();
-					changes.put(params.getTextDocument().getUri(), edits);
+					for (Location l : ls) {
+						changes.computeIfAbsent(l.getUri(), x -> new ArrayList<>()).add(new TextEdit(l.getRange(), params.getNewName()));
+					}
 					return new WorkspaceEdit(changes);
 				});
 			}
@@ -981,6 +1015,11 @@ public class Server implements LanguageServer, LanguageClientAware {
 							ofo.appendToken(content.substring(token.getStartPos(), token.getEndPos()), token);
 							pos = token.getEndPos();
 						}
+						if (pos < content.length() && content.charAt(pos) == '.') {
+							FormatTokenInfo endToken = new FormatTokenInfo(pos, pos+1, 00);
+							ofo.appendToken(content.substring(pos, pos+1), endToken);
+							pos++;
+						}
 						if (pos < content.length())
 							ofo.appendWhitespace(content.substring(pos));
 						newText = ofo.getResult();
@@ -1050,17 +1089,17 @@ public class Server implements LanguageServer, LanguageClientAware {
 
 			@Override
 			public CompletableFuture<List<CallHierarchyIncomingCall>> callHierarchyIncomingCalls(CallHierarchyIncomingCallsParams params) {
-				@SuppressWarnings("unchecked")
-				Two<String, Integer> details = (Two<String, Integer>) params.getItem().getData();
-				String defModule = details.getFirst();
-				int defEndPos = details.getSecond();
+				JsonArray details = (JsonArray) params.getItem().getData();
+				String defModule = details.get(0).getAsString();
+				int defEndPos = details.get(1).getAsInt();
 				CompletableFuture<List<CallHierarchyIncomingCall>> ret = new CompletableFuture<>();
 				backgroundExecutor.submit(() -> {
 					List<CallHierarchyIncomingCall> result = new ArrayList<>();
 					for (OberonFile of : allFiles(defModule, true)) {
 						of.waitToAddWhenDirty(result, backgroundExecutor, ar -> {
 							Map<Integer, List<Range>> functionCallRanges = new TreeMap<>();
-							Map<Integer, List<Integer>> modRefs = ar.getModuleDeps().get(defModule);
+							Map<ModuleDepType,Map<Integer, List<Integer>>> modRefs0 = ar.getModuleDeps().get(defModule);
+							Map<Integer, List<Integer>> modRefs = modRefs0 == null ? null : modRefs0.get(ModuleDepType.DEFINITION);
 							if (modRefs != null) {
 								List<Integer> rends = modRefs.get(defEndPos);
 								if (rends != null) {
@@ -1092,10 +1131,9 @@ public class Server implements LanguageServer, LanguageClientAware {
 
 			@Override
 			public CompletableFuture<List<CallHierarchyOutgoingCall>> callHierarchyOutgoingCalls(CallHierarchyOutgoingCallsParams params) {
-				@SuppressWarnings("unchecked")
-				Two<String, Integer> details = (Two<String, Integer>) params.getItem().getData();
-				String defModule = details.getFirst();
-				int defEndPos = details.getSecond();
+				JsonArray details = (JsonArray) params.getItem().getData();
+				String defModule = details.get(0).getAsString();
+				int defEndPos = details.get(1).getAsInt();
 				CompletableFuture<List<CallHierarchyOutgoingCall>> ret = new CompletableFuture<>();
 				backgroundExecutor.submit(() -> {
 					List<Map.Entry<String, Map<Integer, List<Range>>>> tempResult = new ArrayList<>();
@@ -1144,8 +1182,16 @@ public class Server implements LanguageServer, LanguageClientAware {
 			@Override
 			public CompletableFuture<List<Either<Command, CodeAction>>> codeAction(CodeActionParams params) {
 				OberonFile of = fileForURI(params.getTextDocument().getUri());
+				List<Diagnostic> errors;
+				try {
+					errors = getErrors(of);
+				} catch (InterruptedException | ExecutionException ex) {
+					ex.printStackTrace();
+					errors = new ArrayList<>();
+				}
+				List<Diagnostic> errors0 = errors;
 				return of.waitWhenDirty(backgroundExecutor, ar -> {
-					return fillCodeActions(params, of, ar);
+					return fillCodeActions(params, of, ar, errors0);
 				});
 			}
 
@@ -1192,14 +1238,16 @@ public class Server implements LanguageServer, LanguageClientAware {
 				this.wasSymbolChange = wasSymbolChange;
 			}
 		}
-		;
 
 		List<PendingFile> filesToUpdate = new ArrayList<>();
 		filesToUpdate.add(new PendingFile(oberonFile, version, false));
 		Set<String> fileUrisToUpdate = new HashSet<>(), moduleNames2Update = new HashSet<>();
+		Map<String,String> fileUri2ModuleNames = new HashMap<String,String>();
 		fileUrisToUpdate.add(oberonFile.getUri());
-		if (oberonFile.getCachedModuleName() != null) {
-			moduleNames2Update.add(oberonFile.getCachedModuleName());
+		String oberonFileModuleName = oberonFile.getCachedModuleName();
+		if (oberonFileModuleName != null) {
+			moduleNames2Update.add(oberonFileModuleName);
+			fileUri2ModuleNames.put(oberonFile.getUri(), oberonFileModuleName);
 		}
 		int skipCount = 0;
 		fileloop: while (!filesToUpdate.isEmpty()) {
@@ -1218,8 +1266,8 @@ public class Server implements LanguageServer, LanguageClientAware {
 			}
 			skipCount = 0;
 			fileUrisToUpdate.remove(of.getUri());
-			if (of.getCachedModuleName() != null) {
-				moduleNames2Update.remove(of.getCachedModuleName());
+			if (fileUri2ModuleNames.containsKey(of.getUri())) {
+				moduleNames2Update.remove(fileUri2ModuleNames.remove(of.getUri()));
 			}
 			String symbolsChangedModule = null;
 			synchronized (of) {
@@ -1243,8 +1291,10 @@ public class Server implements LanguageServer, LanguageClientAware {
 							if (of2 != of && ar2.getModuleDeps().containsKey(symbolsChangedModule_) && fileUrisToUpdate.add(of2.getUri())) {
 								of2.setDirty(true);
 								filesToUpdate.add(new PendingFile(of2, of2.getContentVersion(), true));
-								if (of2.getCachedModuleName() != null) {
-									moduleNames2Update.add(of2.getCachedModuleName());
+								String of2CachedModuleName = of2.getCachedModuleName();
+								if (of2CachedModuleName != null) {
+									moduleNames2Update.add(of2CachedModuleName);
+									fileUri2ModuleNames.put(of2.getUri(), of2CachedModuleName);
 								}
 							}
 							return null;
@@ -1269,10 +1319,9 @@ public class Server implements LanguageServer, LanguageClientAware {
 			}
 			return new Two<>(ar.getErrors(), range);
 		}).get();
-		List<Diagnostic> result = pair.getFirst();
+		List<Diagnostic> result = new ArrayList<>(pair.getFirst());
 		if (of.getCachedModuleName() != null) {
 			if (allFiles(of.getCachedModuleName(), false).stream().anyMatch(of2 -> of.getCachedModuleName().equals(of2.getCachedModuleName()) && !of.getNormalizedUri().equals(of2.getNormalizedUri()))) {
-				result = new ArrayList<>(result);
 				result.add(new Diagnostic(pair.getSecond(), "Same module name used by multiple files"));
 			}
 		}

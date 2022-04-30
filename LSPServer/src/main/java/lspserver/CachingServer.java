@@ -42,7 +42,6 @@ import org.eclipse.lsp4j.FileEvent;
 import org.eclipse.lsp4j.FileOperationFilter;
 import org.eclipse.lsp4j.FileOperationOptions;
 import org.eclipse.lsp4j.FileOperationPattern;
-import org.eclipse.lsp4j.FileOperationPatternKind;
 import org.eclipse.lsp4j.FileOperationsServerCapabilities;
 import org.eclipse.lsp4j.FileRename;
 import org.eclipse.lsp4j.FileSystemWatcher;
@@ -117,6 +116,7 @@ public class CachingServer extends Server {
 				new WorkspaceFolderScanner(wf).scan();
 			}
 		}
+		enqueuePendingUri("*");
 		WorkspaceFoldersOptions wfo = new WorkspaceFoldersOptions();
 		wfo.setSupported(true);
 		wfo.setChangeNotifications(true);
@@ -161,18 +161,24 @@ public class CachingServer extends Server {
 
 		class ExportInfo {
 			private final int exportedPos, endPos, symbolIndex;
+			private final boolean command;
 			private boolean used;
 
-			private ExportInfo(int exportedPos, int endPos, int symbolIndex) {
+			private ExportInfo(int exportedPos, int endPos, boolean command, int symbolIndex) {
 				this.exportedPos = exportedPos;
 				this.endPos = endPos;
 				this.symbolIndex = symbolIndex;
+				this.command = command;
 			}
 		}
 
 		List<Diagnostic> errors = super.getErrors(of);
+		boolean fileOpen = super.fileForURI(of.getUri()) != null;
+		if (!fileOpen) {
+			errors.removeIf(e -> e.getTags() != null && !e.getTags().isEmpty());
+		}
 		of.setUnusedExportsFound(false);
-		if (of.getCachedModuleName() == null)
+		if (of.getCachedModuleName() == null || !fileOpen)
 			return errors;
 
 		List<Diagnostic> exports = of.waitWhenDirty(backgroundExecutor, ar -> {
@@ -184,13 +190,13 @@ public class CachingServer extends Server {
 			}
 			return ar.getIdDefinitions().values().stream()
 					.filter(id -> id.isExported())
-					.map(id -> new ExportInfo(id.getExportedPos(), id.getEndPos(), symRefs.getOrDefault(id.getEndPos(), id.getEndPos())))
+					.map(id -> new ExportInfo(id.getExportedPos(), id.getEndPos(), id.isCommand(), symRefs.getOrDefault(id.getEndPos(), id.getEndPos())))
 					.collect(Collectors.toList());
 		}).thenApply(eilist -> {
 			List<Diagnostic> diags = new ArrayList<>();
 			for (OberonFile of2 : allFiles(of.getCachedModuleName(), true)) {
 				of2.waitToAddWhenDirty(diags, backgroundExecutor, ar2 -> {
-					Map<Integer, List<Integer>> deps = ar2.getModuleDeps().get(of.getCachedModuleName());
+					Map<?,?> deps = ar2.getModuleDeps().get(of.getCachedModuleName());
 					if (deps == null)
 						return Collections.emptyList();
 					for (ExportInfo ei : eilist) {
@@ -202,7 +208,7 @@ public class CachingServer extends Server {
 			}
 			for (ExportInfo ei : eilist) {
 				if (!ei.used) {
-					Diagnostic diag = new Diagnostic(new Range(of.getPos(ei.exportedPos - 1), of.getPos(ei.exportedPos)), OberonFile.UNUSED_EXPORT);
+					Diagnostic diag = new Diagnostic(new Range(of.getPos(ei.exportedPos - 1), of.getPos(ei.exportedPos)), ei.command ? OberonFile.UNUSED_COMMAND : OberonFile.UNUSED_EXPORT);
 					diag.setSeverity(DiagnosticSeverity.Hint);
 					diag.setTags(Arrays.asList(DiagnosticTag.Unnecessary));
 					diags.add(diag);
@@ -218,12 +224,13 @@ public class CachingServer extends Server {
 	}
 
 	@Override
-	protected List<Either<Command, CodeAction>> fillCodeActions(CodeActionParams params, OberonFile of, AnalysisResult ar) {
-		List<Either<Command, CodeAction>> actions = super.fillCodeActions(params, of, ar);
+	protected List<Either<Command, CodeAction>> fillCodeActions(CodeActionParams params, OberonFile of, AnalysisResult ar, List<Diagnostic> errors) {
+		List<Either<Command, CodeAction>> actions = super.fillCodeActions(params, of, ar, errors);
 		JsonArray data = new JsonArray();
 		data.add("REMOVE_EXPORT");
 		data.add(of.getUri());
-		addCodeAction(actions, params, ar, data, OberonFile.UNUSED_EXPORT, "export");
+		addCodeAction(actions, params, ar, data, errors, OberonFile.UNUSED_EXPORT, "export");
+		addCodeAction(actions, params, ar, data, errors, OberonFile.UNUSED_COMMAND, "command");
 		return actions;
 	}
 
@@ -295,6 +302,11 @@ public class CachingServer extends Server {
 			}
 		}
 		return result;
+	}
+
+	@Override
+	protected boolean allowGlobalRename() {
+		return true;
 	}
 
 	private void addToCache(String uri, OberonFile file) {
@@ -378,7 +390,7 @@ public class CachingServer extends Server {
 		if (of.getCachedDependencies() != null) {
 			for (String impMod : of.getCachedDependencies()) {
 				if (!impMod.equals(of.getCachedModuleName())) {
-					for (OberonFile dof : allFiles(impMod, false)) {
+					for (OberonFile dof : super.allFiles(impMod, false)) {
 						if (impMod.equals(dof.getCachedModuleName()) && dof.isUnusedExportsFound()) {
 							super.updateDiagnostics(dof);
 						}
@@ -482,6 +494,7 @@ public class CachingServer extends Server {
 									}
 								}
 							} catch (IOException ex) {
+								System.err.println("Unable to deserialize " + cacheFile.getName() + " for " + nextUri + ":");
 								ex.printStackTrace();
 							}
 						}
@@ -495,6 +508,13 @@ public class CachingServer extends Server {
 							removeFromCache(nextUri);
 							addToCache(nextUri, of);
 						}
+					}
+				} else if (nextUri.equals("*")) {
+					for (OberonFile of : cachedFiles.values()) {
+						of.waitWhenDirty(backgroundExecutor, ar -> {
+							serialize(of, ar);
+							return null;
+						});
 					}
 				}
 				progressPos++;
