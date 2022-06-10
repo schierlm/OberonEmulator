@@ -47,6 +47,7 @@ import org.eclipse.lsp4j.FileRename;
 import org.eclipse.lsp4j.FileSystemWatcher;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializedParams;
+import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.ProgressParams;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
@@ -157,8 +158,9 @@ public class CachingServer extends Server {
 	}
 
 	@Override
-	protected List<Diagnostic> getErrors(OberonFile of) throws InterruptedException, ExecutionException {
-
+	protected List<Diagnostic> getErrors(OberonFile of, boolean noblock) throws InterruptedException, ExecutionException {
+		// be careful here and watch out for deadlocks locking two different
+		// OberonFile instances; do not lock ANYTHING but return null when noblock is set
 		class ExportInfo {
 			private final int exportedPos, endPos, symbolIndex;
 			private final boolean command;
@@ -172,7 +174,9 @@ public class CachingServer extends Server {
 			}
 		}
 
-		List<Diagnostic> errors = super.getErrors(of);
+		List<Diagnostic> errors = super.getErrors(of, noblock);
+		if (errors == null)
+			return null;
 		boolean fileOpen = super.fileForURI(of.getUri()) != null;
 		if (!fileOpen) {
 			errors.removeIf(e -> e.getTags() != null && !e.getTags().isEmpty());
@@ -181,7 +185,13 @@ public class CachingServer extends Server {
 		if (of.getCachedModuleName() == null || !fileOpen)
 			return errors;
 
-		List<Diagnostic> exports = of.waitWhenDirty(backgroundExecutor, ar -> {
+		List<ExportInfo> skipResult = null;
+		if (noblock) {
+			skipResult =  new ArrayList<ExportInfo>();
+			skipResult.add(new ExportInfo(-1, -1, false, -1));
+		}
+
+		List<Diagnostic> exports = of.waitOrSkipWhenDirty(backgroundExecutor, ar -> {
 			Map<Integer, Integer> symRefs = new HashMap<>();
 			for (Map.Entry<Integer, IdentifierReference> entry : ar.getExportedSymbolRefs().entrySet()) {
 				if (entry.getValue().getModule().equals(ar.getModuleName())) {
@@ -192,10 +202,10 @@ public class CachingServer extends Server {
 					.filter(id -> id.isExported())
 					.map(id -> new ExportInfo(id.getExportedPos(), id.getEndPos(), id.isCommand(), symRefs.getOrDefault(id.getEndPos(), id.getEndPos())))
 					.collect(Collectors.toList());
-		}).thenApply(eilist -> {
+		}, skipResult).thenApply(eilist -> {
 			List<Diagnostic> diags = new ArrayList<>();
 			for (OberonFile of2 : allFiles(of.getCachedModuleName(), true)) {
-				of2.waitToAddWhenDirty(diags, backgroundExecutor, ar2 -> {
+				of2.waitOrSkipToAddWhenDirty(diags, backgroundExecutor, ar2 -> {
 					Map<?,?> deps = ar2.getModuleDeps().get(of.getCachedModuleName());
 					if (deps == null)
 						return Collections.emptyList();
@@ -204,9 +214,14 @@ public class CachingServer extends Server {
 							ei.used = true;
 					}
 					return Collections.emptyList();
-				});
+				}, noblock);
 			}
 			for (ExportInfo ei : eilist) {
+				if (ei.endPos == -1 && ei.symbolIndex == -1 && ei.exportedPos == -1) {
+					Diagnostic diag = new Diagnostic(new Range(new Position(0, 0), new Position(0, 1)), "Unable to check exports, dependent files are being scanned");
+					diag.setSeverity(DiagnosticSeverity.Information);
+					diags.add(diag);
+				}
 				if (!ei.used) {
 					Diagnostic diag = new Diagnostic(new Range(of.getPos(ei.exportedPos - 1), of.getPos(ei.exportedPos)), ei.command ? OberonFile.UNUSED_COMMAND : OberonFile.UNUSED_EXPORT);
 					diag.setSeverity(DiagnosticSeverity.Hint);

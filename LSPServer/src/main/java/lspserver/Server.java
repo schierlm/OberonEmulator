@@ -1184,7 +1184,7 @@ public class Server implements LanguageServer, LanguageClientAware {
 				OberonFile of = fileForURI(params.getTextDocument().getUri());
 				List<Diagnostic> errors;
 				try {
-					errors = getErrors(of);
+					errors = getErrors(of, false);
 				} catch (InterruptedException | ExecutionException ex) {
 					ex.printStackTrace();
 					errors = new ArrayList<>();
@@ -1221,8 +1221,11 @@ public class Server implements LanguageServer, LanguageClientAware {
 	}
 
 	protected void updateDiagnostics(OberonFile of) throws ExecutionException, InterruptedException {
-		PublishDiagnosticsParams diags = new PublishDiagnosticsParams(of.getUri(), getErrors(of));
-		client.publishDiagnostics(diags);
+		List<Diagnostic> errors = getErrors(of, true);
+		if (errors != null) {
+			PublishDiagnosticsParams diags = new PublishDiagnosticsParams(of.getUri(), errors);
+			client.publishDiagnostics(diags);
+		}
 	}
 
 	protected void analyzeFile(OberonFile oberonFile, int version) throws IOException, InterruptedException, ExecutionException {
@@ -1308,17 +1311,19 @@ public class Server implements LanguageServer, LanguageClientAware {
 			throw new IllegalStateException("Not processed: Uris: " + fileUrisToUpdate + " / Module names: " + moduleNames2Update);
 	}
 
-	protected List<Diagnostic> getErrors(OberonFile of) throws InterruptedException, ExecutionException {
+	protected List<Diagnostic> getErrors(OberonFile of, boolean noblock) throws InterruptedException, ExecutionException {
 		// be careful here and watch out for deadlocks locking two different
-		// OberonFile instances
-		Two<List<Diagnostic>, Range> pair = of.waitWhenDirty(backgroundExecutor, ar -> {
+		// OberonFile instances; do not lock ANYTHING but return null when noblock is set
+		Two<List<Diagnostic>, Range> pair = of.waitOrSkipWhenDirty(backgroundExecutor, ar -> {
 			Range range = new Range(new Position(0, 0), new Position(0, 0));
 			Identifier moduleDef = ar.getIdDefinitions().get(1);
 			if (moduleDef != null && moduleDef.getKind() == SymbolKind.Module) {
 				range = new Range(of.getPos(moduleDef.getStartPos()), of.getPos(moduleDef.getEndPos()));
 			}
 			return new Two<>(ar.getErrors(), range);
-		}).get();
+		}, noblock ? new Two<List<Diagnostic>,Range>(null, null) : null).get();
+		if (pair.getSecond() == null)
+			return null;
 		List<Diagnostic> result = new ArrayList<>(pair.getFirst());
 		if (of.getCachedModuleName() != null) {
 			if (allFiles(of.getCachedModuleName(), false).stream().anyMatch(of2 -> of.getCachedModuleName().equals(of2.getCachedModuleName()) && !of.getNormalizedUri().equals(of2.getNormalizedUri()))) {

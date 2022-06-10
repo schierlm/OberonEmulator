@@ -205,9 +205,15 @@ public class OberonFile {
 	}
 
 	public <T> CompletableFuture<T> waitWhenDirty(ExecutorService exec, Function<AnalysisResult,T> lambda) {
+		return waitOrSkipWhenDirty(exec, lambda, null);
+	}
+
+	public <T> CompletableFuture<T> waitOrSkipWhenDirty(ExecutorService exec, Function<AnalysisResult,T> lambda, T skipResult) {
 		synchronized(this) {
 			if (!isDirty() && pendingContentChanges.get() == 0) return CompletableFuture.completedFuture(lambda.apply(analysisResult));
 		}
+		if (skipResult != null)
+			return CompletableFuture.completedFuture(skipResult);
 		CompletableFuture<T> result = new CompletableFuture<>();
 		exec.submit(() -> {
 			try {
@@ -226,8 +232,12 @@ public class OberonFile {
 	}
 
 	public <T> void waitToAddWhenDirty(List<T> result, ExecutorService exec, Function<AnalysisResult,List<T>> lambda) {
+		waitOrSkipToAddWhenDirty(result, exec, lambda, false);
+	}
+
+	public <T> void waitOrSkipToAddWhenDirty(List<T> result, ExecutorService exec, Function<AnalysisResult,List<T>> lambda, boolean skip) {
 		try {
-			List<T> elems = waitWhenDirty(exec, lambda).get();
+			List<T> elems = waitOrSkipWhenDirty(exec, lambda, skip ? new ArrayList<T>() : null).get();
 			result.addAll(elems);
 		} catch (InterruptedException | ExecutionException ex) {
 		}
