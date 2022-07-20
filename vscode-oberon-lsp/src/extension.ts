@@ -91,7 +91,7 @@ export function activate(_context: ExtensionContext) {
 	client.start();
 }
 
-export function deactivate(): Thenable<void> | undefined {
+export function deactivate(): Promise<void> | undefined {
 	if (!client) {
 		return undefined;
 	}

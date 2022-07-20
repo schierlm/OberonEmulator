@@ -4,14 +4,14 @@
 	"description": "Oberon language support for Niklaus Wirth's Project Oberon. Can invoke an Oberon Language Server written in Java.",
 	"author": "Michael Schierl",
 	"license": "MIT",
-	"version": "0.9.0",
+	"version": "0.9.1",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/schierlm/OberonEmulator"
 	},
 	"publisher": "Michael Schierl",
 	"engines": {
-		"vscode": "^1.63.0"
+		"vscode": "^1.69.0"
 	},
 	"categories": [
 		"Programming Languages"
@@ -167,16 +167,16 @@
 		"lint": "eslint src --ext ts"
 	},
 	"dependencies": {
-		"vscode-languageclient": "^7.0.0"
+		"vscode-languageclient": "^8.0.2"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.63.0",
-		"@typescript-eslint/eslint-plugin": "^5.1.0",
-		"@typescript-eslint/parser": "^5.1.0",
-		"eslint": "^8.1.0",
-		"ts-loader": "^9.2.5",
-		"typescript": "^4.4.4",
-		"webpack": "^5.52.1",
-		"webpack-cli": "^4.8.0"
+		"@types/vscode": "^1.69.0",
+		"@typescript-eslint/eslint-plugin": "^5.30.7",
+		"@typescript-eslint/parser": "^5.30.7",
+		"eslint": "^8.20.0",
+		"ts-loader": "^9.3.1",
+		"typescript": "^4.7.4",
+		"webpack": "^5.73.0",
+		"webpack-cli": "^4.10.0"
 	}
 }
