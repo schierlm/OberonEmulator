@@ -17,13 +17,10 @@ window.onload = function() {
 			params.height = h < 576 ? 512 : h < 768 ? 576 : 768;
 		}
 	}
-	if (params.width > 1024) {
-		params.width = 1024;
-	} else if ((params.width % 32) != 0) {
+	params.width = +params.width;
+	params.height = +params.height;
+	if ((params.width % 32) != 0) {
 		params.width -= params.width % 32;
-	}
-	if (params.height > 768) {
-		params.height = 768;
 	}
 	params.mem = +params.mem;
 	params.dismem = +params.dismem;
@@ -32,6 +29,10 @@ window.onload = function() {
 	}
 	if ([96,256,384,512,1024,2048].indexOf(params.dismem) == -1 || params.dismem > params.mem * 384) {
 		params.dismem = 96;
+	}
+	if (params.width / 32 * params.height > params.dismem * 1024) {
+		params.width = 1024;
+		params.height = 768;
 	}
 	if (params.serialpreview) {
 		document.body.classList.add(params.serialpreview.replace(/,.*/,"")+"preview");
@@ -64,6 +65,29 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 	this.setDimensions(width, height, true);
 	if (imageName !== undefined) {
 		this.imageName = imageName;
+	}
+
+	this.resolutions = [{w:800,h:600,c:false},{w:1024,h:768,c:false},{w:1344,h:768,c:false},{w:1280,h:1024,c:false},
+		{w:1400,h:1050,c:false},{w:1600,h:900,c:false},{w:1600,h:1200,c:false},{w:1920,h:1080,c:false}];
+
+	var foundResolution = false;
+	for(var i = 0; i < this.resolutions.length; i++) {
+		if (this.resolutions[i].w == width && this.resolutions[i].h == height) {
+			foundResolution = true;
+		}
+		if (this.resolutions[i].w / 32 * this.resolutions[i].h > dismem * 1024) {
+			this.resolutions.splice(i, 1);
+			i--;
+		}
+	}
+	if (!foundResolution) {
+		this.resolutions.push({w: width, h: height, c: false});
+	}
+	this.resolutions.monoCount = this.resolutions.length;
+	for(var i = 0; i < this.resolutions.monoCount; i++) {
+		if (this.resolutions[i].w / 8 * this.resolutions[i].h <= dismem * 1024) {
+			this.resolutions.push({w: this.resolutions[i].w, h: this.resolutions[i].h, c: true});
+		}
 	}
 
 	document.querySelector(".ramhint").value = mem;
@@ -206,7 +230,11 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 
 	$proto.bootFromDisk = function(disk) {
 		if (!this.isDisplayReady()) {
-			this.setUpDisplay(this.width, this.height);
+			this.setUpDisplay(this.width, this.height, false);
+			this.screen.addEventListener("mousemove", this, false);
+			this.screen.addEventListener("mousedown", this, false);
+			this.screen.addEventListener("mouseup", this, false);
+			this.screen.addEventListener("contextmenu", this, false);
 		}
 		this.disk = disk;
 		this.startMillis = Date.now();
@@ -221,14 +249,11 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 		return this.screenUpdater !== null;
 	};
 
-	$proto.setUpDisplay = function(width, height) {
+	$proto.setUpDisplay = function(width, height, dynamic) {
 		this.screen.focus();
 		this.screen.width = width;
 		this.screen.height = height;
-		this.screen.addEventListener("mousemove", this, false);
-		this.screen.addEventListener("mousedown", this, false);
-		this.screen.addEventListener("mouseup", this, false);
-		this.screen.addEventListener("contextmenu", this, false);
+		this.screenStride = (dynamic || this.screen.width > 1024) ? this.screen.width / 32 : 32;
 		this.screenUpdater = new ScreenUpdater(this.screen, width, height);
 		this.previewscreen.width = width / 5;
 		this.previewscreen.height = height / 5;
@@ -275,8 +300,8 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 
 	$proto.registerVideoChange = function(offset, value, palette) {
 		if (palette != null) {
-			var x = (offset % 128) * 8;
-			var y = this.screen.height - 1 - (offset / 128 | 0);
+			var x = (offset % (this.screenStride * 4)) * 8;
+			var y = this.screen.height - 1 - (offset / (this.screenStride * 4) | 0);
 			if (y < 0 || x >= this.screen.width) return;
 			var base = (y * this.screen.width + x) * 4;
 			var data = this.screenUpdater.backBuffer.data;
@@ -290,8 +315,8 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 			this.screenUpdater.mark(x, y);
 			return;
 		}
-		var x = (offset % 32) * 32;
-		var y = this.screen.height - 1 - (offset / 32 | 0);
+		var x = (offset % (this.screenStride)) * 32;
+		var y = this.screen.height - 1 - (offset / this.screenStride | 0);
 		if (y < 0 || x >= this.screen.width) return;
 		var base = (y * this.screen.width + x) * 4;
 		var data = this.screenUpdater.backBuffer.data;
@@ -401,14 +426,14 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 		var wiznet = window.offlineInfo && window.offlineInfo.netConfig && this.wiznet;
 		switch(value) {
 			case 0:
-				var result = [1 /*version*/, 'mVid', 'Timr', 'LEDs', 'SPrt', 'MsKb', 'vClp', 'vRTC', 'vDsk', 'Rset'];
+				var result = [1 /*version*/, 'mVid', 'mDyn', 'Timr', 'LEDs', 'SPrt', 'MsKb', 'vClp', 'vRTC', 'vDsk', 'Rset'];
 				if (wiznet) {
 					result.push('vNet');
 				} else {
 					result.push('DbgC');
 				}
 				if (this.machine.colorSupported) {
-					result.push('16cV')
+					result.push('16cV', '16cD');
 				};
 				if ('InvalidateCodeCache' in this.machine) {
 					result.push('ICIv');
@@ -416,12 +441,49 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 				return result;
 			case this.toHardwareId('mVid'):
 				var displayStart = this.machine.getDisplayStart();
-				return [ 1, -16, this.screen.width, this.screen.height, 128, displayStart];
+				var result = [this.resolutions.monoCount, -16];
+				for(var i = 0; i < this.resolutions.monoCount; i++) {
+					var r = this.resolutions[i];
+					result.push(r.w, r.h, r.w <= 1024 ? 128 : r.w / 8, displayStart);
+				}
+				return result;
 			case this.toHardwareId('16cV'):
+				if (this.machine.colorSupported && this.resolutions.length > this.resolutions.monoCount) {
+					var paletteStart = this.machine.getRAMSize() - 0x80;
+					var displayStart = this.machine.getDisplayStart();
+					var result = [this.resolutions.length - this.resolutions.monoCount, this.resolutions.monoCount, -16, paletteStart];
+					for(var i = this.resolutions.monoCount; i < this.resolutions.length; i++) {
+						var r = this.resolutions[i];
+						result.push(r.w, r.h, r.w <= 1024 ? 512 : r.w / 2, displayStart);
+					}
+					return result;
+				} else {
+					return [];
+				}
+			case this.toHardwareId('mDyn'):
+				var displayStart = this.machine.getDisplayStart();
+				var dispMemPixels = (this.machine.getRAMSize() - displayStart - 0x100) * 32;
+				var maxWidth=4096, maxHeight=4096;
+				while (dispMemPixels < maxWidth * maxHeight / 2) {
+					maxWidth >>=1; maxHeight >>=1;
+				}
+				if (dispMemPixels < maxWidth * maxHeight) {
+					maxHeight = dispMemPixels / maxWidth;
+				}
+				return [-16, maxWidth, maxHeight, 32, 1, -1, displayStart, 1];
+			case this.toHardwareId('16cD'):
 				if (this.machine.colorSupported) {
 					var paletteStart = this.machine.getRAMSize() - 0x80;
 					var displayStart = this.machine.getDisplayStart();
-					return [ 1, 1, -16, paletteStart, this.screen.width, this.screen.height, 512, displayStart];
+					var dispMemPixels = (this.machine.getRAMSize() - displayStart - 0x100) * 2;
+					var maxWidth=4096, maxHeight=4096;
+					while (dispMemPixels < maxWidth * maxHeight / 2) {
+						maxWidth >>=1; maxHeight >>=1;
+					}
+					if (dispMemPixels < maxWidth * maxHeight) {
+						maxHeight = dispMemPixels / maxWidth;
+					}
+					return [-16, paletteStart, maxWidth, maxHeight, 32, 1, -1, displayStart, 1];
 				} else {
 					return [];
 				}
@@ -456,6 +518,41 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 		return this._runHardwareEnumerator(value).map(function(v) {
 			return (typeof v == 'string' && v.length == 4) ? that.toHardwareId(v) : v;
 		});
+	}
+
+	$proto.setVideoMode = function(value) {
+		if (value >= 0 && value < this.resolutions.length) {
+			var r = this.resolutions[value];
+			if (this.screen.width != r.w || this.screen.height != r.h) {
+				this.setDimensions(r.w, r.h, true);
+				this.setUpDisplay(r.w, r.h, false);
+			}
+			return r.c;
+		} else if ((value & 0x40000000) == 0x40000000) {
+			var width = (value >>> 15) & ((1 << 15) - 1);
+			var height = value & ((1 << 15) - 1);
+			if (width == 0 && height == 0) {
+				height = window.innerHeight - emulator.screen.offsetTop - 32;
+				width = window.innerWidth - emulator.screen.offsetLeft - 8;
+				width -= (width % 32);
+			}
+			if (this.screen.width != width || this.screen.height != height) {
+				this.setDimensions(width, height, true);
+				this.setUpDisplay(width, height, true);
+			}
+			return value < 0;
+		}
+		return false;
+	}
+
+	$proto.getVideoMode = function() {
+		for(var i = 0; i < this.resolutions.length; i++) {
+			var r = this.resolutions[i];
+			if (this.screen.width == r.w && this.screen.height == r.h && (this.machine.palette != null) == r.c) {
+				return i;
+			}
+		}
+		return (this.machine.palette != null ? 0xC0000000: 0x40000000) | (this.screen.width << 15) | this.screen.height;
 	}
 
 	$proto.registerKey = function(keyCode) {

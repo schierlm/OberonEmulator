@@ -10,7 +10,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   margin: 1px; /* NB: match #controlbar border thickness */
 }
 #controlbar {
-  height: 2em; margin-bottom: 0.5em;
+  height: 2em; margin-bottom: 5px;
   border: 1px solid #dfe4e6; /* NB: match #screen margin thickness */
   border-radius: 0 0 4px 4px;
   background-color: #f7f5f0;
@@ -252,6 +252,34 @@ body.leftpreview #emulatorface {
         <button class="preflight checkable size menuitem" value="1024×768"
                onclick="emulator.setDimensionsFromEvent(event);">
           1024×768
+        </button>
+        <button class="preflight checkable size menuitem" value="1344×576"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1344×576
+        </button>
+        <button class="preflight checkable size menuitem" value="1344x768"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1344×768
+        </button>
+        <button class="preflight checkable size menuitem" value="1280x1024"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1280×1024
+        </button>
+        <button class="preflight checkable size menuitem" value="1400x1050"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1400×1050
+        </button>
+        <button class="preflight checkable size menuitem" value="1600×900"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1600×900
+        </button>
+        <button class="preflight checkable size menuitem" value="1600×1200"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1600×1200
+        </button>
+        <button class="preflight checkable size menuitem" value="1920×1080"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1920×1080
         </button>
 
         <button id="breakbutton" class="midflight menuitem"

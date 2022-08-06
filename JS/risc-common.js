@@ -12,9 +12,10 @@
 	}
 
 	$proto.setVideoMode = function(val) {
-		if (val == 0 && this.palette != null) {
+		var color = emulator.setVideoMode(val);
+		if (!color && this.palette != null) {
 			this.palette = null;
-		} else if (val == 1 && this.palette == null) {
+		} else if (color && this.palette == null) {
 			this.palette = [
 				0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0xff00ff, 0xffff00, 0x00ffff, 0xaa0000,
 				0x009a00, 0x00009a, 0x0acbf3, 0x008282, 0x8a8a8a, 0xbebebe, 0xdfdfdf, 0x000000
@@ -31,7 +32,7 @@
 			case 28: return emulator.getKeyCode();
 			case 40: return emulator.clipboard.getSize();
 			case 44: return emulator.clipboard.getData();
-			case 48: return this.palette == null ? 0 : 1;
+			case 48: return emulator.getVideoMode();
 			case 60: return this.hardwareEnumBuffer.shift() | 0;
 			default: return 0;
 		}
