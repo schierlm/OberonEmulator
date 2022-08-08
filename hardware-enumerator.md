@@ -295,6 +295,20 @@ higher-level debug interface than just LEDs.
 Values of the `DbgC` descriptor:
 - MMIO address
 
+
+### `DChg`: Disk Change indicator (primarily for emulators)
+
+Provided by emulators to inform the user about disk changes.
+
+When writing 0 to the MMIO address, mark the disk as clean (unchanged).
+When writing 1 to the MMIO address, mark it as dirty (changed).
+When writing 2 to the MMIO address, stop auto-updating disk status on every sector write.
+When writing 3 to the MMIO address, enable auto-updating disk status on every sector write.
+
+Values of the `DChg` descriptor:
+- MMIO address
+
+
 ### `ICIv`: Instruction cache invalidation
 
 When present, the CPU has an instruction cache that is not automatically

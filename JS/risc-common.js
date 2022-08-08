@@ -3,6 +3,7 @@
 
 	$proto.palette = null;
 	$proto.hardwareEnumBuffer = [];
+	$proto.markDiskChanges = false;
 
 	$proto.CalculateDisplayStart = function(memSize, dispMemSize) {
 		if (dispMemSize > memSize * 384)
@@ -22,6 +23,15 @@
 			];
 		}
 	}
+
+	$proto.diskChangeCommand = function(val) {
+		switch (val) {
+			case 0: emulator.ui.setModified(false); break;
+			case 1: emulator.ui.setModified(true); break;
+			case 2: this.markDiskChanges = false; break;
+			case 3: this.markDiskChanges = true; break;
+		}
+	};
 
 	$proto.memReadIO = function(address0) {
 		switch (address0) {
@@ -51,6 +61,7 @@
 			case 44: return void(emulator.clipboard.putData(val));
 			case 48: return void(this.setVideoMode(val));
 			case 52: return void(emulator.consoleCommand(val));
+			case 56: return void(this.diskChangeCommand(val));
 			case 60: return void(this.hardwareEnumBuffer = emulator.runHardwareEnumerator(val));
 		}
 	}

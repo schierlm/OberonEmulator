@@ -28,6 +28,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 #systembutton.feedback {
   font-style: italic;
 }
+#modifyIndicator { font-size: 0.7em; color: red; display: none; }
 #settingsbutton {
   width: 2em;
   color: transparent;
@@ -199,6 +200,7 @@ body.leftpreview #emulatorface {
            ondragover="emulator.cancelEvent(event);"
            ondrop="emulator.importDiskImageFromEvent(event);"
            value="Select disk image…">
+    <div id="modifyIndicator">(modified)</div>
     <div class="popup">
       <div class="menuitem">
         <input type="file" id="diskfileinput"

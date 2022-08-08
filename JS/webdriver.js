@@ -398,6 +398,8 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 			if (this.autosave) {
 				window.localStorage.setItem("AUTOSAVE", this.disk.length);
 				window.localStorage.setItem("AUTOSAVE-"+(sectorNumber-1), btoa(String.fromCharCode.apply(null, new Uint8Array(this.disk[sectorNumber-1].buffer))));
+			} else if (this.machine.markDiskChanges) {
+				this.ui.setModified(true);
 			}
 			return;
 		}
@@ -429,7 +431,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 		var wiznet = window.offlineInfo && window.offlineInfo.netConfig && this.wiznet;
 		switch(value) {
 			case 0:
-				var result = [1 /*version*/, 'mVid', 'mDyn', 'Timr', 'LEDs', 'SPrt', 'MsKb', 'vClp', 'vRTC', 'vDsk', 'Rset', 'DbgC'];
+				var result = [1 /*version*/, 'mVid', 'mDyn', 'Timr', 'LEDs', 'SPrt', 'MsKb', 'vClp', 'vRTC', 'vDsk', 'Rset', 'DbgC', 'DChg'];
 				if (wiznet) {
 					result.push('vNet');
 				}
@@ -510,6 +512,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 			case this.toHardwareId('MsKb'): return [-40, -36, 1];
 			case this.toHardwareId('vClp'): return [-24, -20];
 			case this.toHardwareId('vDsk'): return [-28];
+			case this.toHardwareId('DChg'): return [-8];
 			default: return [];
 		}
 	};
@@ -594,6 +597,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 		if (window.event.shiftKey) {
 			this.ui.systemButton.value = prompt("Image name", this.ui.systemButton.value);
 		}
+		this.ui.setModified(false);
 		this.save(this.ui.systemButton.value + ".dsk", this.disk);
 	};
 
@@ -606,6 +610,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 			for(var i = 0; i < this.disk.length; i++) {
 				window.localStorage.setItem("AUTOSAVE-"+i, btoa(String.fromCharCode.apply(null, new Uint8Array(this.disk[i].buffer))));
 			}
+			this.ui.setModified(false);
 		} else if (confirm("Delete existing autosave image?")) {
 			window.localStorage.clear();
 		}
@@ -750,6 +755,7 @@ function ControlBarUI(emulator, dualSerial) {
 
 		this.buttonBox = $("buttonbox");
 		this.emulCheckbox = $("emulcheckbox");
+		this.modifyIndicator = $("modifyIndicator");
 		this.clipboardInput = $("clipboardinput");
 		this.clipboardToggle = $("clipboardToggle");
 		this.autosaveToggle = $("autosaveToggle");
@@ -800,6 +806,7 @@ function ControlBarUI(emulator, dualSerial) {
 		this.controlBarBox.classList.remove("preflight");
 		this.controlBarBox.classList.add("started");
 		this.controlBarBox.querySelector(".endcontrols .menu").style.width="";
+		this.setModified(false);
 	};
 
 	$proto.markName = function(name) {
@@ -957,6 +964,10 @@ function ControlBarUI(emulator, dualSerial) {
 		this.clipboardToggle.classList.toggle("checked");
 	};
 
+	$proto.setModified = function(mod) {
+		this.modifyIndicator.style.display = mod ? "inline" : "";
+	};
+
 	$proto.exportCustomImage = function() {
 		var canvas = document.createElement("canvas");
 		canvas.width = 1024;
@@ -977,6 +988,7 @@ function ControlBarUI(emulator, dualSerial) {
 		context.putImageData(imageData, 0, 0);
 		var that = this;
 		canvas.toBlob(function(blob) {
+			that.setModified(false);
 			that.emulator.save(that.systemButton.value + ".png", [ blob ]);
 		}, "image/png");
 	}
