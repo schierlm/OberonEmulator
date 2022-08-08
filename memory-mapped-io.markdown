@@ -26,5 +26,5 @@ Read | -36 | Hardware, C, Java | **Keyboard input**:Return PS2 scancodes in leas
 **Read/Write** | **-20** | **C, Java, JS** | **Clipboard Data**
 **Read/Write** | **-16** | **Java, JS** | **Select video mode**
 **Read/Write** | **-16** | **Java (old)** | **Display Mode**: When read, returns width (high half) and height (low half) of screen, max 4096x4096. When written, switches to 256-color mode and aligns the beginning of the video memory sliding window with the given (word) address of the internal screen memory. As in 256-color mode a stride of 4096 bytes (1024 words) is used, only 21 pixel rows can be "seen" at any given time, therefore a sliding window is needed.
-**Write** | **-32**/**-12** | **Java, JS** | **Debug console: Write a string to stdout for debugging**
+**Write** | **-12** | **Java, JS** | **Debug console: Write a string to stdout for debugging**
 **Read/Write** | **-4** | **C, Java, JS** | **Hardware enumerator**

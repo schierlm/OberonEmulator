@@ -166,7 +166,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 
 	$proto.useConfiguration = function(config, rom) {
 		var images = config.images;
-		if (window.localStorage.getItem("AUTOSAVE") !== null) {
+		if (window.localStorage !== undefined && window.localStorage.getItem("AUTOSAVE") !== null) {
 			this.ui.addSystemItem("(Autosaved)");
 		}
 		this.rom = rom;
@@ -402,17 +402,19 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 		}
 	};
 
+	$proto.consoleCommand = function(value) {
+		if (value == 0) {
+			if (this.debugBuffer != "") {
+				console.log(this.debugBuffer.replace("\r", "\n"));
+			}
+			this.debugBuffer = "";
+		} else {
+			this.debugBuffer += String.fromCharCode(value);
+		}
+	}
+
 	$proto.netCommand = function(value, memory) {
 		if (!window.offlineInfo || !window.offlineInfo.netConfig || !this.wiznet) {
-			// use same MMIO address for debug console
-			if (value == 0) {
-				if (this.debugBuffer != "") {
-					console.log(this.debugBuffer.replace("\r", "\n"));
-				}
-				this.debugBuffer = "";
-			} else {
-				this.debugBuffer += String.fromCharCode(value);
-			}
 			return;
 		}
 		this.wiznet.netCommand(value, memory);
@@ -426,11 +428,9 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 		var wiznet = window.offlineInfo && window.offlineInfo.netConfig && this.wiznet;
 		switch(value) {
 			case 0:
-				var result = [1 /*version*/, 'mVid', 'mDyn', 'Timr', 'LEDs', 'SPrt', 'MsKb', 'vClp', 'vRTC', 'vDsk', 'Rset'];
+				var result = [1 /*version*/, 'mVid', 'mDyn', 'Timr', 'LEDs', 'SPrt', 'MsKb', 'vClp', 'vRTC', 'vDsk', 'Rset', 'DbgC'];
 				if (wiznet) {
 					result.push('vNet');
-				} else {
-					result.push('DbgC');
 				}
 				if (this.machine.colorSupported) {
 					result.push('16cV', '16cD');
@@ -503,7 +503,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 				}
 			case this.toHardwareId('vRTC'): return this.rtchint;
 			case this.toHardwareId('vNet'): return wiznet ? [-32] : [];
-			case this.toHardwareId('DbgC'): return wiznet ? [] : [-32];
+			case this.toHardwareId('DbgC'): return [-12];
 			case this.toHardwareId('Timr'): return [-64, 1];
 			case this.toHardwareId('LEDs'): return [8, -60];
 			case this.toHardwareId('MsKb'): return [-40, -36, 1];

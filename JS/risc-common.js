@@ -50,6 +50,7 @@
 			case 40: return void(emulator.clipboard.expect(val));
 			case 44: return void(emulator.clipboard.putData(val));
 			case 48: return void(this.setVideoMode(val));
+			case 52: return void(emulator.consoleCommand(val));
 			case 60: return void(this.hardwareEnumBuffer = emulator.runHardwareEnumerator(val));
 		}
 	}
