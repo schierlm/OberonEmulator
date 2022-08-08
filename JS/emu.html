@@ -61,6 +61,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
     -1px 0 #000, 0 -1px #000, 1px 0 #000, 0 1px #000,
     -1px -1px #000, -1px 1px #000, 1px -1px #000, 1px 1px #000;
 }
+#emulbox { width: 20px; }
 .menu {
   position: relative;
 }
@@ -363,6 +364,7 @@ body.leftpreview #emulatorface {
    --><input type="button" name="2" value="M" class="mousebtn"><!--
    --><input type="button" name="3" value="R" class="mousebtn"><!--
  --></div>
+    <div id="emulbox"><input type="checkbox" id="emulcheckbox" checked="checked" title="Toggle emulation features" onclick="emulator.ui.toggleEmulation(event);"></div>
   </div>
 </div>
 <canvas id="screen" tabindex="1000" height="0"></canvas>

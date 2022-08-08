@@ -128,6 +128,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 	$proto.localSaveAnchor = null;
 	$proto.screen = null;
 
+	$proto.inputEmulation = true;
 	$proto.activeButton = 1;
 	$proto.clipboard = null;
 	$proto.cpuTimeout = null;
@@ -691,11 +692,11 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 		var button = event.button + 1;
 		if (button === 2) event.preventDefault();
 		if (event.type === "mousedown") {
-			if (button === 1) button = this.activeButton;
+			if (this.inputEmulation && button === 1) button = this.activeButton;
 			this.registerMouseButton(button, true);
 		}
 		else {
-			if (button === 1) {
+			if (this.inputEmulation && button === 1) {
 				if (this.interclickButton !== 0) {
 					this.registerMouseButton(this.interclickButton, true);
 					var that = this;
@@ -723,6 +724,7 @@ function ControlBarUI(emulator, dualSerial) {
 	var $proto = ControlBarUI.prototype;
 
 	$proto.buttonBox = null;
+	$proto.emulCheckbox = null;
 	$proto.clickLeft = null;
 	$proto.clickMiddle = null;
 	$proto.clickRight = null;
@@ -747,6 +749,7 @@ function ControlBarUI(emulator, dualSerial) {
 		];
 
 		this.buttonBox = $("buttonbox");
+		this.emulCheckbox = $("emulcheckbox");
 		this.clipboardInput = $("clipboardinput");
 		this.clipboardToggle = $("clipboardToggle");
 		this.autosaveToggle = $("autosaveToggle");
@@ -784,7 +787,7 @@ function ControlBarUI(emulator, dualSerial) {
 		if (adjustment !== 0) {
 			this.buttonBox.parentNode.style.position = "relative";
 			this.buttonBox.style.position = "absolute";
-			this.buttonBox.style.right = "0px";
+			this.buttonBox.style.right = "20px";
 			this.buttonBox.style.top = adjustment + "px";
 			this.leds[0].parentNode.style.marginRight =
 				(this.buttonBox.offsetWidth + 4) + "px";
@@ -927,6 +930,21 @@ function ControlBarUI(emulator, dualSerial) {
 			clicked.classList.add("interclick");
 		}
 	};
+
+	$proto.toggleEmulation = function(event) {
+		this.emulator.inputEmulation = this.emulCheckbox.checked;
+		if(this.emulator.inputEmulation) {
+			this.buttonBox.style.display="";
+			if (this.buttonBox.style.position == "absolute") {
+				this.leds[0].parentNode.style.marginRight = (this.buttonBox.offsetWidth + 4) + "px";
+			}
+		} else {
+			this.buttonBox.style.display="none";
+			if (this.buttonBox.style.position == "absolute") {
+				this.leds[0].parentNode.style.marginRight = "";
+			}
+		}
+	}
 
 	$proto.setLEDState = function(ledNumber, isOn) {
 		this.leds[ledNumber].classList.toggle("lit", isOn);
@@ -1171,7 +1189,7 @@ function VirtualKeyboard(screen, emulator) {
 			return;
 		}
 		// Alt
-		if (code === 18 && !event.ctrlKey && event.key != "AltGraph") {
+		if (emulator.inputEmulation && code === 18 && !event.ctrlKey && event.key != "AltGraph") {
 			event.preventDefault();
 			emulator.registerMouseButton(2, true);
 			return;
@@ -1179,7 +1197,7 @@ function VirtualKeyboard(screen, emulator) {
 	});
 	screen.addEventListener("keyup", function(event) {
 		// Alt
-		if (event.keyCode === 18 && !event.ctrlKey && event.key != "AltGraph") {
+		if (emulator.inputEmulation && event.keyCode === 18 && !event.ctrlKey && event.key != "AltGraph") {
 			event.preventDefault();
 			emulator.registerMouseButton(2, false);
 			return;
