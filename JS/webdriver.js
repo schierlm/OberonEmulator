@@ -1182,6 +1182,11 @@ function VirtualKeyboard(screen, emulator) {
 			emulator.registerKey(26);
 			return;
 		}
+		// Delete
+		if (code == 46) {
+			emulator.registerKey(127);
+			return;
+		}
 		// Cursor keys
 		if (code >= 37 && code <= 40) {
 			event.preventDefault();
