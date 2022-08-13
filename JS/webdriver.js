@@ -53,6 +53,7 @@ window.onload = function() {
 function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem) {
 	this.disk = [];
 	this.keyBuffer = [];
+	this.keyEventBuffer = [];
 	this.transferHistory = [];
 
 	this.localSaveAnchor = document.getElementById("localsaveanchor");
@@ -431,7 +432,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 		var wiznet = window.offlineInfo && window.offlineInfo.netConfig && this.wiznet;
 		switch(value) {
 			case 0:
-				var result = [1 /*version*/, 'mVid', 'mDyn', 'Timr', 'LEDs', 'SPrt', 'MsKb', 'vClp', 'vRTC', 'vDsk', 'Rset', 'DbgC', 'DChg'];
+				var result = [1 /*version*/, 'mVid', 'mDyn', 'Timr', 'LEDs', 'SPrt', 'MsKb', 'vClp', 'vRTC', 'vDsk', 'Rset', 'DbgC', 'DChg', 'JSKb'];
 				if (wiznet) {
 					result.push('vNet');
 				}
@@ -513,6 +514,7 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 			case this.toHardwareId('vClp'): return [-24, -20];
 			case this.toHardwareId('vDsk'): return [-28];
 			case this.toHardwareId('DChg'): return [-8];
+			case this.toHardwareId('JSKb'): return [-36];
 			default: return [];
 		}
 	};
@@ -565,7 +567,26 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 		this.reschedule();
 	};
 
+	$proto.registerRawEvent = function(type, evt) {
+		if (this.machine.rawEventAddress == 0)
+			return false;
+		var value = (evt.key == "" ? 0 : evt.key.length == 1 ? evt.key.charCodeAt(0) : 0xffff)
+			| (evt.shiftKey ? (1 << 16) : 0)
+			| (evt.ctrlKey ? (1 << 17) : 0)
+			| (evt.altKey ? (1 << 18) : 0)
+			| (evt.metaKey ? (1 << 19) : 0)
+			| (evt.isComposing ? (1 << 20) : 0)
+			| (evt.repeat ? (1 << 21) : 0)
+			| (type << 22) | (evt.location << 24);
+		this.keyEventBuffer.push({key: evt.key, code: evt.code, val: value});
+		this.machine.resetWaitMillis();
+		this.reschedule();
+		return true;
+	};
+
 	$proto.hasInput = function() {
+		if (this.machine.rawEventAddress != 0)
+			return this.keyEventBuffer.length > 0;
 		return this.keyBuffer.length > 0;
 	};
 
@@ -574,7 +595,26 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 		return this.mouse | 0x10000000;
 	};
 
+	$proto._setNameString = function(memory, str, offset, length) {
+		var ary, padded = new Uint8Array(length);
+		if ('TextEncoder' in window) {
+			ary = new TextEncoder().encode(str);
+		} else {
+			ary = Uint8Array.from(str, function(c) { return c.charCodeAt(0)});
+		}
+		var len = Math.min(ary.length, length - 1);
+		padded.subarray(0, len).set(ary.subarray(0, len));
+		memory.subarray(offset/4, offset/4 + length/4).set(new Uint32Array(padded.buffer));
+	};
+
 	$proto.getKeyCode = function() {
+		if (this.machine.rawEventAddress != 0) {
+			var evt = this.keyEventBuffer.length > 0 ? this.keyEventBuffer.shift() : {key:"", code:"", val: 0};
+			var memory = this.machine.getMainMemory();
+			this._setNameString(memory, evt.code, this.machine.rawEventAddress, 32);
+			this._setNameString(memory, evt.key, this.machine.rawEventAddress + 32, 16);
+			return evt.val;
+		}
 		if (!this.hasInput()) return 0;
 		return this.keyBuffer.shift();
 	};
@@ -1180,8 +1220,25 @@ function Clipboard(widget) {
 // non-Mac Ctrl+click in Mac apps, but this hasn't been verified.)
 function VirtualKeyboard(screen, emulator) {
 	// Reading keyboard input on the Web is still a big mess.
+	var KEY_CODES_TO_PREVENT_DEFAULT = ["AltLeft", "AltRight", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowUp",
+		"Backspace", "Delete", "End", "Enter", "Escape", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10",
+		"F11", "F12", "F13", "F14", "F15", "F16", "F17", "F18", "F19", "F20", "F21", "F22", "F23", "F24", "F25",
+		"F26", "F27", "F28", "F29", "Help", "Home", "Insert", "NumpadEnter", "PageDown", "PageUp", "Space", "Tab"];
 	screen.addEventListener("keydown", function(event) {
 		var code = event.keyCode;
+		// Alt
+		if (emulator.inputEmulation && code === 18 && !event.ctrlKey && event.key != "AltGraph") {
+			event.preventDefault();
+			emulator.registerMouseButton(2, true);
+			return;
+		}
+		// JS Keyboard
+		if (emulator.registerRawEvent(3, event)) {
+			if (KEY_CODES_TO_PREVENT_DEFAULT.indexOf(event.code) != -1 || event.ctrlKey || event.altKey || event.metaKey) {
+				event.preventDefault();
+			}
+			return;
+		}
 		// Backspace, Tab, Enter, or Escape
 		if (code === 8 || code === 9 || code === 13 || code == 27) {
 			event.preventDefault();
@@ -1205,12 +1262,6 @@ function VirtualKeyboard(screen, emulator) {
 			emulator.registerKey(code == 38 || code == 39 ? 57 - code : code - 20);
 			return;
 		}
-		// Alt
-		if (emulator.inputEmulation && code === 18 && !event.ctrlKey && event.key != "AltGraph") {
-			event.preventDefault();
-			emulator.registerMouseButton(2, true);
-			return;
-		}
 	});
 	screen.addEventListener("keyup", function(event) {
 		// Alt
@@ -1219,8 +1270,12 @@ function VirtualKeyboard(screen, emulator) {
 			emulator.registerMouseButton(2, false);
 			return;
 		}
+		emulator.registerRawEvent(2, event);
 	});
 	screen.addEventListener("keypress", function(event) {
+		if (emulator.registerRawEvent(1, event)) {
+			return;
+		}
 		var code = event.keyCode;
 		// Backspace, Tab, Enter, or Escape
 		if (code === 8 || code === 9 || code === 13 || code == 27) {

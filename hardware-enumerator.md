@@ -2,7 +2,7 @@
 
 ### Versioning
 
-This document describes version 1.0.2 of the hardware enumerator. New (major) versions
+This document describes version 1.0.3 of the hardware enumerator. New (major) versions
 may introduce incompatible changes; therefore, when software is unaware of the
 implemented version, the best way to handle is to assume no hardware enumerator
 to be present. Minor versions are backwards compatible. Patch versions only add new
@@ -256,6 +256,40 @@ Values in the `MsKb` descriptor:
 - MMIO address for keyboard input
 - Keyboard input mode: `0`: Standard PS/2, `1`: Paravirtualized (ASCII/Unicode codepoints), `2`: Both.
 
+### `JSKb`: Raw JavaScript Event keyboard emulation
+
+This is probably only used by JavaScript emulators, as it is designed around the
+<a href="https://w3c.github.io/uievents/#events-keyboardevents">W3C UI Events</a> specification.
+
+When an emulator signals `JSKb´ support, the keyboard still starts in the keyboard mode defined by the
+`MsKb` descriptor. Writing 0 to the MMIO address will return to this mode as well.
+
+Writing any other value is treated as a pointer to the record specified below:
+
+    RECORD
+      code: ARRAY 32 OF CHAR;
+      key:  ARRAY 16 OF CHAR;
+    END;
+
+After reading a key, the record is filled with the `code` and `key` attributes.
+
+The other attributes are encoded as bit field in the read key value:
+
+- Bits 0 to 15: If the `key` attribute is a single character, its unicode codepoint.
+  If the `key` attribute is empty, `0`. For all other `key` attributes, `0FFFFh`.
+- Bit 16: `shiftKey` attribute.
+- Bit 17: `ctrlKey` attribute.
+- Bit 18: `altKey` attribute.
+- Bit 19: `metaKey` attribute.
+- Bit 20: `isComposing` attribute.
+- Bit 21: `repeat` attribute.
+- Bits 22 to 23: Event type. 1=Press, 2=Up, 3=Down. 0 if no keyboard event available.
+- Bits 24 to 27: `location` attribute
+- Bits 28 to 31: reserved (0).
+
+Values in the `JSKb` descriptor:
+- MMIO address
+
 ### `HsFs`: Host filesystem
 
 Used in emulators to access files on the host.
@@ -295,7 +329,6 @@ higher-level debug interface than just LEDs.
 Values of the `DbgC` descriptor:
 - MMIO address
 
-
 ### `DChg`: Disk Change indicator (primarily for emulators)
 
 Provided by emulators to inform the user about disk changes.
@@ -307,7 +340,6 @@ When writing 3 to the MMIO address, enable auto-updating disk status on every se
 
 Values of the `DChg` descriptor:
 - MMIO address
-
 
 ### `ICIv`: Instruction cache invalidation
 

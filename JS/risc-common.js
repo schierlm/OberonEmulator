@@ -4,11 +4,13 @@
 	$proto.palette = null;
 	$proto.hardwareEnumBuffer = [];
 	$proto.markDiskChanges = false;
+	$proto.rawEventAddress = 0;
 
 	$proto.CalculateDisplayStart = function(memSize, dispMemSize) {
 		if (dispMemSize > memSize * 384)
 			dispMemSize = 96;
 		this.colorSupported = dispMemSize >= 384;
+		this.rawEventAddress = 0;
 		return memSize * 0x100000 - dispMemSize * 1024 - 0x100;
 	}
 
@@ -55,6 +57,7 @@
 			case  8: return void(emulator.link.setData(val));
 			case 12: return void(emulator.link.setStatus(val));
 			case 24: return void(this.InvalidateCodeCache(val));
+			case 28: return void(this.rawEventAddress = val);
 			case 32: return void(emulator.netCommand(val, this.getMainMemory()));
 			case 36: return void(emulator.storageRequest(val, this.getMainMemory()));
 			case 40: return void(emulator.clipboard.expect(val));

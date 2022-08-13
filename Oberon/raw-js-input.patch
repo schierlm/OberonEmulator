@@ -1,0 +1,481 @@
+--- 1/Input.Mod.txt
++++ 2/Input.Mod.txt
+@@ -1,8 +1,15 @@
+ MODULE Input; (*NW 5.10.86 / 15.11.90 Ceres-2; PDR 21.4.12 / NW 15.5.2013 Ceres-4*)
+   IMPORT SYSTEM;
+ 
++  TYPE RawJS = POINTER TO RawJSDesc;
++    RawJSDesc* = RECORD
++      code*: ARRAY 32 OF CHAR;
++      key*:  ARRAY 16 OF CHAR;
++    END;
++
+   VAR kbdCode: BYTE; (*last keyboard code read*)
+-    msAdr, kbdAdr: INTEGER;
++    msAdr, kbdAdr, rawAdr: INTEGER;
++    rawJS* : RawJS;
+     pvKbd: BOOLEAN;
+     Recd, Up, Shift, Ctrl, Ext: BOOLEAN;
+     KTabAdr: INTEGER;  (*keyboard code translation table*)
+@@ -17,10 +24,32 @@
+   including tracking the state of the Shift and Ctrl keys*)
+   
+   PROCEDURE Peek();
+-    VAR pvKbdCode: INTEGER;
++    VAR pvKbdCode, type: INTEGER;
+   BEGIN
+     WHILE ~Recd & SYSTEM.BIT(msAdr, 28) DO
+-     IF pvKbd THEN
++     IF rawJS # NIL THEN
++      SYSTEM.GET(kbdAdr, pvKbdCode);
++      type := pvKbdCode DIV 400000H MOD 4;
++      IF type = 1 THEN (* keyPress *)
++        kbdCode := pvKbdCode MOD 10000H;
++        IF  (kbdCode > 0) & (kbdCode < 100H) THEN Recd := TRUE END
++      ELSIF type = 3 THEN (* keyDown *)
++        IF rawJS.code = "Backspace" THEN  kbdCode := 8; Recd := TRUE
++        ELSIF rawJS.code = "Tab" THEN kbdCode := 9; Recd := TRUE
++        ELSIF (rawJS.code = "Enter") OR (rawJS.code = "NumpadEnter") THEN kbdCode := 13; Recd := TRUE
++        ELSIF rawJS.code = "Space" THEN kbdCode := 32; Recd := TRUE
++        ELSIF rawJS.code = "Escape" THEN kbdCode := 27; Recd := TRUE
++        ELSIF (rawJS.code = "Insert") OR (rawJS.code = "F1") THEN kbdCode := 26; Recd := TRUE
++        ELSIF rawJS.code = "Delete" THEN kbdCode := 127; Recd := TRUE
++        ELSIF rawJS.code = "ArrowLeft" THEN kbdCode := 17; Recd := TRUE
++        ELSIF rawJS.code = "ArrowRight" THEN kbdCode := 18; Recd := TRUE
++        ELSIF rawJS.code = "ArrowUp" THEN kbdCode := 19; Recd := TRUE
++        ELSIF rawJS.code = "ArrowDown" THEN kbdCode := 20; Recd := TRUE
++        ELSIF (pvKbdCode DIV 10000H MOD 10H = 2) & (pvKbdCode MOD 10000H >= ORD("a")) & (pvKbdCode MOD 10000H <= ORD("z")) THEN
++          kbdCode := pvKbdCode MOD 20H; Recd := TRUE
++        END
++      END
++     ELSIF pvKbd THEN
+       SYSTEM.GET(kbdAdr, pvKbdCode);
+       kbdCode := pvKbdCode DIV 1000000H;
+       IF kbdCode # 0H THEN Recd := TRUE END;
+@@ -90,6 +119,7 @@
+   PROCEDURE Init*;
+   BEGIN Up := FALSE; Shift := FALSE; Ctrl := FALSE; Recd := FALSE;
+     spacePending := FALSE; keyPending := 0X;
++    rawJS := NIL;
+     KTabAdr := SYSTEM.ADR($
+       00 00 00 00 00 1A 00 00  00 00 00 00 00 09 60 00
+       00 00 00 00 00 71 31 00  00 00 7A 73 61 77 32 00
+@@ -110,7 +140,7 @@
+   END Init;
+ 
+   PROCEDURE EnumerateHardware;
+-      VAR val, MsKb: INTEGER;
++      VAR val, MsKb, JSKb: INTEGER;
+   BEGIN
+     MsKb := 4D734B62H;
+     SYSTEM.PUT(-4, MsKb);
+@@ -118,8 +148,27 @@
+     SYSTEM.GET(-4, kbdAdr);
+     SYSTEM.GET(-4, val);
+     pvKbd := val = 1;
++    JSKb := 4A534B62H;
++    SYSTEM.PUT(-4, JSKb);
++    SYSTEM.GET(-4, rawAdr);
+     IF kbdAdr = 0 THEN msAdr := -40; kbdAdr := -36 END
+   END EnumerateHardware;
++
++  PROCEDURE EnableRawJS*;
++  BEGIN
++    IF (rawAdr # 0) & (rawJS = NIL) THEN
++      NEW(rawJS);
++      SYSTEM.PUT(rawAdr, SYSTEM.VAL(INTEGER, rawJS))
++    END
++  END EnableRawJS;
++
++  PROCEDURE DisableRawJS*;
++  BEGIN
++    IF (rawAdr # 0) & (rawJS # NIL) THEN
++      rawJS := NIL;
++      SYSTEM.PUT(rawAdr, 0)
++    END
++  END DisableRawJS;
+ 
+ BEGIN EnumerateHardware; Init
+ END Input.
+--- 1/KeyTester.Mod.txt
++++ 2/KeyTester.Mod.txt
+@@ -1,5 +1,5 @@
+ MODULE KeyTester;
+-  IMPORT SYSTEM, Kernel, Display, Fonts, Viewers, Texts, Oberon, MenuViewers, TextFrames;
++  IMPORT SYSTEM, Kernel, Input, Display, Fonts, Viewers, Texts, Oberon, MenuViewers, TextFrames;
+ 
+   CONST
+     Menu = "System.Close  System.Copy  System.Grow  KeyTester.Start  KeyTester.Delay0  KeyTester.Delay100  KeyTester.Delay500";
+@@ -9,6 +9,7 @@
+     KeyInfo = RECORD
+         x, y, w, h: INTEGER;
+         label: ARRAY 7 OF CHAR;
++        jscode: ARRAY 32 OF CHAR;
+         pressed: BOOLEAN;
+       END;
+ 
+@@ -29,6 +30,12 @@
+         SYSTEM.GET(kbdAdr, value);
+         Texts.WriteString(W, "KeyEvent: ");
+         Texts.WriteHex(W, value);
++        IF Input.rawJS # NIL THEN
++          Texts.WriteString(W, " Code ");
++          Texts.WriteString(W, Input.rawJS.code);
++          Texts.WriteString(W, " Key ");
++          Texts.WriteString(W, Input.rawJS.key)
++        END;
+         Texts.WriteLn(W);
+         Texts.Append(Oberon.Log, W.buf);
+       END
+@@ -133,6 +140,23 @@
+     WHILE TRUE DO
+       t := Kernel.Time();
+       IF SYSTEM.BIT(msAdr, 28) THEN
++       IF (Input.rawJS # NIL) THEN
++        SYSTEM.GET(kbdAdr, base);
++        idx := base DIV 400000H MOD 4;
++        IF idx = 3 THEN release := FALSE
++        ELSIF idx = 2 THEN release := TRUE
++        ELSE idx := 0 END;
++        IF idx # 0 THEN
++          FOR idx := 0 TO KeyCount - 1 DO
++            IF keys[idx].jscode = Input.rawJS.code THEN
++              keys[idx].pressed := ~release;
++              base := 0;
++              DrawKey(Oberon.Par.frame.next, idx);
++              WHILE Kernel.Time() < t + delay DO END
++            END
++          END
++        END
++       ELSE
+         SYSTEM.GET(kbdAdr, c);
+         IF c = 0F0H THEN
+           release := TRUE
+@@ -150,11 +174,12 @@
+             WHILE Kernel.Time() < t + delay DO END
+           END
+         END
++       END
+       END
+     END
+   END Start;
+ 
+-  PROCEDURE AddKey(label: ARRAY OF CHAR; ext, code: INTEGER; VAR ctr, x, y: INTEGER);
++  PROCEDURE AddKey(label: ARRAY OF CHAR; ext, code: INTEGER; VAR ctr, x, y: INTEGER; jscode: ARRAY OF CHAR);
+   BEGIN
+     keys[ctr].x := x;
+     keys[ctr].y := y;
+@@ -162,6 +187,7 @@
+     keys[ctr].h := 4;
+     keys[ctr].pressed := FALSE;
+     keys[ctr].label := label;
++    keys[ctr].jscode := jscode;
+     keylookup[ext * 256 + code] := ctr;
+     INC(ctr); INC(x, 4)
+   END AddKey;
+@@ -177,178 +203,177 @@
+    SYSTEM.GET(-4, kbdAdr);
+    SYSTEM.GET(-4, mode);
+    IF kbdAdr = 0 THEN msAdr := -40; kbdAdr := -36 END;
+-   IF mode # 1 THEN
++   IF (mode # 1) OR (Input.rawJS # NIL) THEN
+     x := 0; y := 0; ctr := 0;
+-    AddKey("ESC", 0, 76H, ctr, x, y); INC(x,4);
+-    AddKey("F1", 0, 05H, ctr, x, y);
+-    AddKey("F2", 0, 06H, ctr, x, y);
+-    AddKey("F3", 0, 04H, ctr, x, y);
+-    AddKey("F4", 0, 0CH, ctr, x, y); INC(x,2);
+-    AddKey("F5", 0, 03H, ctr, x, y);
+-    AddKey("F6", 0, 0BH, ctr, x, y);
+-    AddKey("F7", 0, 83H, ctr, x, y);
+-    AddKey("F8", 0, 0AH, ctr, x, y); INC(x,2);
+-    AddKey("F9", 0, 01H, ctr, x, y);
+-    AddKey("F10", 0, 09H, ctr, x, y);
+-    AddKey("F11", 0, 78H, ctr, x, y);
+-    AddKey("F12", 0, 07H, ctr, x, y);
++    AddKey("ESC", 0, 76H, ctr, x, y, "Escape"); INC(x,4);
++    AddKey("F1", 0, 05H, ctr, x, y, "F1");
++    AddKey("F2", 0, 06H, ctr, x, y, "F2");
++    AddKey("F3", 0, 04H, ctr, x, y, "F3");
++    AddKey("F4", 0, 0CH, ctr, x, y, "F4"); INC(x,2);
++    AddKey("F5", 0, 03H, ctr, x, y, "F5");
++    AddKey("F6", 0, 0BH, ctr, x, y, "F6");
++    AddKey("F7", 0, 83H, ctr, x, y, "F7");
++    AddKey("F8", 0, 0AH, ctr, x, y, "F8"); INC(x,2);
++    AddKey("F9", 0, 01H, ctr, x, y, "F9");
++    AddKey("F10", 0, 09H, ctr, x, y, "F10");
++    AddKey("F11", 0, 78H, ctr, x, y, "F11");
++    AddKey("F12", 0, 07H, ctr, x, y, "F12");
+ 
+     x := 0; y := 6;
+-    AddKey("`", 0, 0EH, ctr, x, y);
+-    AddKey("1", 0, 16H, ctr, x, y);
+-    AddKey("2", 0, 1EH, ctr, x, y);
+-    AddKey("3", 0, 26H, ctr, x, y);
+-    AddKey("4", 0, 25H, ctr, x, y);
+-    AddKey("5", 0, 2EH, ctr, x, y);
+-    AddKey("6", 0, 36H, ctr, x, y);
+-    AddKey("7", 0, 3DH, ctr, x, y);
+-    AddKey("8", 0, 3EH, ctr, x, y);
+-    AddKey("9", 0, 46H, ctr, x, y);
+-    AddKey("0", 0, 45H, ctr, x, y);
+-    AddKey("-", 0, 4EH, ctr, x, y);
+-    AddKey("=", 0, 55H, ctr, x, y);
+-    AddKey("<X", 0, 66H, ctr, x, y); keys[ctr-1].w:=8;
++    AddKey("`", 0, 0EH, ctr, x, y, "Backquote");
++    AddKey("1", 0, 16H, ctr, x, y, "Digit1");
++    AddKey("2", 0, 1EH, ctr, x, y, "Digit2");
++    AddKey("3", 0, 26H, ctr, x, y, "Digit3");
++    AddKey("4", 0, 25H, ctr, x, y, "Digit4");
++    AddKey("5", 0, 2EH, ctr, x, y, "Digit5");
++    AddKey("6", 0, 36H, ctr, x, y, "Digit6");
++    AddKey("7", 0, 3DH, ctr, x, y, "Digit7");
++    AddKey("8", 0, 3EH, ctr, x, y, "Digit8");
++    AddKey("9", 0, 46H, ctr, x, y, "Digit9");
++    AddKey("0", 0, 45H, ctr, x, y, "Digit0");
++    AddKey("-", 0, 4EH, ctr, x, y, "Minus");
++    AddKey("=", 0, 55H, ctr, x, y, "Equal");
++    AddKey("<X", 0, 66H, ctr, x, y, "Backspace"); keys[ctr-1].w:=8;
+ 
+     x := 0; y := 10;
+-    AddKey("Tab", 0, 0DH, ctr, x, y); keys[ctr-1].w:=6; INC(x,2);
+-    AddKey("Q", 0, 15H, ctr, x, y);
+-    AddKey("W", 0, 1DH, ctr, x, y);
+-    AddKey("E", 0, 24H, ctr, x, y);
+-    AddKey("R", 0, 2DH, ctr, x, y);
+-    AddKey("T", 0, 2CH, ctr, x, y);
+-    AddKey("Y", 0, 35H, ctr, x, y);
+-    AddKey("U", 0, 3CH, ctr, x, y);
+-    AddKey("I", 0, 43H, ctr, x, y);
+-    AddKey("O", 0, 44H, ctr, x, y);
+-    AddKey("P", 0, 4DH, ctr, x, y);
+-    AddKey("[", 0, 54H, ctr, x, y);
+-    AddKey("]", 0, 5BH, ctr, x, y);
+-    AddKey("\", 0, 5DH, ctr, x, y); keys[ctr-1].w:=6;
+-
++    AddKey("Tab", 0, 0DH, ctr, x, y, "Tab"); keys[ctr-1].w:=6; INC(x,2);
++    AddKey("Q", 0, 15H, ctr, x, y, "KeyQ");
++    AddKey("W", 0, 1DH, ctr, x, y, "KeyW");
++    AddKey("E", 0, 24H, ctr, x, y, "KeyE");
++    AddKey("R", 0, 2DH, ctr, x, y, "KeyR");
++    AddKey("T", 0, 2CH, ctr, x, y, "KeyT");
++    AddKey("Y", 0, 35H, ctr, x, y, "KeyY");
++    AddKey("U", 0, 3CH, ctr, x, y, "KeyU");
++    AddKey("I", 0, 43H, ctr, x, y, "KeyI");
++    AddKey("O", 0, 44H, ctr, x, y, "KeyO");
++    AddKey("P", 0, 4DH, ctr, x, y, "KeyP");
++    AddKey("[", 0, 54H, ctr, x, y, "BracketLeft");
++    AddKey("]", 0, 5BH, ctr, x, y, "BracketRight");
++    AddKey("\", 0, 5DH, ctr, x, y, "Backslash"); keys[ctr-1].w:=6;
+     x := 0; y := 14;
+-    AddKey("Caps", 0, 58H, ctr, x, y); keys[ctr-1].w:=7; INC(x,3);
+-    AddKey("A", 0, 1CH, ctr, x, y);
+-    AddKey("S", 0, 1BH, ctr, x, y);
+-    AddKey("D", 0, 23H, ctr, x, y);
+-    AddKey("F", 0, 2BH, ctr, x, y);
+-    AddKey("G", 0, 34H, ctr, x, y);
+-    AddKey("H", 0, 33H, ctr, x, y);
+-    AddKey("J", 0, 3BH, ctr, x, y);
+-    AddKey("K", 0, 42H, ctr, x, y);
+-    AddKey("L", 0, 4BH, ctr, x, y);
+-    AddKey(";", 0, 4CH, ctr, x, y);
+-    AddKey("'", 0, 52H, ctr, x, y);
+-    AddKey("Enter", 0, 5AH, ctr, x, y); keys[ctr-1].w:=9;
++    AddKey("Caps", 0, 58H, ctr, x, y, "CapsLock"); keys[ctr-1].w:=7; INC(x,3);
++    AddKey("A", 0, 1CH, ctr, x, y, "KeyA");
++    AddKey("S", 0, 1BH, ctr, x, y, "KeyS");
++    AddKey("D", 0, 23H, ctr, x, y, "KeyD");
++    AddKey("F", 0, 2BH, ctr, x, y, "KeyF");
++    AddKey("G", 0, 34H, ctr, x, y, "KeyG");
++    AddKey("H", 0, 33H, ctr, x, y, "KeyH");
++    AddKey("J", 0, 3BH, ctr, x, y, "KeyJ");
++    AddKey("K", 0, 42H, ctr, x, y, "KeyK");
++    AddKey("L", 0, 4BH, ctr, x, y, "KeyL");
++    AddKey(";", 0, 4CH, ctr, x, y, "Semicolon");
++    AddKey("'", 0, 52H, ctr, x, y, "Quote");
++    AddKey("Enter", 0, 5AH, ctr, x, y, "Enter"); keys[ctr-1].w:=9;
+ 
+     x := 0; y := 18;
+-    AddKey("Shift", 0, 12H, ctr, x, y); keys[ctr-1].w:=9; INC(x,5);
+-    AddKey("Z", 0, 1AH, ctr, x, y);
+-    AddKey("X", 0, 22H, ctr, x, y);
+-    AddKey("C", 0, 21H, ctr, x, y);
+-    AddKey("V", 0, 2AH, ctr, x, y);
+-    AddKey("B", 0, 32H, ctr, x, y);
+-    AddKey("N", 0, 31H, ctr, x, y);
+-    AddKey("M", 0, 3AH, ctr, x, y);
+-    AddKey(",", 0, 41H, ctr, x, y);
+-    AddKey(".", 0, 49H, ctr, x, y);
+-    AddKey("-", 0, 4AH, ctr, x, y);
+-    AddKey("Shift", 0, 59H, ctr, x, y); keys[ctr-1].w:=11;
++    AddKey("Shift", 0, 12H, ctr, x, y, "ShiftLeft"); keys[ctr-1].w:=9; INC(x,5);
++    AddKey("Z", 0, 1AH, ctr, x, y, "KeyZ");
++    AddKey("X", 0, 22H, ctr, x, y, "KeyX");
++    AddKey("C", 0, 21H, ctr, x, y, "KeyC");
++    AddKey("V", 0, 2AH, ctr, x, y, "KeyV");
++    AddKey("B", 0, 32H, ctr, x, y, "KeyB");
++    AddKey("N", 0, 31H, ctr, x, y, "KeyN");
++    AddKey("M", 0, 3AH, ctr, x, y, "KeyM");
++    AddKey(",", 0, 41H, ctr, x, y, "Comma");
++    AddKey(".", 0, 49H, ctr, x, y, "Period");
++    AddKey("-", 0, 4AH, ctr, x, y, "Slash");
++    AddKey("Shift", 0, 59H, ctr, x, y, "ShiftRight"); keys[ctr-1].w:=11;
+ 
+     x := 0; y := 22;
+-    AddKey("Ctrl", 0, 14H, ctr, x, y); keys[ctr-1].w:=5; INC(x);
+-    AddKey("GUI", 1, 1FH, ctr, x, y); keys[ctr-1].w:=5; INC(x);
+-    AddKey("Alt", 0, 11H, ctr, x, y); keys[ctr-1].w:=5; INC(x);
+-    AddKey("", 0, 29H, ctr, x, y); keys[ctr-1].w:=25; INC(x,21);
+-    AddKey("Alt", 1, 11H, ctr, x, y); keys[ctr-1].w:=5; INC(x);
+-    AddKey("GUI", 1, 27H, ctr, x, y); keys[ctr-1].w:=5; INC(x);
+-    AddKey("Apps", 1, 2FH, ctr, x, y); keys[ctr-1].w:=5; INC(x);
+-    AddKey("Ctrl", 1, 14H, ctr, x, y); keys[ctr-1].w:=5;
++    AddKey("Ctrl", 0, 14H, ctr, x, y, "ControlLeft"); keys[ctr-1].w:=5; INC(x);
++    AddKey("GUI", 1, 1FH, ctr, x, y, "MetaLeft"); keys[ctr-1].w:=5; INC(x);
++    AddKey("Alt", 0, 11H, ctr, x, y, "AltLeft"); keys[ctr-1].w:=5; INC(x);
++    AddKey("", 0, 29H, ctr, x, y, "Space"); keys[ctr-1].w:=25; INC(x,21);
++    AddKey("Alt", 1, 11H, ctr, x, y, "AltRight"); keys[ctr-1].w:=5; INC(x);
++    AddKey("GUI", 1, 27H, ctr, x, y, "MetaRight"); keys[ctr-1].w:=5; INC(x);
++    AddKey("Apps", 1, 2FH, ctr, x, y, "ContextMenu"); keys[ctr-1].w:=5; INC(x);
++    AddKey("Ctrl", 1, 14H, ctr, x, y, "ControlRight"); keys[ctr-1].w:=5;
+ 
+     x :=13; y:= 26;
+-    AddKey("Pause", 2, 14H, ctr, x, y); keys[ctr-1].h:=2;
++    AddKey("Pause", 2, 14H, ctr, x, y, "Pause"); keys[ctr-1].h:=2;
+ 
+     x :=5; y:= 28;
+-    AddKey("Print", 1, 7CH, ctr, x, y);
+-    AddKey("Scrl", 0, 7EH, ctr, x, y);
+-    AddKey("Break", 0, 77H, ctr, x, y); keys[ctr-1].h:=2;
++    AddKey("Print", 1, 7CH, ctr, x, y, "PrintScreen");
++    AddKey("Scrl", 0, 7EH, ctr, x, y, "ScrollLock");
++    AddKey("Break", 0, 77H, ctr, x, y, "SysRQ"); keys[ctr-1].h:=2;
+ 
+     x :=5; y:= 34;
+-    AddKey("Ins", 1, 70H, ctr, x, y);
+-    AddKey("Home", 1, 6CH, ctr, x, y);
+-    AddKey("PgUp", 1, 7DH, ctr, x, y);
++    AddKey("Ins", 1, 70H, ctr, x, y, "Insert");
++    AddKey("Home", 1, 6CH, ctr, x, y, "Home");
++    AddKey("PgUp", 1, 7DH, ctr, x, y, "PageUp");
+ 
+     x :=5; y:= 38;
+-    AddKey("Del", 1, 71H, ctr, x, y);
+-    AddKey("End", 1, 69H, ctr, x, y);
+-    AddKey("PgDn", 1, 7AH, ctr, x, y);
++    AddKey("Del", 1, 71H, ctr, x, y, "Delete");
++    AddKey("End", 1, 69H, ctr, x, y, "End");
++    AddKey("PgDn", 1, 7AH, ctr, x, y, "PageDown");
+ 
+     x :=9; y:= 46;
+-    AddKey("Up", 1, 75H, ctr, x, y);
++    AddKey("Up", 1, 75H, ctr, x, y, "ArrowUp");
+ 
+     x :=5; y:= 50;
+-    AddKey("<-", 1, 6BH, ctr, x, y);
+-    AddKey("Dn", 1, 72H, ctr, x, y);
+-    AddKey("->", 1, 74H, ctr, x, y);
++    AddKey("<-", 1, 6BH, ctr, x, y, "ArrowLeft");
++    AddKey("Dn", 1, 72H, ctr, x, y, "ArrowDown");
++    AddKey("->", 1, 74H, ctr, x, y, "ArrowRight");
+ 
+     x :=20; y:= 34;
+-    AddKey("Num", 0, 77H, ctr, x, y);
+-    AddKey("/", 1, 4AH, ctr, x, y);
+-    AddKey("*", 0, 7CH, ctr, x, y);
+-    AddKey("-", 0, 7BH, ctr, x, y);
++    AddKey("Num", 0, 77H, ctr, x, y, "NumLock");
++    AddKey("/", 1, 4AH, ctr, x, y, "NumpadDivide");
++    AddKey("*", 0, 7CH, ctr, x, y, "NumpadMultiply");
++    AddKey("-", 0, 7BH, ctr, x, y, "NumpadSubtract");
+ 
+     x :=20; y:= 38;
+-    AddKey("7", 0, 6CH, ctr, x, y);
+-    AddKey("8", 0, 75H, ctr, x, y);
+-    AddKey("9", 0, 7DH, ctr, x, y);
++    AddKey("7", 0, 6CH, ctr, x, y, "Numpad7");
++    AddKey("8", 0, 75H, ctr, x, y, "Numpad8");
++    AddKey("9", 0, 7DH, ctr, x, y, "Numpad9");
+ 
+     x :=20; y:= 42;
+-    AddKey("4", 0, 6BH, ctr, x, y);
+-    AddKey("5", 0, 73H, ctr, x, y);
+-    AddKey("6", 0, 74H, ctr, x, y);
+-    AddKey("+", 0,79H, ctr, x, y); keys[ctr-1].h:=8;
++    AddKey("4", 0, 6BH, ctr, x, y, "Numpad4");
++    AddKey("5", 0, 73H, ctr, x, y, "Numpad5");
++    AddKey("6", 0, 74H, ctr, x, y, "Numpad6");
++    AddKey("+", 0,79H, ctr, x, y, "NumpadAdd"); keys[ctr-1].h:=8;
+ 
+     x :=20; y:= 46;
+-    AddKey("1", 0, 69H, ctr, x, y);
+-    AddKey("2", 0, 72H, ctr, x, y);
+-    AddKey("3", 0, 7AH, ctr, x, y);
++    AddKey("1", 0, 69H, ctr, x, y, "Numpad1");
++    AddKey("2", 0, 72H, ctr, x, y, "Numpad2");
++    AddKey("3", 0, 7AH, ctr, x, y, "Numpad3");
+ 
+     x :=20; y:= 50;
+-    AddKey("0", 0, 70H, ctr, x, y); keys[ctr-1].w:=8; INC(x,4);
+-    AddKey(",", 0, 71H, ctr, x, y);
+-    AddKey("<-'", 1, 5AH, ctr, x, y); keys[ctr-1].h := 8;
++    AddKey("0", 0, 70H, ctr, x, y, "Numpad0"); keys[ctr-1].w:=8; INC(x,4);
++    AddKey(",", 0, 71H, ctr, x, y, "NumpadDecimal");
++    AddKey("<-'", 1, 5AH, ctr, x, y, "NumpadEnter"); keys[ctr-1].h := 8;
+ 
+     x := 24; y := 28; (* ACPI keys *)
+-    AddKey("Pwr", 1, 37H, ctr, x, y);
+-    AddKey("Sleep", 1, 3FH, ctr, x, y);
+-    AddKey("Wake", 1, 5EH, ctr, x, y);
++    AddKey("Pwr", 1, 37H, ctr, x, y, "Power");
++    AddKey("Sleep", 1, 3FH, ctr, x, y, "Sleep");
++    AddKey("Wake", 1, 5EH, ctr, x, y, "WakeUp");
+ 
+     x := 42; y := 34; (* Quickstart keys *)
+-    AddKey("Calc", 1, 2BH, ctr, x, y);
+-    AddKey("Explo", 1, 40H, ctr, x, y);
+-    AddKey("Email", 1, 48H, ctr, x, y);
++    AddKey("Calc", 1, 2BH, ctr, x, y, "LaunchApp2");
++    AddKey("Explo", 1, 40H, ctr, x, y, "LaunchApp1");
++    AddKey("Email", 1, 48H, ctr, x, y, "LaunchEmail");
+ 
+     x := 42; y := 38; (* WWW keys *)
+-    AddKey("Home", 1, 3AH, ctr, x, y);
+-    AddKey("Srch", 1, 10H, ctr, x, y);
+-    AddKey("Favo", 1, 18H, ctr, x, y);
++    AddKey("Home", 1, 3AH, ctr, x, y, "BrowserHome");
++    AddKey("Srch", 1, 10H, ctr, x, y, "BrowserSearch");
++    AddKey("Favo", 1, 18H, ctr, x, y, "BrowserFavorites");
+ 
+     x := 40; y := 42;
+-    AddKey("Back", 1, 38H, ctr, x, y);
+-    AddKey("Fwd", 1, 30H, ctr, x, y);
+-    AddKey("Refr", 1, 20H, ctr, x, y);
+-    AddKey("Stop", 1, 28H, ctr, x, y);
++    AddKey("Back", 1, 38H, ctr, x, y, "BrowserBack");
++    AddKey("Fwd", 1, 30H, ctr, x, y, "BrowserForward");
++    AddKey("Refr", 1, 20H, ctr, x, y, "BrowserRefresh");
++    AddKey("Stop", 1, 28H, ctr, x, y, "BrowserStop");
+ 
+     x := 40; y := 46; (* Multimedia keys *)
+-    AddKey("VlDn", 1, 21H, ctr, x, y);
+-    AddKey("VlUp", 1, 32H, ctr, x, y);
+-    AddKey("Mute", 1, 23H, ctr, x, y);
+-    AddKey("Media", 1, 50H, ctr, x, y);
++    AddKey("VlDn", 1, 21H, ctr, x, y, "AudioVolumeDown");
++    AddKey("VlUp", 1, 32H, ctr, x, y, "AudioVolumeUp");
++    AddKey("Mute", 1, 23H, ctr, x, y, "AudioVolumeMute");
++    AddKey("Media", 1, 50H, ctr, x, y, "MediaSelect");
+ 
+     x := 40; y := 50;
+-    AddKey("Play", 1, 34H, ctr, x, y);
+-    AddKey("Stop", 1, 3BH, ctr, x, y);
+-    AddKey("Prev", 1, 15H, ctr, x, y);
+-    AddKey("Next", 1, 4DH, ctr, x, y)
++    AddKey("Play", 1, 34H, ctr, x, y, "MediaPlayPause");
++    AddKey("Stop", 1, 3BH, ctr, x, y, "MediaStop");
++    AddKey("Prev", 1, 15H, ctr, x, y, "MediaTrackPrevious");
++    AddKey("Next", 1, 4DH, ctr, x, y, "MediaTrackNext")
+    END
+   END InitKeys;
+ 
