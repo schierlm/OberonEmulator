@@ -1,23 +1,11 @@
 function RISCMachine(romWords) {
-	this.megabytes = 1;
-	var magic = (romWords[255] & 0xFFFFFF)
-	if (magic == 0x3D424D || magic == 0x3D4243 || magic == 0x3D423F) {
-		var mb = (romWords[255] >>> 24) & 0xF;
-		if ((romWords[255] >>> 24) == 0x3F) {
-			mb = 1;
-		}
-		if (mb == 0) mb = 16;
-		this.megabytes = mb;
-	}
-	this.colorSupported = magic == 0x3D4243;
 	this.bootROM = romWords;
+	this.megabytes = 1;
 }
 
 (function($proto) {
 	var $proto = RISCMachine.prototype;
 
-	$proto.palette = null;
-	$proto.hardwareEnumBuffer = [];
 
 	$proto.memWriteWord = function(address, value) {
 		this.wasm.exports.memWriteWord(address, value);
@@ -26,12 +14,6 @@ function RISCMachine(romWords) {
 	$proto.memReadPalette = function(address0) {
 		if (!this.colorSupported)
 			return 0;
-		if (this.palette == null) {
-			this.palette = [
-				0xffffff, 0xff0000, 0x00ff00, 0x0000ff, 0xff00ff, 0xffff00, 0x00ffff, 0xaa0000,
-				0x009a00, 0x00009a, 0x0acbf3, 0x008282, 0x8a8a8a, 0xbebebe, 0xdfdfdf, 0x000000
-			];
-		}
 		return this.palette[address0 / 4 | 0];
 	}
 
@@ -42,43 +24,8 @@ function RISCMachine(romWords) {
 		}
 	}
 
-	$proto.setVideoMode = function(val) {
-		if (val == 0 && this.palette != null) {
-			this.palette = null;
-			this.DisplayStart = 0x0E7F00 + this.MemSize - 0x100000;
-		} else if (val == 1 && this.palette == null) {
-			this.memReadPalette(this.PaletteStart);
-		}
-	}
-
-	$proto.memReadIO = function(address0) {
-		switch (address0) {
-			case  0: return emulator.getTickCount();
-			case  8: return emulator.link.getData();
-			case 12: return emulator.link.getStatus();
-			case 24: return emulator.getInputStatus();
-			case 28: return emulator.getKeyCode();
-			case 40: return emulator.clipboard.getSize();
-			case 44: return emulator.clipboard.getData();
-			case 48: return this.palette == null ? 0 : 1;
-			case 60: return this.hardwareEnumBuffer.shift() | 0;
-			default: return 0;
-		}
-	}
-
-	$proto.memWriteIO = function(address0, val) {
-		switch (address0) {
-			case  0: return void(this.wait(val));
-			case  4: return void(emulator.registerLEDs(val));
-			case  8: return void(emulator.link.setData(val));
-			case 12: return void(emulator.link.setStatus(val));
-			case 32: return void(emulator.netCommand(val, new Int32Array(this.wasm.exports.memory.buffer, this.wasm.exports.getRAMBase(), this.wasm.exports.getRAMSize()/4)));
-			case 36: return void(emulator.storageRequest(val, new Int32Array(this.wasm.exports.memory.buffer, this.wasm.exports.getRAMBase(), this.wasm.exports.getRAMSize()/4)));
-			case 40: return void(emulator.clipboard.expect(val));
-			case 44: return void(emulator.clipboard.putData(val));
-			case 48: return void(this.setVideoMode(val));
-			case 60: return void(this.hardwareEnumBuffer = emulator.runHardwareEnumerator(val));
-		}
+	$proto.getMainMemory = function() {
+		return new Int32Array(this.wasm.exports.memory.buffer, this.wasm.exports.getRAMBase(), this.wasm.exports.getRAMSize()/4);
 	}
 
 	$proto.wait = function(x) {
@@ -89,17 +36,15 @@ function RISCMachine(romWords) {
 		}
 	}
 
-	$proto.cpuReset = function(cold, ramhint, colorhint) {
+	$proto.cpuReset = function(cold, memSize, dispMemSize) {
 		if (cold) {
 			var magic = this.bootROM[255];
-			if ((magic == 0x3F3D424D || magic == 0x3F3D4243 || magic == 0x3F3D423F) && this.megabytes != ramhint) {
-				this.megabytes = ramhint;
+			if (this.megabytes != memSize) {
+				this.megabytes = memSize;
 				var romBase = this.wasm.exports.Initialize(this.megabytes);
 				new Int32Array(this.wasm.exports.memory.buffer).set(this.bootROM, romBase/4);
 			}
-			if ((magic & 0xFFFFFF) == 0x3D423F) {
-				this.colorSupported = colorhint;
-			}
+			this.wasm.exports.setDisplayStart(this.CalculateDisplayStart(memSize, dispMemSize));
 		}
 		this.wasm.exports.cpuReset(cold);
 	}
@@ -112,12 +57,12 @@ function RISCMachine(romWords) {
 		this.wasm.exports.cpuSingleStep();
 	}
 
-	$proto.getBootROM = function() {
-		return this.bootROM;
-	}
-
 	$proto.getDisplayStart = function() {
 		return this.wasm.exports.getDisplayStart();
+	}
+
+	$proto.getRAMSize = function() {
+		return this.wasm.exports.getRAMSize();
 	}
 
 	$proto.getWaitMillis = function() {
@@ -125,13 +70,13 @@ function RISCMachine(romWords) {
 	}
 
 	$proto.resetWaitMillis = function() {
-		if (this.wasm.exports.getWaitMillis() != 0x7fffffff)
+		if (this.wasm.exports.getWaitMillis() != 0x7ffffffe)
 			this.wasm.exports.setWaitMillis(-1);
 	}
 
 	$proto.setStall = function(stalling) {
 		if (stalling) {
-			this.wasm.exports.setWaitMillis(0x7fffffff);
+			this.wasm.exports.setWaitMillis(0x7ffffffe);
 		} else {
 			this.wasm.exports.setWaitMillis(-1);
 		}

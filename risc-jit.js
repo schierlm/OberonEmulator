@@ -4,6 +4,7 @@ function RISCMachine(romWords) {
 	);
 	this.bootROM = romWords;
 	this.mainMemory = new Int32Array(this.MemWords);
+	this.jitCache = {};
 	this.flag_Z = false, this.flag_N = false;
 	this.flag_C = false, this.flag_V = false;
 	this.lastLoadRegister = 0;
@@ -127,20 +128,43 @@ function RISCMachine(romWords) {
 
 	$proto.cpuRun = function() {
 		var now = Date.now();
-		for (var i = 0; i < 200000 && this.waitMillis < now; ++i) {
-			this.cpuSingleStep();
+		for (var i = 0; i < 200000 && this.waitMillis < now;) {
+			i += this.cpuSingleSteps();
 		}
 	}
 
-	$proto.cpuSingleStep = function() {
+	$proto.cpuSingleSteps = function() {
+		var pc = this.cpuGetRegister(this.PCID);
+		var func = this.jitCache['@'+pc];
+		if (func === undefined) {
+			var steps = '', i = pc;
+			for(;i < pc + 1024; i++) {
+				var jitstep = this.jitStep(i);
+				steps += jitstep[1];
+				if (jitstep[0]) break;
+			}
+			if (i == pc + 1024) {
+				steps += this.jitExit(i, ''+i);
+			}
+			func = eval("(function(t) { "+steps+" })");
+			this.jitCache['@'+pc] = func;
+		}
+		return func(this);
+	}
+
+	$proto.jitExit = function(atPC, jumpPC) {
+		var realPC = this.cpuGetRegister(this.PCID);
+		return 't.cpuPutRegister(t.PCID, ('+jumpPC+') % t.MemWords); return '+(atPC-realPC)+';';
+	};
+
+	$proto.jitStep = function(pc) {
 		var pbit = 0x80000000;
 		var qbit = 0x40000000;
 		var ubit = 0x20000000;
 		var vbit = 0x10000000;
-
-		var pc = this.cpuGetRegister(this.PCID);
-		var ir = this.memReadWord(this.cpuGetRegister(this.PCID) * 4, true);
-		this.cpuPutRegister(this.PCID, pc + 1);
+		var ir = this.memReadWord(pc * 4, true);
+		var step = '';
+		var stop = false;
 
 		if ((ir & pbit) == 0) {
 			var a = (ir & 0x0F000000) >> 24;
@@ -150,176 +174,167 @@ function RISCMachine(romWords) {
 			var c = ir & 0x0000000F;
 
 			var a_val, b_val, c_val;
-			b_val = this.cpuGetRegister(b);
+			b_val = 't.cpuGetRegister('+b+')';
 			if ((ir & qbit) == 0) {
-				c_val = this.cpuGetRegister(c);
+				c_val = 't.cpuGetRegister('+c+')';
 			} else if ((ir & vbit) == 0) {
-				c_val = im;
+				c_val = ''+im;
 			} else {
-				c_val = 0xFFFF0000 | im;
+				c_val = '' + (0xFFFF0000 | im);
 			}
 			switch (op) {
 			case 0: {
 				if ((ir & ubit) == 0) {
 					a_val = c_val;
 				} else if ((ir & qbit) != 0) {
-					a_val = c_val << 16;
+					a_val = '('+c_val+') << 16';
 				} else if ((ir & vbit) != 0) {
-					a_val = 0xD0 |
-							(this.flag_N ? 0x80000000 : 0) |
-							(this.flag_Z ? 0x40000000 : 0) |
-							(this.flag_C ? 0x20000000 : 0) |
-							(this.flag_V ? 0x10000000 : 0);
+					a_val = '0xD0 |	(t.flag_N ? 0x80000000 : 0) | (t.flag_Z ? 0x40000000 : 0) | (t.flag_C ? 0x20000000 : 0) | (t.flag_V ? 0x10000000 : 0)';
 				} else {
-					a_val = this.cpuGetRegister(this.HID);
+					a_val = 't.cpuGetRegister(t.HID)';
 				}
 				break;
 			}
 			case 1: {
-				a_val = b_val << (c_val & 31);
+				a_val = '('+b_val+') << ((' + c_val+ ') & 31)';
 				break;
 			}
 			case 2: {
-				a_val = (b_val) >> (c_val & 31);
+				a_val = '('+b_val+') >> (('+c_val+') & 31)';
 				break;
 			}
 			case 3: {
-				a_val = (b_val >>> (c_val & 31)) | (b_val << (-c_val & 31));
+				a_val = '(('+b_val+') >>> (('+c_val+') & 31)) | (('+b_val+') << (-('+c_val+') & 31))';
 				break;
 			}
 			case 4: {
-				a_val = b_val & c_val;
+				a_val = '('+b_val+') & ('+c_val+')';
 				break;
 			}
 			case 5: {
-				a_val = b_val & ~c_val;
+				a_val = '('+b_val+') & ~('+c_val+')';
 				break;
 			}
 			case 6: {
-				a_val = b_val | c_val;
+				a_val = '('+b_val+') | ('+c_val+')';
 				break;
 			}
 			case 7: {
-				a_val = b_val ^ c_val;
+				a_val = '('+b_val+') ^ ('+c_val+')';
 				break;
 			}
 			case 8: {
-				a_val = (b_val + c_val) | 0;
-				if ((ir & ubit) != 0 && this.flag_C) {
-					a_val = (a_val + 1) | 0
+				step += 'var b = ('+b_val+'), c = ('+c_val+'), a = (b + c) | 0;';
+				if ((ir & ubit) != 0) {
+					step += 'if (t.flag_C) { a = (a + 1) | 0; }';
 				}
-				this.flag_C = (a_val >>>0) < (b_val >>>0);
-				this.flag_V = ((~(b_val ^ c_val) & (a_val ^ b_val)) >>> 31) != 0;
+				step += 't.flag_C = (a >>>0) < (b >>>0); t.flag_V = ((~(b ^ c) & (a ^ b)) >>> 31) != 0;';
+				a_val = 'a';
 				break;
 			}
 			case 9: {
-				a_val = (b_val - c_val) | 0;
-				if ((ir & ubit) != 0 && this.flag_C) {
-					a_val = (a_val - 1 ) | 0;
+				step += 'var b = ('+b_val+'), c = ('+c_val+'), a = (b - c) | 0;';
+				if ((ir & ubit) != 0) {
+					step += 'if (t.flag_C) { a = (a - 1) | 0; }';
 				}
-				this.flag_C = (a_val >>>0) > (b_val >>>0);
-				this.flag_V = (((b_val ^ c_val) & (a_val ^ b_val)) >>> 31) != 0;
+				step += 't.flag_C = (a >>>0) > (b >>>0); t.flag_V = (((b ^ c) & (a ^ b)) >>> 31) != 0;';
+				a_val = 'a';
 				break;
 			}
 			case 10: {
 				var tmp;
 				if ((ir & ubit) == 0) {
-					tmp = b_val * c_val;
+					tmp = '('+b_val+') * ('+c_val+')';
 				} else {
-					tmp = (b_val >>>0) * (c_val >>>0);
+					tmp = '(('+b_val+') >>>0) * (('+c_val+') >>>0)';
 				}
-				a_val = tmp | 0;
-				this.cpuPutRegister(this.HID, (tmp / ((-1>>>0) + 1)) | 0);
+				step += 'var v = ('+tmp+'), a = v | 0;';
+				step += 't.cpuPutRegister(t.HID, (v / ((-1>>>0) + 1)) | 0);';
+				a_val = 'a';
 				break;
 			}
 			case 11: {
 				if ((ir & ubit) == 0) {
-					var h_val = (b_val % c_val) | 0;
-					a_val = (b_val / c_val) | 0;
-					if (h_val < 0) {
-						h_val += c_val;
-						a_val = (a_val - 1) | 0;
-					}
-					this.cpuPutRegister(this.HID, h_val);
+					step += 'var b = ('+b_val+'), c = ('+c_val+'), h = (b % c) | 0, a = (b / c) | 0;';
+					step += 'if (h < 0) { h += c; a = (a - 1) | 0 }';
+					step += 't.cpuPutRegister(t.HID, h);';
+					a_val = 'a';
 				} else {
-					a_val = ((b_val>>>0) / (c_val>>>0)) | 0;
-					this.cpuPutRegister(
-						this.HID, ((b_val>>>0) % (c_val>>>0)) | 0
-					);
+					step += 'var b = ('+b_val+'), c = ('+c_val+'), a = ((b>>>0) / (c>>>0)) | 0;';
+					step += 't.cpuPutRegister(t.HID, ((b>>>0) % (c>>>0)) | 0);';
+					a_val = 'a';
 				}
 				break;
 			}
 			case 13:
-				c_val ^= 0x80000000;
+				c_val = '(' + c_val + ') ^ 0x80000000';
 				// fall through
 			case 12:
 				if ((ir & ubit) == 0 && (ir & vbit) == 0)
-					a_val = _float2Int(_int2Float(b_val) + _int2Float(c_val));
+					a_val = '_float2Int(_int2Float('+b_val+') + _int2Float('+c_val+'))';
 				if ((ir & ubit) != 0 && (ir & vbit) == 0 && c_val == 0x4B000000)
-					a_val = _float2Int(b_val);
+					a_val = '_float2Int('+b_val+')';
 				if ((ir & ubit) == 0 && (ir & vbit) != 0 && c_val == 0x4B000000)
-					a_val = Math.floor(_int2Float(b_val)) | 0;
+					a_val = 'Math.floor(_int2Float('+b_val+')) | 0';
 				break;
 			case 14:
-				a_val = _float2Int(_int2Float(b_val) * _int2Float(c_val));
+				a_val = '_float2Int(_int2Float('+b_val+') * _int2Float('+c_val+'))';
 				break;
 			case 15:
-				a_val = _float2Int(_int2Float(b_val) / _int2Float(c_val));
+				a_val = '_float2Int(_int2Float('+b_val+') / _int2Float('+c_val+'))';
 				break;
 			}
-			this.cpuPutRegister(a, a_val);
+			step += 't.cpuPutRegister('+a+', ('+a_val+'));';
 		}
 		else if ((ir & qbit) == 0) {
 			var a = (ir & 0x0F000000) >> 24;
 			var b = (ir & 0x00F00000) >> 20;
 			var off = (ir & 0x000FFFFF) << 12 >> 12;
-
-			var address =
-				(((this.cpuGetRegister(b) >>>0) + (off >>>0)) % this.MemSize) |
-				0;
+			step += 'var ad = (((t.cpuGetRegister('+b+') >>>0) + (('+off+') >>>0)) % t.MemSize) | 0;';
+			var address = 'ad';
 			if ((ir & ubit) == 0) {
 				var a_val;
 				if ((ir & vbit) == 0) {
-					a_val = this.cpuLoadWord(address) | 0;
+					a_val = 't.cpuLoadWord('+address+') | 0';
 				} else {
-					a_val = this.cpuLoadByte(address) & 0xff;
+					a_val = 't.cpuLoadByte('+address+') & 0xff';
 				}
-				this.lastLoadRegister = a;
-				this.cpuPutRegister(a, a_val);
+				step += 't.lastLoadRegister = ('+a+'); t.cpuPutRegister(('+a+'), ('+a_val+'));';
 			} else {
 				if ((ir & vbit) == 0) {
-					this.cpuStoreWord(address, this.cpuGetRegister(a));
+					step += 't.cpuStoreWord(('+address+'), t.cpuGetRegister('+a+'));';
 				} else {
-					this.cpuStoreByte(address, this.cpuGetRegister(a) & 0xff);
+					step += 't.cpuStoreByte(('+address+'), t.cpuGetRegister('+a+') & 0xff);';
 				}
 			}
-		}
-		else {
+			step += 'if (ad >= t.IOStart) { ' + this.jitExit(pc+1, ''+(pc+1)) + '}';
+		} else {
 			var t;
 			switch ((ir >>> 24) & 7) {
-                case 0: t = this.flag_N; break;
-                case 1: t = this.flag_Z; break;
-                case 2: t = this.flag_C; break;
-                case 3: t = this.flag_V; break;
-                case 4: t = this.flag_C || this.flag_Z; break;
-                case 5: t = this.flag_N != this.flag_V; break;
-                case 6: t = this.flag_N != this.flag_V || this.flag_Z; break;
-                case 7: t = true; break;
+				case 0: t = 't.flag_N'; break;
+				case 1: t = 't.flag_Z'; break;
+				case 2: t = 't.flag_C'; break;
+				case 3: t = 't.flag_V'; break;
+				case 4: t = 't.flag_C || t.flag_Z'; break;
+				case 5: t = 't.flag_N != t.flag_V'; break;
+				case 6: t = 't.flag_N != t.flag_V || t.flag_Z'; break;
+				case 7: t = 'true'; break;
 			}
-			if (t ^ (((ir >>> 24) & 8) != 0)) {
-                var pc = this.cpuGetRegister(this.PCID);
-				if ((ir & vbit) != 0) {
-					this.cpuPutRegister(15, pc * 4 | 0);
-				}
-				if ((ir & ubit) == 0) {
-					var pos = (this.cpuGetRegister(ir & 0x0000000F) >>> 0) / 4;
-					this.cpuPutRegister(this.PCID, pos % this.MemWords);
-				} else {
-					var pos = pc + (ir & 0x00FFFFFF);
-					this.cpuPutRegister(this.PCID, pos % this.MemWords);
-				}
+			if (((ir >>> 24) & 8) != 0) { t = '!('+t+')'};
+			step += 'if (' + t + ') {';
+			pc++;
+			if ((ir & vbit) != 0) {
+				step += 't.cpuPutRegister(15, ('+(pc * 4 | 0)+'));';
 			}
+			if ((ir & ubit) == 0) {
+				step += this.jitExit(pc, '(t.cpuGetRegister('+(ir & 0x0000000F)+') >>> 0) / 4')
+			} else {
+				step += this.jitExit(pc, ''+ (pc + (ir & 0x00FFFFFF)));
+			}
+			step += "}";
+			stop = (t == 'true');
 		}
+		return [stop, "{"+step+"}"];
 	}
 
 	$proto.cpuLoadWord = function(address) {
@@ -382,6 +397,10 @@ function RISCMachine(romWords) {
 
 	$proto.Initialize = function(callback) {
 		callback();
+	}
+
+	$proto.InvalidateCodeCache = function(start) {
+		this.jitCache = {};
 	}
 })();
 

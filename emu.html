@@ -10,7 +10,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   margin: 1px; /* NB: match #controlbar border thickness */
 }
 #controlbar {
-  height: 2em; margin-bottom: 0.5em;
+  height: 2em; margin-bottom: 5px;
   border: 1px solid #dfe4e6; /* NB: match #screen margin thickness */
   border-radius: 0 0 4px 4px;
   background-color: #f7f5f0;
@@ -28,6 +28,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
 #systembutton.feedback {
   font-style: italic;
 }
+#modifyIndicator { font-size: 0.7em; color: red; display: none; }
 #settingsbutton {
   width: 2em;
   color: transparent;
@@ -61,6 +62,7 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
     -1px 0 #000, 0 -1px #000, 1px 0 #000, 0 1px #000,
     -1px -1px #000, -1px 1px #000, 1px -1px #000, 1px 1px #000;
 }
+#emulbox { width: 20px; }
 .menu {
   position: relative;
 }
@@ -144,6 +146,14 @@ body { font-family: Verdana, Arial, Helvetica, sans-serif; }
   display: inline-block;
 }
 
+#controlbar .showwhenserial {
+display: none;
+}
+
+#controlbar.seriallink .showwhenserial {
+display: block;
+}
+
 #serialpreview {
 	display: none;
 	position: fixed;
@@ -178,6 +188,7 @@ body.leftpreview #emulatorface {
 }
 </style>
 <script src="risc.js"></script>
+<script src="risc-common.js"></script>
 <script src="webdriver.js"></script>
 </head>
 <body>
@@ -189,6 +200,7 @@ body.leftpreview #emulatorface {
            ondragover="emulator.cancelEvent(event);"
            ondrop="emulator.importDiskImageFromEvent(event);"
            value="Select disk image…">
+    <div id="modifyIndicator">(modified)</div>
     <div class="popup">
       <div class="menuitem">
         <input type="file" id="diskfileinput"
@@ -244,19 +256,61 @@ body.leftpreview #emulatorface {
                onclick="emulator.setDimensionsFromEvent(event);">
           1024×768
         </button>
-
-        <button id="romdumpbutton" class="midflight menuitem"
-                onclick="emulator.dumpROM();"
-                title="Dump ROM image to local file">Dump ROM…</button>
+        <button class="preflight checkable size menuitem" value="1344×576"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1344×576
+        </button>
+        <button class="preflight checkable size menuitem" value="1344x768"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1344×768
+        </button>
+        <button class="preflight checkable size menuitem" value="1280x1024"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1280×1024
+        </button>
+        <button class="preflight checkable size menuitem" value="1400x1050"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1400×1050
+        </button>
+        <button class="preflight checkable size menuitem" value="1600×900"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1600×900
+        </button>
+        <button class="preflight checkable size menuitem" value="1600×1200"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1600×1200
+        </button>
+        <button class="preflight checkable size menuitem" value="1920×1080"
+               onclick="emulator.setDimensionsFromEvent(event);">
+          1920×1080
+        </button>
 
         <button id="breakbutton" class="midflight menuitem"
                 onclick="emulator.reset(false);">Break</button>
 
-        <button id="resetbutton" class="midflight menuitem" onclick="emulator.reset(true);">
+        <button id="resetbutton" class="midflight menuitem" onclick="emulator.reset(true, false);">
 		<span>Reset
-			<select class="ramhint" onclick="event.stopPropagation()"><option>1 MB</option></select>
-			<select class="colorhint" onclick="event.stopPropagation()"><option>b/w</option></select>
+			<select class="ramhint" onclick="event.stopPropagation()">
+				<option value="1">1 MB</option>
+				<option value="2">2 MB</option>
+				<option value="4">4 MB</option>
+				<option value="8">8 MB</option>
+				<option value="16">16 MB</option>
+				<option value="32">32 MB</option>
+				<option value="64">64 MB</option>
+			</select>
+			<select class="disphint" onclick="event.stopPropagation()">
+				<option value="96">96 KB</option>
+				<option value="256">256 KB</option>
+				<option value="384">384 KB</option>
+				<option value="512">512 KB</option>
+				<option value="1024">1 MB</option>
+				<option value="2048">2 MB</option>
+			</select>
 		</span>
+	</button>
+	<button id="resetserialbutton" class="midflight menuitem showwhenserial" onclick="emulator.reset(true, true);">
+		<span>Reset (Boot from serial)</span>
 	</button>
       </div>
     </div>
@@ -312,25 +366,9 @@ body.leftpreview #emulatorface {
    --><input type="button" name="2" value="M" class="mousebtn"><!--
    --><input type="button" name="3" value="R" class="mousebtn"><!--
  --></div>
+    <div id="emulbox"><input type="checkbox" id="emulcheckbox" checked="checked" title="Toggle emulation features" onclick="emulator.ui.toggleEmulation(event);"></div>
   </div>
 </div>
-<form id="exportoptions">
-<h2>Save PNG (compressed emulator image)</h2>
-<p><b>ROM:</b> <label><input type="radio" name="romtype" value="current" id="romtypecurrent"> Currently running</label>
-<label><input type="radio" name="romtype" value="file" id="romtypefile">Chosen RAW rom file</label>
-<label><input type="radio" name="romtype" value="rsc" id="romtypersc">Chosen .rsc rom file</label>
-<input type="file" name="romfile" id="romfile"></p>
-<p><b>RAM size:</b> <select name="ramsize">
-	<option value="1">1 MB</option><option value="2">2 MB</option>
-	<option value="4">4 MB</option><option value="8">8 MB</option>
-	<option value="0">16 MB</option><option value="?">selectable</option>
-</select></p>
-<p><b>Color:</b> <select name="colorchoice">
-	<option value="M">b/w</option><option value="C">16c</option><option value="?">selectable</option>
-</select></p>
-<p><b>Disk:</b> Currently loaded disk</p>
-<input type="button" name="pngexport" value="Export" onclick="emulator.ui.doExportPNG();">
-</form>
 <canvas id="screen" tabindex="1000" height="0"></canvas>
 <textarea id="clipboardinput"></textarea>
 </div>

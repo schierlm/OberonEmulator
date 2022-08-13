@@ -33,8 +33,7 @@ You also need a fairly fast PC or some patience during the boot process.</p>
 
 <p>An <a href="js-offline-emu.zip">Offline version</a> is also available. It does not include
 any disk images. You will need to run the online version and save a disk image to your local
-disk first. The offline version does not support dynamic boot ROMs, so some images may not work
-there.</p>
+disk first.</p>
 	
 <p>Note that clipboard access from JavaScript is severely restricted and very browser dependent.
 In recent Chrome and Chromium Edge versions full clipboard integration should work (if you give it
@@ -53,6 +52,13 @@ You can copy and paste from there like normal.</p>
 		<option>1024×512</option>
 		<option selected>1024×576</option>
 		<option>1024×768</option>
+		<option>1280×1024</option>
+		<option>1344×576</option>
+		<option>1344×768</option>
+		<option>1400×1050</option>
+		<option>1600×900</option>
+		<option>1600×1200</option>
+		<option>1920×1080</option>
 	</select>
 	<select name="image">
 		<option selected>MinimalDiskImage</option>
@@ -65,22 +71,42 @@ You can copy and paste from there like normal.</p>
 		<option>FullWithRescueDiskImage</option>
 		<option>DebuggableDiskImage</option>
 	</select>
+	| RAM:
+	<select name="mem">
+		<option value="1">1 MB</option>
+		<option value="2">2 MB</option>
+		<option value="4">4 MB</option>
+		<option value="8">8 MB</option>
+		<option value="16">16 MB</option>
+		<option value="32">32 MB</option>
+		<option value="64">64 MB</option>
+	</select>
+	| Shared VRAM:
+	<select name="dismem">
+		<option value="96">96 KB</option>
+		<option value="256">256 KB</option>
+		<option value="384">384 KB</option>
+		<option value="512">512 KB</option>
+		<option value="1024">1 MB</option>
+		<option value="2048">2 MB</option>
+	</select>
 	<input type="Button" value="Start" onclick="startEmu()"><br>
 	<label><input id="oldemu" type="radio" name="flavor" value="old">Old emulator (ugly)</label>
 	<label><input type="radio" name="flavor" value="js" checked>Pure JavaScript emulator</label>
 	<label><input id="wasmemu" type="radio" name="flavor" value="wasm" disabled>JavaScript+WebAssembly emulator (faster)</label>
+	<br><label><input id="jitemu" type="radio" name="flavor" value="jit">JavaScript JIT emulator (requires Cache Coherence support in images)</label>
 	<h3>Short description of available disk images [with last update dates]:</h3>
 	<dl>
-	<dt>MinimalDiskImage [2022-03-18]</dt><dd>A small (~100KB) disk image containing only the necessary files to start Oberon. No compiler, no tools. So
+	<dt>MinimalDiskImage [2022-08-14]</dt><dd>A small (~100KB) disk image containing only the necessary files to start Oberon. No compiler, no tools. So
 	  all you can use it for is editing Text files.</dd>
-	<dt>FullDiskImage [2022-03-18]</dt><dd>Full content of the original Project Oberon 2013, with some patches to make it more convenient in the emulator.</dd>
+	<dt>FullDiskImage [2022-08-14]</dt><dd>Full content of the original Project Oberon 2013, with some patches to make it more convenient in the emulator.</dd>
 	<dt>VanillaDiskImage [2022-03-18]</dt><dd>Full content of the Origina Project Oberon 2013, with only minimal patches to make it work in the JS emulator.</dd>
 	<dt>ExtendedOberonDiskImage [2022-03-18, v1.10]</dt><dd>Image based on Andreas Pirklbauer's <a href="https://github.com/andreaspirklbauer/Oberon-extended">Extended Oberon</a></dd>
 	<dt>IntegratedOberonDiskImage [2020-11-29]</dt><dd>Image based on Charles Perkin's <a href="https://github.com/io-core/io">Integrated Oberon</a></dd>
 	<dt>BootFromSerialLine [2021-01-19]</dt><dd>Small image that only boots from a serial line (used with a serial line to another Oberon system)</dd>
-	<dt>ColorDiskImage [2022-03-18]</dt><dd>Image patched to support 16 colors.</dd>
-	<dt>FullWithRescueDiskImage [2022-03-18]</dt><dd>Same as the image without <b>WithRescue</b>, but it includes a <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/RescueSystem">rescue system</a> to fix and recompile in case you break the boot.</dd>
-	<dt>DebuggableDiskImage [2022-03-18]</dt><dd>Image that includes a <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/KernelDebugger">Kernel debugger</a></dd>
+	<dt>ColorDiskImage [2022-08-14]</dt><dd>Image patched to support 16 colors.</dd>
+	<dt>FullWithRescueDiskImage [2022-08-14]</dt><dd>Same as the image without <b>WithRescue</b>, but it includes a <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/RescueSystem">rescue system</a> to fix and recompile in case you break the boot.</dd>
+	<dt>DebuggableDiskImage [2022-08-14]</dt><dd>Image that includes a <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/KernelDebugger">Kernel debugger</a></dd>
 	</dl>
 	<p>Images built in <b>March 2022</b> or later also work in other boards/emulators that support the Hardware Enumerator (or are 100% compatible to the original board).</p>
 </form>
@@ -111,9 +137,11 @@ function startEmu() {
 		document.location.href="old_emu.html#"+imageName+","+size.split("×").join(",");
 		return;
 	}
-	var page= document.getElementById("wasmemu").checked ? "emu-wasm.html" : "emu.html";
+	var page = document.getElementById("wasmemu").checked ? "emu-wasm.html" : (document.getElementById("jitemu").checked ? "emu-jit.html" : "emu.html");
 	var size = document.forms.emuform.size.value.split("×");
 	document.location.href = page + "?image=" + imageName +
+		"&mem=" + document.forms.emuform.mem.value +
+		"&dismem=" + document.forms.emuform.dismem.value +
 		"&width=" + size[0] + "&height=" + size[1];
 }
 </script>
