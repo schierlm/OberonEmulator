@@ -71,6 +71,7 @@ ${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line 
 
 echo '!autosleep 150' > work/.cmds
 tail -n +6 work/build.cmds >> work/.cmds
+[ -f work/DiskChangeIndicator.Mod ] && echo 'ORP.Compile DiskChangeIndicator.Mod/s ~' >> work/.cmds
 if [ -f work/build-extra1.cmds ]; then
 	echo "ORP.Compile CommandLineSystemY.Mod/s ~" >> work/.cmds
 	echo "ORP.Compile OberonX.Mod/s ~" >> work/.cmds
@@ -162,7 +163,8 @@ echo 'ORL.Link Modules ~' >> work/.cmds
 echo 'System.RenameFiles Modules.bin => Modules.bin.RS Fonts.rsc => Fonts.rsc.RS System.rsc => System.rsc.RS ~' >> work/.cmds
 echo 'ORP.Compile Modules.Mod Fonts.Mod System.Mod OberonX.Mod ~' >> work/.cmds
 echo 'ORL.Link Modules ~' >> work/.cmds
-echo 'System.CopyFiles Input.rsc => Input.rsc.RS Display.rsc => Display.rsc.RS Viewers.rsc => Viewers.rsc.RS' \
+echo 'System.CopyFiles Input.rsc => Input.rsc.RS Display.rsc => Display.rsc.RS DisplayC.rsc => DisplayC.rsc.RS' \
+     'DisplayM.rsc => DisplayM.rsc.RS Viewers.rsc => Viewers.rsc.RS' \
      'Texts.rsc => Texts.rsc.RS MenuViewers.rsc => MenuViewers.rsc.RS TextFrames.rsc => TextFrames.rsc.RS' \
      'Edit.rsc => Edit.rsc.RS PCLink1.rsc => PCLink1.rsc.RS Clipboard.rsc => Clipboard.rsc.RS' \
      'ORS.rsc => ORS.rsc.RS ORB.rsc => ORB.rsc.RS ORG.rsc => ORG.rsc.RS ORP.rsc => ORP.rsc.RS ORL.rsc => ORL.rsc.RS ~' >> work/.cmds
@@ -180,6 +182,3 @@ echo 'CommandLineDefragger.Defrag' >> work/.cmds
 echo '!exit' >> work/.cmds
 ${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/rscdsk <work/.cmds
 ${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --encode-png ../JS/${2/Disk/WithRescueDisk}.png --rom work/boot.rom work/rscdsk
-
-# TODO rescue system does not boot to rescue mode!
-# TODO check RESCUE images: RebuildToolBuilder find nothing uncompiled and mods all have valid keys! Also test RAM sizes

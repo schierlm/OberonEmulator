@@ -2,6 +2,7 @@
 set -e
 
 ./get-source.sh
+patch -d work <raw-js-input.patch
 ./apply-emulator-patches.sh
 ./derive-files.sh
 
