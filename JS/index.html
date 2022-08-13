@@ -22,10 +22,36 @@ You also need a fairly fast PC or some patience during the boot process.</p>
 		<option>1024×512</option>
 		<option selected>1024×576</option>
 		<option>1024×768</option>
+		<option>1280×1024</option>
+		<option>1344×576</option>
+		<option>1344×768</option>
+		<option>1400×1050</option>
+		<option>1600×900</option>
+		<option>1600×1200</option>
+		<option>1920×1080</option>
 	</select>
 	<select name="image">
 		<option selected>MinimalDiskImage</option>
 		<option>FullDiskImage</option>
+	</select>
+	| RAM:
+	<select name="mem">
+		<option value="1">1 MB</option>
+		<option value="2">2 MB</option>
+		<option value="4">4 MB</option>
+		<option value="8">8 MB</option>
+		<option value="16">16 MB</option>
+		<option value="32">32 MB</option>
+		<option value="64">64 MB</option>
+	</select>
+	| Shared VRAM:
+	<select name="dismem">
+		<option value="96">96 KB</option>
+		<option value="256">256 KB</option>
+		<option value="384">384 KB</option>
+		<option value="512">512 KB</option>
+		<option value="1024">1 MB</option>
+		<option value="2048">2 MB</option>
 	</select>
 	<input type="Button" value="Start" onclick="startEmu()">
 </form>
@@ -46,6 +72,8 @@ function startEmu() {
 	var imageName = document.forms.emuform.image.value;
 	var size = document.forms.emuform.size.value.split("×");
 	document.location.href = "emu.html?image=" + imageName +
+		"&mem=" + document.forms.emuform.mem.value +
+		"&dismem=" + document.forms.emuform.dismem.value +
 		"&width=" + size[0] + "&height=" + size[1];
 }
 </script>
