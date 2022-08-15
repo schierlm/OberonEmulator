@@ -49,6 +49,8 @@ public class MemoryMappedIO {
 
 	private Memory mem;
 
+	private JitCPU jitCPU;
+
 	private CharBuffer clipboardData;
 
 	public MemoryMappedIO(String disk_file, final ServerSocket ss, final Socket sock, final InetSocketAddress netAddr, final File hostFsDirectory, final ServerSocket ss2, final Socket sock2) throws IOException {
@@ -73,6 +75,10 @@ public class MemoryMappedIO {
 		this.mem = mem;
 		origWidth = mem.getImageMemory().getWidth();
 		origHeight = mem.getImageMemory().getHeight();
+	}
+
+	public void setJitCPU(JitCPU jitCPU) {
+		this.jitCPU = jitCPU;
 	}
 
 	public void setIRQEnabled(boolean enabled) {
@@ -281,6 +287,9 @@ public class MemoryMappedIO {
 			if (mem.getCodeRAM() != mem.getRAM()) {
 				System.arraycopy(mem.getRAM(), value / 4, mem.getCodeRAM(), value / 4, mem.getRAM().length - value / 4);
 			}
+			if (jitCPU != null) {
+				jitCPU.clearCache(value);
+			}
 			break;
 		}
 		case 32: {
@@ -440,7 +449,7 @@ public class MemoryMappedIO {
 					}
 				}
 				hwEnumBuf[hwEnumLen++] = (('R' << 24) | ('s' << 16) | ('e' << 8) | 't');
-				if (mem.getCodeRAM() != mem.getRAM()) {
+				if (mem.getCodeRAM() != mem.getRAM() || jitCPU != null) {
 					hwEnumBuf[hwEnumLen++] = (('I' << 24) | ('C' << 16) | ('I' << 8) | 'v');
 				}
 				break;
@@ -653,7 +662,7 @@ public class MemoryMappedIO {
 				hwEnumBuf[hwEnumLen++] = mem.getROMStart();
 				break;
 			case ('I' << 24) | ('C' << 16) | ('I' << 8) | 'v':
-				if (mem.getCodeRAM() != mem.getRAM()) {
+				if (mem.getCodeRAM() != mem.getRAM() || jitCPU != null) {
 					hwEnumBuf[hwEnumLen++] = -40;
 				}
 				break;

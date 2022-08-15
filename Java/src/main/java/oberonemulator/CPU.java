@@ -5,21 +5,21 @@ public class CPU extends Thread {
 	public static boolean nativeFloatingPoint = false;
 
 	private boolean running = true;
-	private Memory mem;
+	protected Memory mem;
 
-	private int regPC;
-	private int regH;
-	private int[] regR = new int[16];
-	private boolean flagZ, flagN, flagC, flagV;
-	private boolean largeAddressSpace;
+	protected int regPC;
+	protected int regH;
+	protected int[] regR = new int[16];
+	protected boolean flagZ, flagN, flagC, flagV;
+	protected boolean largeAddressSpace;
 
-	private int irqPC, irqStatus = IRQ_STATUS_DISABLED;
-	private boolean irqFZ, irqFN, irqFC, irqFV;
-	private long irqNanos;
+	protected int irqPC, irqStatus = IRQ_STATUS_DISABLED;
+	protected boolean irqFZ, irqFN, irqFC, irqFV;
+	protected long irqNanos;
 
-	private static int IRQ_STATUS_DISABLED = 0, IRQ_STATUS_ENABLED = 1, IRQ_STATUS_HANDLER = 2;
+	protected static int IRQ_STATUS_DISABLED = 0, IRQ_STATUS_ENABLED = 1, IRQ_STATUS_HANDLER = 2;
 
-	private static enum INS {
+	protected static enum INS {
 		MOV, LSL, ASR, ROR,
 		AND, ANN, IOR, XOR,
 		ADD, SUB, MUL, DIV,
@@ -42,7 +42,7 @@ public class CPU extends Thread {
 		mem.dispose();
 	}
 
-	public void reset(boolean cold) {
+	public synchronized void reset(boolean cold) {
 		if (cold) {
 			regR[15] = 0;
 			irqStatus = IRQ_STATUS_DISABLED;
@@ -51,7 +51,7 @@ public class CPU extends Thread {
 		regPC = mem.getROMStart() >>> 2;
 	}
 
-	public void copyRegisters(CPU otherCPU) {
+	public synchronized void copyRegisters(CPU otherCPU) {
 		if (otherCPU.isAlive())
 			throw new IllegalStateException();
 		for (int i = 0; i < regR.length; i++) {
@@ -82,7 +82,7 @@ public class CPU extends Thread {
 		}
 	}
 
-	public void singleStep() {
+	protected void handleIRQ() {
 		if (irqStatus == IRQ_STATUS_ENABLED && System.nanoTime() - irqNanos > 1000000) {
 			irqNanos = System.nanoTime();
 			irqFC = flagC; irqFN=flagN; irqFV = flagV; irqFZ = flagZ;
@@ -90,6 +90,10 @@ public class CPU extends Thread {
 			irqStatus = IRQ_STATUS_HANDLER;
 			regPC = 1;
 		}
+	}
+
+	public synchronized void singleStep() {
+		handleIRQ();
 
 		int ir = mem.readWord(regPC, true);
 		regPC++;
@@ -321,10 +325,10 @@ public class CPU extends Thread {
 		}
 	}
 
-	private static final int pbit = 0x80000000;
-	private static final int qbit = 0x40000000;
-	private static final int ubit = 0x20000000;
-	private static final int vbit = 0x10000000;
+	protected static final int pbit = 0x80000000;
+	protected static final int qbit = 0x40000000;
+	protected static final int ubit = 0x20000000;
+	protected static final int vbit = 0x10000000;
 
 	private void setRegister(int reg, int value) {
 		regR[reg] = value;
@@ -332,7 +336,7 @@ public class CPU extends Thread {
 		flagN = value < 0;
 	}
 
-	private void storeByte(int address, byte value) {
+	protected void storeByte(int address, byte value) {
 		if ((address & 0xFFFFFFFFL) < (largeAddressSpace ? Memory.LargeIOStart : Memory.IOStart)) {
 			int w = mem.readWord(address >>> 2, false);
 			int shift = (address & 3) * 8;
@@ -346,7 +350,7 @@ public class CPU extends Thread {
 		}
 	}
 
-	private static int fp_add(int x, int y, boolean u, boolean v) {
+	protected static int fp_add(int x, int y, boolean u, boolean v) {
 		if (nativeFloatingPoint)
 			return native_fp_add(x, y, u, v);
 
@@ -417,7 +421,7 @@ public class CPU extends Thread {
 		}
 	}
 
-	private static int fp_mul(int x, int y) {
+	protected static int fp_mul(int x, int y) {
 		if (nativeFloatingPoint)
 			return native_fp_mul(x, y);
 
@@ -449,7 +453,7 @@ public class CPU extends Thread {
 		}
 	}
 
-	private static int fp_div(int x, int y) {
+	protected static int fp_div(int x, int y) {
 		if (nativeFloatingPoint)
 			return native_fp_div(x, y);
 
@@ -483,7 +487,7 @@ public class CPU extends Thread {
 		}
 	}
 
-	private static int[] illegal_div(int x_s, int y_s, boolean signed_div) {
+	protected static int[] illegal_div(int x_s, int y_s, boolean signed_div) {
 		long x = x_s & 0xFFFFFFFFL, y = y_s & 0xFFFFFFFFL;
 		boolean sign = (x_s < 0) & signed_div;
 		long RQ = sign ? -x : x;

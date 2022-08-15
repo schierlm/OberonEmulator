@@ -135,7 +135,7 @@ public class Main {
 		boolean codecache = false;
 		int minimumSpan = 128, serialIndex = 0;
 		int screenWidth = -1, screenHeight = -1;
-		boolean headless = false, decodePNG = false, usePNG = false, noPadding = false, fastMode = false;
+		boolean headless = false, decodePNG = false, usePNG = false, noPadding = false, fastMode = false, jit = false;
 		String diskImage = null, romImage = null, pngTarget = null, network = null;
 		String[] serialPorts = new String[2];
 
@@ -277,6 +277,10 @@ public class Main {
 					case "--fast-mode":
 						fastMode = true;
 						break;
+					case "-j":
+					case "--jit":
+						jit = true;
+						break;
 					default:
 						usage();
 						return;
@@ -394,7 +398,7 @@ public class Main {
 		keyboard.setMMIO(mmio);
 		EmulatorFrame emuFrame = null;
 		CPU cpu = null;
-		cpu = new CPU(mem, largeAddressSpace);
+		cpu = jit ? new JitCPU(mem, largeAddressSpace) : new CPU(mem, largeAddressSpace);
 		if (!headless) {
 			emuFrame = new EmulatorFrame(cpu, mem, keyboard, mmio, img, imgmem, largeAddressSpace);
 		}
@@ -429,6 +433,7 @@ public class Main {
 		System.out.println("                           -L|--limit-features <base>[+<feature>|-<feature>]*");
 		System.out.println("                           -N|--network <net>");
 		System.out.println("                           -f|--fast-mode");
+		System.out.println("                           -j|--jit");
 		System.out.println("           Serial options: -P|-l|--pc-link");
 		System.out.println("                           --command-line");
 		System.out.println("                           -c|--serial|--connect <host>:<port>");

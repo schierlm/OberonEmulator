@@ -16,6 +16,11 @@
 
   <dependencies>
     <dependency>
+        <groupId>org.ow2.asm</groupId>
+        <artifactId>asm</artifactId>
+        <version>5.2</version>
+    </dependency>
+    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>4.13.1</version>
@@ -41,6 +46,7 @@
           <archive>
             <manifestEntries>
               <Main-Class>oberonemulator.Main</Main-Class>
+              <Class-Path>asm-5.2.jar</Class-Path>
             </manifestEntries>
           </archive>
         </configuration>
@@ -56,8 +62,9 @@
                 <copy
                   file="${project.basedir}/target/${project.build.finalName}.jar"
                   tofile="${project.basedir}/OberonEmulator.jar" />
+                <copy file="${org.ow2.asm:asm:jar}" tofile="${project.basedir}/asm-5.2.jar" />
                 <copy todir="${project.basedir}/target/dist/bin">
-                  <fileset dir="${project.basedir}" includes="OberonEmulator.jar,README.txt,*.Bin" />
+                  <fileset dir="${project.basedir}" includes="OberonEmulator.jar,asm-5.2.jar,README.txt,*.Bin" />
                   <fileset dir="${project.basedir}/.." includes="LICENSE.txt" />
                 </copy>
               </target>

@@ -99,6 +99,10 @@ public class Memory {
 		mmio.setIRQEnabled(enabled);
 	}
 
+	public void setJITCpu(JitCPU cpu) {
+		mmio.setJitCPU(cpu);
+	}
+
 	public void unblock() {
 		mmio.mouseButton(1, false);
 	}

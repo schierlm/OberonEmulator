@@ -6,6 +6,7 @@ Java/.project
 Java/.settings
 Java/*.bin
 Java/OberonEmulator.jar
+Java/asm-5.2.jar
 JS/*.png
 JS/*.zip
 JS/offline-emu.html
