@@ -22,6 +22,7 @@ import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
 
 import oberonemulator.CPU;
+import oberonemulator.Disk;
 import oberonemulator.ImageMemory;
 import oberonemulator.Memory;
 import oberonemulator.MemoryMappedIO;
@@ -118,9 +119,9 @@ public class Main {
 			int memSize = Memory.MemSize * 16; // 16 MB
 			int displayStart = 0xFCE00000;
 			ServerSocket dynamicSocket = new ServerSocket(0);
-			MemoryMappedIO mmio = new MemoryMappedIO(args[1], dynamicSocket, null, null, null, null);
-			ImageMemory imgmem = new ImageMemory(-128, new BufferedImage(1024, 768, BufferedImage.TYPE_INT_RGB), displayStart >>> 2);
-			Memory mem = new Memory(imgmem, BOOTLOADER, mmio, true, memSize, displayStart, 0xfff00000);
+			MemoryMappedIO mmio = new MemoryMappedIO(args[1], dynamicSocket, null, null, null, null, null);
+			ImageMemory imgmem = new ImageMemory(128, new BufferedImage(1024, 768, BufferedImage.TYPE_INT_RGB), displayStart >>> 2);
+			Memory mem = new Memory(imgmem, Disk.loadBootloader(Main.class.getResourceAsStream("/boot.rom")), mmio, true, memSize, displayStart, 0xfff00000, false);
 			CPU cpu = new CPU(mem, true);
 			cpu.start();
 			Socket s = new Socket("localhost", dynamicSocket.getLocalPort());
@@ -150,18 +151,4 @@ public class Main {
 		server.connect(launcher.getRemoteProxy());
 		launcher.startListening();
 	}
-
-	private static final int[] BOOTLOADER = new int[] {
-			0xe700002c, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-			0x4ee90010, 0xafe00000, 0x40000000, 0xa0e00004, 0xa0e00008, 0xa0e0000c, 0x60000004, 0x40060002,
-			0xa0e00004, 0x40000000, 0xa0e00008, 0x5000ffe4, 0x81e00008, 0xa1000000, 0x60008000, 0x81e00004,
-			0x00080001, 0x5100ffe4, 0xa0100000, 0x80e00008, 0xe9000003, 0x40000010, 0x80000000, 0xa0e0000c,
-			0x80e00004, 0x40080001, 0xa0e00004, 0x80e00008, 0x40080400, 0xa0e00008, 0x80e00008, 0x81e0000c,
-			0x00090001, 0xe5ffffe9, 0x8fe00000, 0x4ee80010, 0xc700000f, 0x0b00000e, 0x5e00ffc0, 0x60000080,
-			0x0e000000, 0x4c000020, 0x0000000f, 0x40090000, 0xe9000006, 0x40000082, 0x5100ffc4, 0xa0100000,
-			0xdf02600c, 0xf7ffffce, 0xe7000005, 0x0000000b, 0x40090000, 0xe1000002, 0x0000000b, 0x0e000000,
-			0x4000000c, 0x61000100, 0x41160000, 0xa1000000, 0x40000018, 0x61000080, 0xa1000000, 0x40000084,
-			0x5100ffc4, 0xa0100000, 0x40000000, 0xc7000000, 0x00000100, 0x0000b400, 0xffffff00, 0x000000ff,
-			0x00000000, 0x00000000, 0x0000b400, 0x00004f00,
-	};
 }

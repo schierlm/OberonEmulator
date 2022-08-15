@@ -19,6 +19,8 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 
+import oberonemulator.ImageMemory.ResizeCallback;
+
 public class EmulatorFrame extends JFrame {
 
 	private CPU cpu;
@@ -27,19 +29,20 @@ public class EmulatorFrame extends JFrame {
 	private Keyboard keyboard;
 	private boolean largeAddressSpace;
 
-	public EmulatorFrame(final Memory mem, Keyboard keyboard, MemoryMappedIO mmio, BufferedImage img, ImageMemory imgmem, boolean largeAddressSpace) {
+	public EmulatorFrame(final CPU cpu, final Memory mem, Keyboard keyboard, MemoryMappedIO mmio, BufferedImage img, final ImageMemory imgmem, boolean largeAddressSpace) {
 		super("Oberon Emulator");
 		this.mmio = mmio;
 		this.keyboard = keyboard;
 		setLayout(new BorderLayout());
 		this.mem = mem;
 		this.largeAddressSpace = largeAddressSpace;
-		cpu = new CPU(mem, largeAddressSpace);
-		EmulatorPanel ep = new EmulatorPanel(img, mmio);
+		this.cpu = cpu;
+		final EmulatorPanel ep = new EmulatorPanel(img, mmio);
 		imgmem.setObserver(ep);
 		ep.setFocusable(true);
 		ep.setFocusTraversalKeysEnabled(false);
-		add(BorderLayout.CENTER, new JScrollPane(ep));
+		final JScrollPane jsp = new JScrollPane(ep);
+		add(BorderLayout.CENTER, jsp);
 		pack();
 		setLocationRelativeTo(null);
 		setVisible(true);
@@ -51,15 +54,38 @@ public class EmulatorFrame extends JFrame {
 				dispose();
 			}
 		});
-		cpu.start();
+		imgmem.setResizeCallback(new ResizeCallback() {
+
+			@Override
+			public void resized() {
+				ep.setImage(imgmem.getImage());
+				pack();
+			}
+
+			@Override
+			public int getPreferredWidth() {
+				// avoid slight movement due to inaccuracies
+				if (Math.abs(jsp.getWidth() - imgmem.getImage().getWidth()) < 4)
+					return imgmem.getImage().getWidth();
+				return jsp.getWidth();
+			}
+
+			@Override
+			public int getPreferredHeight() {
+				// avoid slight movement due to inaccuracies
+				if (Math.abs(jsp.getHeight() - imgmem.getImage().getHeight()) < 4)
+					return imgmem.getImage().getHeight();
+				return jsp.getHeight();
+			}
+		});
 	}
 
 	public class EmulatorPanel extends JPanel {
 
 		private BufferedImage img;
 
-		public EmulatorPanel(final BufferedImage img, final MemoryMappedIO mmio) {
-			this.img = img;
+		public EmulatorPanel(final BufferedImage imgNew, final MemoryMappedIO mmio) {
+			this.img = imgNew;
 			BufferedImage cursorImage = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
 			setCursor(Toolkit.getDefaultToolkit().createCustomCursor(cursorImage, new Point(0, 0), "empty"));
 
@@ -133,6 +159,10 @@ public class EmulatorFrame extends JFrame {
 			});
 		}
 
+		public void setImage(BufferedImage image) {
+			img = image;
+		}
+
 		@Override
 		public Dimension getPreferredSize() {
 			return new Dimension(img.getWidth(), img.getHeight());
@@ -147,9 +177,5 @@ public class EmulatorFrame extends JFrame {
 				g.fillRect(0, 0, img.getWidth(), img.getHeight());
 			}
 		}
-	}
-
-	public CPU getCPU() {
-		return cpu;
 	}
 }

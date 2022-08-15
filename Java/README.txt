@@ -28,7 +28,7 @@ Usage
 
 Start the emulator like this
 
-java -jar OberonEmulator.jar 1024 768 <imagefile> <bootloadfile> PCLink
+java -jar OberonEmulator.jar <imagefile>
 
 For additional options (like network emulation), run
 
@@ -59,20 +59,25 @@ Feature sets available:
 Individual features available (and their inclusion in [N]ative, [C] and [J]S):
 
                          NCJ
-  FLOATING_POINT         ++-  FAD/FSB/FML/FDV opcodes
+  FLOATING_POINT         +++  FAD/FSB/FML/FDV opcodes
   BW_GRAPHICS            +++  Black and white graphics
   COLOR_GRAPHICS         ---  256-color graphics with dynamic screen size
-  DYNSIZE_GRAPHICS       --+  dynamic (smaller) screen size using SIZE magic
-  NEW_DYNSIZE_GRAPHICS   -+-  dynamic screen size using SIZF magic
+  COLOR16_GRAPHICS       --+  16-color graphics with dynamic screen size
+  DYNSIZE_GRAPHICS       -++  dynamic screen size (determined at startup)
+  DYNAMIC_RESOLUTION     --+  change resolution at runtime
+  SEAMLESS_RESIZE        --+  guest size tracks emulator window
   NATIVE_KEYBOARD        ++-  keyboard events using native PS/2 opcodes
   PARAVIRTUAL_KEYBOARD   --+  keyboard events using ASCII keycodes
-  WILDCARD_PCLINK        ---  downloading multiple files with wildcards
+  WILDCARD_PCLINK        --+  downloading multiple files with wildcards
   NATIVE_DISK            ++-  Disk access via SPI
   PARAVIRTUAL_DISK       --+  Disk access via direct memory access
   PARAVIRTUAL_CLIPBOARD  -++  Clipboard access
+  HOST_FILESYSTEM        ---  Host filesystem
   SPI                    ++-  Serial Peripheral Interface
-  SERIAL                 ++-  RS232 serial port
+  SERIAL                 +++  RS232 serial port
+  MULTI_SSERIAL          --+  More than one serial port
   SPI_NETWORK            +--  (wireless) network via SPI
+  PARAVIRTUAL_WIZNET     --+  WizNet compatible paravirtual network
   POWER_MANAGEMENT       --+  Interface for communicating idle times
   LARGE_ADDRESS_SPACE    -+-  4GB address space instead of 1MB
 

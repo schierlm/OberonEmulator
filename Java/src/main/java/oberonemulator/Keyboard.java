@@ -10,11 +10,14 @@ public abstract class Keyboard {
 
 	public abstract void type(char keyChar);
 
+	protected abstract int getKeyboardMode();
+
 	protected PS2 ps2 = new PS2();
 	protected MemoryMappedIO mmio;
 
 	public void setMMIO(MemoryMappedIO mmio) {
 		this.mmio = mmio;
+		mmio.setKeyboardMode(getKeyboardMode());
 	}
 
 	public static class VirtualKeyboard extends ParavirtualKeyboard {
@@ -27,6 +30,11 @@ public abstract class Keyboard {
 
 		public void type(char keyChar) {
 			mmio.keyboardInput(ps2.ps2_encode(keyChar, hint));
+		}
+
+		@Override
+		protected int getKeyboardMode() {
+			return hint ? 2 : 0;
 		}
 	}
 
@@ -50,6 +58,11 @@ public abstract class Keyboard {
 		public void type(char keyChar) {
 			mmio.keyboardInput(new int[] { (keyChar << 24) | (keyChar >>> 8 << 16) });
 		}
+
+		@Override
+		protected int getKeyboardMode() {
+			return 1;
+		}
 	}
 
 	public static class NativeKeyboard extends Keyboard {
@@ -62,6 +75,11 @@ public abstract class Keyboard {
 		}
 
 		public void type(char keyChar) {
+		}
+
+		@Override
+		protected int getKeyboardMode() {
+			return 0;
 		}
 	}
 
@@ -138,6 +156,11 @@ public abstract class Keyboard {
 				while (keyQueueOffset > 0 && keyQueue[keyQueueOffset] == 0)
 					keyQueueOffset--;
 			}
+		}
+
+		@Override
+		protected int getKeyboardMode() {
+			return 0;
 		}
 	}
 }

@@ -1,7 +1,10 @@
 package oberonemulator;
 
+import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -25,7 +28,7 @@ public class Disk {
 
 	private DiskState state;
 	private RandomAccessFile file;
-	private int offset;
+	private int offset, pvOffset;
 
 	private int[] rx_buf = new int[128];
 	private int rx_idx;
@@ -43,6 +46,7 @@ public class Disk {
 			// (DiskAdr 29)
 			read_sector(file, tx_buf, 0);
 			offset = tx_buf[0] == 0x9B1EA38D ? 0x80002 : 0;
+			pvOffset = offset == 0 ? 0 : 2;
 		} catch (IOException ex) {
 			throw new RuntimeException(ex);
 		}
@@ -151,17 +155,17 @@ public class Disk {
 		tx_idx = -1;
 	}
 
-	public static int[] loadBootloader(String filename) throws IOException {
+	public static int[] loadBootloader(InputStream rom) throws IOException {
 		int[] bootloader = new int[512];
-		RandomAccessFile raf = new RandomAccessFile(filename, "r");
+		DataInputStream dis = new DataInputStream(rom);
 		for (int i = 0; i < 512; i += 128) {
-			read_sector(raf, bootloader, i);
+			read_sector(dis, bootloader, i);
 		}
-		raf.close();
+		dis.close();
 		return bootloader;
 	}
 
-	private static void read_sector(RandomAccessFile f, int[] buf, int startOffset) throws IOException {
+	private static void read_sector(DataInput f, int[] buf, int startOffset) throws IOException {
 		byte[] bytes = new byte[512];
 		f.readFully(bytes);
 		ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer().get(buf, startOffset, 128);
@@ -181,7 +185,7 @@ public class Disk {
 	public void getDoubleSector(int sector, int[] data, int dataOffset) {
 		try {
 			byte[] bytes = new byte[1024];
-			file.seek((sector * 2 - offset) * 512);
+			file.seek((sector * 2 - pvOffset) * 512);
 			try {
 				file.readFully(bytes);
 			} catch (EOFException ex) {
@@ -196,7 +200,7 @@ public class Disk {
 	public void setDoubleSector(int sector, int[] data, int dataOffset) {
 		try {
 			byte[] bytes = new byte[1024];
-			file.seek((sector * 2 - offset) * 512);
+			file.seek((sector * 2 - pvOffset) * 512);
 			ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer().put(data, dataOffset, 256);
 			file.write(bytes);
 		} catch (IOException ex) {
@@ -206,7 +210,7 @@ public class Disk {
 
 	public void trimBeforeDoubleSector(int sector) {
 		try {
-			int newLength = (sector * 2 - offset) * 512;
+			int newLength = (sector * 2 - pvOffset) * 512;
 			if (file.length() > newLength)
 				file.setLength(newLength);
 		} catch (IOException ex) {
