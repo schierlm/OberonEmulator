@@ -20,7 +20,7 @@ public class PNGEncoder {
 			throw new IOException("Disk image size must be a multiple of the sector size (1KB)");
 		byte[] range = new byte[256];
 		for (int i = 0; i < range.length; i++) {
-			range[i] = (byte)i;
+			range[i] = (byte) i;
 		}
 		IndexColorModel cm = new IndexColorModel(8, 256, new byte[256], new byte[256], range);
 		BufferedImage bufimg = new BufferedImage(1024, size / 1024, BufferedImage.TYPE_BYTE_INDEXED, cm);
@@ -78,7 +78,7 @@ public class PNGEncoder {
 			int rgb = bufimg.getRGB(i, secnum);
 			sector[i] = (byte) rgb;
 			if (rgb != (sector[i] & 0xFF) + 0xFF000000)
-					throw new IllegalStateException(Integer.toHexString(rgb));
+				throw new IllegalStateException(Integer.toHexString(rgb));
 		}
 		out.write(sector);
 	}

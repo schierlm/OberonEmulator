@@ -1,12 +1,12 @@
 /*
  * Copyright © 2014 Peter De Wachter
  * Copyright © 2014, 2022 Michael Schierl
- * 
+ *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
  * above copyright notice and this permission notice appear in all
  * copies.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
  * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
@@ -15,7 +15,7 @@
  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
- * 
+ *
  */
 
 package oberonemulator;
@@ -39,10 +39,10 @@ public class Main {
 			PCLink.start(args[1], Integer.parseInt(args[2]), null);
 		} else if (args.length == 4 && args[0].equals("--command-line") && args[1].equals("--rom")) {
 			// dirty workaround to support "new" command line syntax in "old" emulator
-			main(new String[] { "0", "0", args[3],args[2], "CommandLine"});
+			main(new String[] { "0", "0", args[3], args[2], "CommandLine" });
 		} else if (args.length == 5 && args[0].equals("--encode-png") && args[2].equals("--rom")) {
 			// dirty workaround to support "new" command line syntax in "old" emulator
-			main(new String[] { "EncodePNG", args[1], args[4], args[3]});
+			main(new String[] { "EncodePNG", args[1], args[4], args[3] });
 		} else if (args.length == 4 && args[0].equals("EncodePNG")) {
 			PNGEncoder.encode(args[1], args[2], args[3]);
 		} else if (args.length == 4 && args[0].equals("DecodePNG")) {
@@ -108,8 +108,8 @@ public class Main {
 				Feature.LARGE_ADDRESS_SPACE.use();
 				largeAddressSpace = true;
 				memSize *= mb;
-				displayStart += (mb-1) * 0x100000;
-				romStart += (mb-1) * 0x100000;
+				displayStart += (mb - 1) * 0x100000;
+				romStart += (mb - 1) * 0x100000;
 			}
 			boolean headless = false;
 			if (args[0].equals("0") && args[1].equals("0")) {
@@ -143,7 +143,7 @@ public class Main {
 				} else if (args[4].contains(":")) {
 					String[] parts = args[4].split(":", 2);
 					rs232s = new Socket(parts[0], Integer.parseInt(parts[1]));
-				} else if (!args[4].equals("-")){
+				} else if (!args[4].equals("-")) {
 					rs232ss = new ServerSocket(Integer.parseInt(args[4]));
 				}
 				if (args.length == 6) {
@@ -151,14 +151,14 @@ public class Main {
 					String host = args[5];
 					if (host.contains(":")) {
 						int pos = args[5].lastIndexOf(":");
-						port = Integer.parseInt(host.substring(pos+1));
+						port = Integer.parseInt(host.substring(pos + 1));
 						host = host.substring(0, pos);
 					}
 					net = new InetSocketAddress(InetAddress.getByName(host), port);
 				}
 			}
 			MemoryMappedIO mmio = new MemoryMappedIO(args[2], rs232ss, rs232s, net, hostFsDirectory, rs232ss2);
-			ImageMemory imgmem = new ImageMemory(span, img, (int)((displayStart & 0xFFFFFFFFL) / 4));
+			ImageMemory imgmem = new ImageMemory(span, img, (int) ((displayStart & 0xFFFFFFFFL) / 4));
 			Memory mem = new Memory(imgmem, bootloader, mmio, largeAddressSpace, memSize, displayStart, romStart);
 			keyboard.setMMIO(mmio);
 			EmulatorFrame emuFrame = null;
@@ -174,7 +174,7 @@ public class Main {
 				PCLink.start("localhost", pcLinkPort, emuFrame);
 			}
 			if (commandLinePort != -1) {
-				PCLink.startCommandLine("localhost",  rs232ss.getLocalPort(), cpu, keyboard, mmio);
+				PCLink.startCommandLine("localhost", rs232ss.getLocalPort(), cpu, keyboard, mmio);
 			}
 		} else {
 			System.out.println("Usage: java -jar OberonEmulator.jar PCLink <host> <port>");

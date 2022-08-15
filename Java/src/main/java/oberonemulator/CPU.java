@@ -230,8 +230,7 @@ public class CPU extends Thread {
 				throw new IllegalStateException();
 			}
 			setRegister(a, a_val);
-		}
-		else if ((ir & qbit) == 0) {
+		} else if ((ir & qbit) == 0) {
 			// Memory instructions
 			int a = (ir & 0x0F000000) >> 24;
 			int b = (ir & 0x00F00000) >> 20;
@@ -259,8 +258,7 @@ public class CPU extends Thread {
 					storeByte(address, (byte) regR[a]);
 				}
 			}
-		}
-		else {
+		} else {
 			// Branch instructions
 			boolean t;
 			switch ((ir >>> 24) & 7) {
@@ -322,7 +320,7 @@ public class CPU extends Thread {
 			}
 		}
 	}
- 
+
 	private static final int pbit = 0x80000000;
 	private static final int qbit = 0x40000000;
 	private static final int ubit = 0x20000000;

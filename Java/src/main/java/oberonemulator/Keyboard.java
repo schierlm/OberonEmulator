@@ -92,7 +92,7 @@ public abstract class Keyboard {
 			if (scancodes.length > 0) {
 				toggleShift(false);
 				mmio.keyboardInput(scancodes);
-			} else if (keyQueueOffset < keyQueue.length - 1){
+			} else if (keyQueueOffset < keyQueue.length - 1) {
 				keyQueueOffset++;
 				keyQueue[keyQueueOffset] = (keyCode << 16) | 1;
 			}

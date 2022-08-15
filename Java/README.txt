@@ -6,7 +6,7 @@ Introduction
 ~~~~~~~~~~~~
 
 This is an emulator for RISC Oberon, as designed by Niklaus Wirth (NW) and
-Jürg Gutknecht (JG), and described in 
+Jürg Gutknecht (JG), and described in
 
 Project Oberon - The Design of an Operating System, a Compiler, and a Computer
 Revised Edition 2013  Niklaus Wirth  Jürg Gutknecht  ISBN 0-201-54428-8
@@ -80,7 +80,7 @@ Disk images
 ~~~~~~~~~~~
 
 This emulator contains three classes of disk images. Each of them are
-compatible with boot loaders of the same class, but not with boot loaders of 
+compatible with boot loaders of the same class, but not with boot loaders of
 other classes.
 
 JSBootLoad, JSMinimalDiskImage, JSFullDiskImage:

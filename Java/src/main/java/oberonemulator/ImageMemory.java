@@ -86,21 +86,21 @@ public class ImageMemory {
 	}
 
 	private void fill16Colors(int start, int black, int white) {
-		int dim = black + multDivColor(white-black, 1, 2);
+		int dim = black + multDivColor(white - black, 1, 2);
 		fill8Colors(start, black, dim);
-		fill8Colors(start+8, black, white);
-		palette[start + 8] = black + multDivColor(white-black, 3, 4);
+		fill8Colors(start + 8, black, white);
+		palette[start + 8] = black + multDivColor(white - black, 3, 4);
 	}
 
 	private void fill8Colors(int start, int black, int white) {
 		for (int i = 0; i < 8; i++) {
 			palette[start + i] = 0;
-			for(int j=0; j<3; j++) {
-				int mask = 0xFF << (j*8);
-				if ((i & (1<<j)) != 0) {
-					palette[start+i] |= white & mask;
+			for (int j = 0; j < 3; j++) {
+				int mask = 0xFF << (j * 8);
+				if ((i & (1 << j)) != 0) {
+					palette[start + i] |= white & mask;
 				} else {
-					palette[start+i] |= black & mask;
+					palette[start + i] |= black & mask;
 				}
 			}
 		}
@@ -108,8 +108,8 @@ public class ImageMemory {
 
 	private int multDivColor(int color, int mul, int div) {
 		int result = 0;
-		for(int i=0; i<3; i++) {
-			result |= (((color >>> (i*8)) & 0xFF) * mul / div) << (i*8);
+		for (int i = 0; i < 3; i++) {
+			result |= (((color >>> (i * 8)) & 0xFF) * mul / div) << (i * 8);
 		}
 		return result;
 	}
@@ -214,7 +214,7 @@ public class ImageMemory {
 			if (span != -128) {
 				writeWord(baseAddress, 0x53697A66); // magic value SIZF
 				writeWord(baseAddress + 1, img.getWidth());
-				writeWord(baseAddress + 2, img.getHeight());				
+				writeWord(baseAddress + 2, img.getHeight());
 				return;
 			}
 			writeWord(baseAddress, 0x53697A65); // magic value SIZE

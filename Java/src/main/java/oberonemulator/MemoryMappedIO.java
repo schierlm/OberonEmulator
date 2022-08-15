@@ -115,7 +115,7 @@ public class MemoryMappedIO {
 			if (spiSelected == 1 && sdCard != null) {
 				Feature.NATIVE_DISK.use();
 				return sdCard.disk_read();
-			} else if (spiSelected == 2 && net != null){
+			} else if (spiSelected == 2 && net != null) {
 				Feature.SPI_NETWORK.use();
 				return net.read();
 			}
@@ -271,7 +271,7 @@ public class MemoryMappedIO {
 					hostfs.handleCommand(value / 4, mem.getRAM());
 			} else if (highBits == 1) {
 				Feature.PARAVIRTUAL_WIZNET.use();
-				wiznet.handleCommand(value/4, mem.getRAM());
+				wiznet.handleCommand(value / 4, mem.getRAM());
 			}
 			break;
 		}
@@ -319,7 +319,7 @@ public class MemoryMappedIO {
 		case 60: {
 			// hardware enumerator (minimal stub implementation)
 			hwEnumOffs = hwEnumLen = 0;
-			switch(value) {
+			switch (value) {
 			case 0:
 				hwEnumBuf[hwEnumLen++] = 1; // version
 				hwEnumBuf[hwEnumLen++] = (('m' << 24) | ('V' << 16) | ('i' << 8) | 'd');
@@ -378,7 +378,7 @@ public class MemoryMappedIO {
 		int scancodeCount = scancodes.length;
 		if (scancodeCount == 0)
 			return;
-		for(int i=0; i < scancodeCount; i++) {
+		for (int i = 0; i < scancodeCount; i++) {
 			if ((scancodes[i] & 0xff) != 0) {
 				Feature.NATIVE_KEYBOARD.use();
 			}

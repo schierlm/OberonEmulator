@@ -11,10 +11,7 @@ import java.util.Arrays;
 public class Disk {
 
 	private static enum DiskState {
-		diskCommand,
-		diskRead,
-		diskWrite,
-		diskWriting,
+		diskCommand, diskRead, diskWrite, diskWriting,
 	};
 
 	private static byte[] MAGIC_TRIM_SECTOR = new byte[512];

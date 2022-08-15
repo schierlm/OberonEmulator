@@ -71,72 +71,72 @@ public class PCLink extends JFrame {
 				}
 			}
 			if (job != null) {
-					FileInputStream fIn = new FileInputStream(job[0]);
-					String filename = job[1] + "\0";
-					int flen = (int) new File(job[0]).length();
-					System.out.printf("PCLink REC Filename: %s size %d\n", job[1], flen);
-					out.write(REC);
-					out.write(filename.getBytes("ISO-8859-1"));
+				FileInputStream fIn = new FileInputStream(job[0]);
+				String filename = job[1] + "\0";
+				int flen = (int) new File(job[0]).length();
+				System.out.printf("PCLink REC Filename: %s size %d\n", job[1], flen);
+				out.write(REC);
+				out.write(filename.getBytes("ISO-8859-1"));
+				out.flush();
+				waitAck(in);
+				int partLen;
+				do {
+					partLen = Math.min(flen, 255);
+					out.write(partLen);
+					for (int i = 0; i < partLen; i++) {
+						out.write(fIn.read());
+					}
 					out.flush();
 					waitAck(in);
-					int partLen;
-					do {
-						partLen = Math.min(flen, 255);
-						out.write(partLen);
-						for (int i = 0; i < partLen; i++) {
-							out.write(fIn.read());
-						}
-						out.flush();
-						waitAck(in);
-						flen -= partLen;
-					} while (partLen == 255);
-					waitAck(in);
-					fIn.close();
+					flen -= partLen;
+				} while (partLen == 255);
+				waitAck(in);
+				fIn.close();
 			}
 			if (sjob != null) {
-					String filename = sjob[1] + "\0";
-					if (filename.contains("*")) {
-						Feature.WILDCARD_PCLINK.use();
-						File f = new File(sjob[0]).getParentFile();
-						System.out.printf("PCLink LST Pattern: %s\n", sjob[1]);
-						out.write(LST);
-						out.write(filename.getBytes("ISO-8859-1"));
-						out.flush();
-						waitAck(in);
-						int b;
-						while ((b = in.read()) > 0) {
-							StringBuilder sb = new StringBuilder();
-							do {
-							sb.append((char)b);
-							}while((b = in.read()) > 0);
-							link.sendJobs.add(new String[] { new File(f, sb.toString()).getAbsolutePath(), sb.toString() });
-						}
-						waitAck(in);
-						continue;
-					}
-					System.out.printf("PCLink SND Filename: %s\n", sjob[1]);
-					out.write(SND);
+				String filename = sjob[1] + "\0";
+				if (filename.contains("*")) {
+					Feature.WILDCARD_PCLINK.use();
+					File f = new File(sjob[0]).getParentFile();
+					System.out.printf("PCLink LST Pattern: %s\n", sjob[1]);
+					out.write(LST);
 					out.write(filename.getBytes("ISO-8859-1"));
 					out.flush();
-					int b = in.read();
-					if (b == ACK) {
-						FileOutputStream fOut = new FileOutputStream(sjob[0]);
-						int len = 255;
-						while (len == 255) {
-							len = in.read();
-							for (int i = 0; i < len; i++) {
-								fOut.write(in.read());
-							}
-							out.write(ACK);
-							out.flush();
-						}
-						fOut.close();
-					} else if (b == NAK) {
-						System.out.println("File not found.");
-					} else {
-						s.close();
-						throw new IOException("Unexpected byte received: " + b);
+					waitAck(in);
+					int b;
+					while ((b = in.read()) > 0) {
+						StringBuilder sb = new StringBuilder();
+						do {
+							sb.append((char) b);
+						} while ((b = in.read()) > 0);
+						link.sendJobs.add(new String[] { new File(f, sb.toString()).getAbsolutePath(), sb.toString() });
 					}
+					waitAck(in);
+					continue;
+				}
+				System.out.printf("PCLink SND Filename: %s\n", sjob[1]);
+				out.write(SND);
+				out.write(filename.getBytes("ISO-8859-1"));
+				out.flush();
+				int b = in.read();
+				if (b == ACK) {
+					FileOutputStream fOut = new FileOutputStream(sjob[0]);
+					int len = 255;
+					while (len == 255) {
+						len = in.read();
+						for (int i = 0; i < len; i++) {
+							fOut.write(in.read());
+						}
+						out.write(ACK);
+						out.flush();
+					}
+					fOut.close();
+				} else if (b == NAK) {
+					System.out.println("File not found.");
+				} else {
+					s.close();
+					throw new IOException("Unexpected byte received: " + b);
+				}
 			}
 		}
 	}
@@ -273,7 +273,7 @@ public class PCLink extends JFrame {
 		addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent e) {
-				synchronized(PCLink.this.lock) {
+				synchronized (PCLink.this.lock) {
 					sendJobs.add(null);
 					PCLink.this.lock.notifyAll();
 				}

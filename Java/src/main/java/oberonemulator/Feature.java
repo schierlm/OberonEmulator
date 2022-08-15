@@ -43,7 +43,7 @@ public enum Feature {
 
 	public void use() {
 		if (!isAllowed()) {
-			throw new IllegalStateException("Feature "+this.toString()+" is disabled");
+			throw new IllegalStateException("Feature " + this.toString() + " is disabled");
 		}
 	}
 
@@ -65,7 +65,7 @@ public enum Feature {
 			else if (parts[i].startsWith("-"))
 				result.remove(Feature.valueOf(parts[i].substring(1)));
 			else
-				throw new IllegalArgumentException("Invalid feature modifier: "+parts[i]);
+				throw new IllegalArgumentException("Invalid feature modifier: " + parts[i]);
 		}
 		return result;
 	}
