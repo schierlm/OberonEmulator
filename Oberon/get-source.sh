@@ -21,5 +21,5 @@ cd ..
 mv Oberon2013Modifications/work/*.txt work
 [ -n "$1" ] && mv Oberon2013Modifications/work/$1/*.txt work
 rm -rf Oberon2013Modifications/work
-cp BootLoad.Mod.txt Clipboard.Mod.txt DiskChangeIndicator.Mod.txt work
+cp BootLoad.Mod.txt Oberon2013Modifications/Clipboard.Mod.txt DiskChangeIndicator.Mod.txt work
 rm work/SmallPrograms.Mod.txt work/RISC.Mod.txt work/ORC.Mod.txt

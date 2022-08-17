@@ -6,7 +6,6 @@ patch -d work <raw-js-input.patch
 ./apply-emulator-patches.sh
 ./derive-files.sh
 
-cp OberonFromScratch.Tool.JavaScript.txt work/OberonFromScratch.Tool.txt
 sed -i '6,$ s/Mod\/s OR/Mod\/s ~\nORP.Compile OR/g' work/BuildModifications.Tool.txt
 sed -i '6,$ s/Mod\/s \(GraphicFrames\|Curves\|ColorPictureTiles\|Clock\)/Mod\/s ~\nORP.Compile \1/g' work/BuildModifications.Tool.txt
 sed -i '6,$ s/Mod\/s \(EditU\|ScriptBlocks\|DebugInspect\|MacroTool\|Pixelizr\)/Mod\/s ~\nORP.Compile \1/g' work/BuildModifications.Tool.txt

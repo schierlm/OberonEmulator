@@ -279,28 +279,3 @@
        Display.CopyPattern(Display.white, patAdr, xx + x, yy + y, Display.replace);
        INC(x, dx);
        INC(i)
---- 1/Batch.Mod.txt
-+++ 2/Batch.Mod.txt
-@@ -47,9 +47,9 @@
-     Texts.OpenWriter(W);
-     WHILE go DO
-       Texts.Scan(S);
--      IF (S.class = Texts.Char) & (S.c = "\") THEN
-+      IF (S.class = Texts.Char) & (S.codepoint = ORD("\")) THEN
-         nl := FALSE
--      ELSIF (S.class = Texts.Char) & (S.c = "*") THEN
-+      ELSIF (S.class = Texts.Char) & (S.codepoint = ORD("*")) THEN
-         V := Viewers.This(Display.Width - 10, Display.Height - 10);
-         TextFrames.Show(V.dsc.next(TextFrames.Frame), Oberon.Log.len);
-       ELSIF S.class = Texts.Int THEN
---- 1/ImageTool.Mod.txt
-+++ 2/ImageTool.Mod.txt
-@@ -44,7 +44,7 @@
-   BEGIN
-     Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos);
-     Texts.Scan(S);
--    IF (S.class = Texts.Char) & (S.c = "^") THEN
-+    IF (S.class = Texts.Char) & (S.codepoint = ORD("^")) THEN
-       Oberon.GetSelection(T, beg, end, time);
-       IF time >= 0 THEN Texts.OpenScanner(S, T, beg); Texts.Scan(S) END
-     END;
