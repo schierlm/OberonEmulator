@@ -139,7 +139,7 @@ cp Oberon2013Modifications/RescueSystem/*.txt work
 
 patch -d work <Oberon2013Modifications/RescueSystem/RescueSystem.patch -F 3
 patch -d work <Oberon2013Modifications/RescueSystem/POSTPATCH_after_DefragSupport.patch
-patch -d work <rescue-system-paravirtualized-disk.patch
+patch -d work <Oberon2013Modifications/HardwareEnumerator/RescueSystem.patch
 
 for FILE in Kernel.Mod System.RS.Mod Modules.RS.Mod Oberon.Mod Fonts.Embedded.Mod RescueSystemLoader.Mod RescueSystemTool.Mod System.Tool.RS; do
 	unix2mac work/$FILE.txt
