@@ -1,5 +1,5 @@
 --- /dev/null
-+++ R5Bootstrap.Mod.txt
++++ R5Bootstrap.Mod
 @@ -0,0 +1,8 @@
 +MODULE R5Bootstrap;
 +  IMPORT Modules := R5Modules;
@@ -9,8 +9,8 @@
 + 
 +BEGIN Modules.Load("R5Oberon", Mod); Mod := NIL
 +END R5Bootstrap.
---- R5Edit.Mod.txt
-+++ R5Edit.Mod.txt
+--- R5Edit.Mod
++++ R5Edit.Mod
 @@ -2,7 +2,7 @@
    IMPORT Files := R5Files, Fonts := R5Fonts, Texts := R5Texts, Display := R5Display, Viewers := R5Viewers, Oberon := R5Oberon, MenuViewers := R5MenuViewers, TextFrames := R5TextFrames;
  
@@ -20,8 +20,8 @@
  
    VAR W: Texts.Writer;
      time: LONGINT;
---- R5Modules.Mod.txt
-+++ R5Modules.Mod.txt
+--- R5Modules.Mod
++++ R5Modules.Mod
 @@ -220,6 +220,6 @@
      SYSTEM.GET(16, AllocPtr); SYSTEM.GET(20, root); SYSTEM.GET(24, limit); DEC(limit, 8000H)
    END Init;
@@ -30,8 +30,8 @@
 +BEGIN Init; Load("R5Bootstrap", M);
      LED(res); REPEAT UNTIL FALSE  (*only if load fails*)
  END R5Modules.
---- R5System.Mod.txt	Sat Nov 24 21:24:40 2018
-+++ R5System.Mod.txt	Sat Nov 24 21:30:57 2018
+--- R5System.Mod
++++ R5System.Mod
 @@ -1,10 +1,10 @@
  MODULE R5System; (*JG 3.10.90 / NW 12.10.93 / NW 20.6.2016*)
    IMPORT SYSTEM, Kernel := R5Kernel, FileDir := R5FileDir, Files := R5Files, Modules := R5Modules,
@@ -57,8 +57,8 @@
      toolV := MenuViewers.New(menu, main, TextFrames.menuH, X, Y)
    END OpenViewers;
  
---- R5ORS.Mod.txt
-+++ R5ORS.Mod.txt
+--- R5ORS.Mod
++++ R5ORS.Mod
 @@ -302,7 +302,7 @@
    EnterKW(record, "RECORD");
    EnterKW(repeat, "REPEAT");
@@ -68,19 +68,8 @@
    EnterKW(module, "MODULE");
    KWX[6] := k;
    EnterKW(pointer, "POINTER");
---- ImageORL.Mod.txt
-+++ ImageORL.Mod.txt
-@@ -213,7 +213,7 @@
-     NILMOD := SYSTEM.VAL(Module, ImageOffset); (* NIL *)
-     root := NILMOD;
-     limit := 40000H;
--    Load("Modules", newmod); NILMOD := NIL;
-+    Load("R5Modules", newmod); NILMOD := NIL;
-     SYSTEM.PUT(ImageOffset + 10H, AllocPtr);
-     SYSTEM.PUT(ImageOffset + 14H, SYSTEM.VAL(INTEGER, root) - ImageOffset);
-     SYSTEM.PUT(ImageOffset + 18H, limit); root := NIL;
---- R5Oberon.Mod.txt
-+++ R5Oberon.Mod.txt
+--- R5Oberon.Mod
++++ R5Oberon.Mod
 @@ -426,5 +426,5 @@
    CurFnt := Fonts.Default; CurCol := Display.white; CurOff := 0;
  
