@@ -1,0 +1,275 @@
+MODULE DisplayC32;  (*NW 5.11.2013*)
+  IMPORT SYSTEM;
+
+  CONST black* = 0; white* = 15;  (*black = background*)
+    replace* = 0; paint* = 1; invert* = 2;  (*modes*)
+
+  TYPE Frame* = POINTER TO FrameDesc;
+    FrameMsg* = RECORD END ;
+    Handler* = PROCEDURE (F: Frame; VAR M: FrameMsg);
+    FrameDesc* = RECORD next*, dsc*: Frame;
+        X*, Y*, W*, H*: INTEGER;
+        handle*: Handler
+      END ;
+
+  VAR Base*, Width*, Height*, Depth*, Span*: INTEGER;
+    arrow*, star*, hook*, updown*, block*, cross*, grey*: INTEGER;
+    (*a pattern is an array of bytes; the first is its width (< 32), the second its height, the rest the raster*)
+
+    palette: ARRAY 256 OF INTEGER;
+
+  PROCEDURE Handle*(F: Frame; VAR M: FrameMsg);
+  BEGIN
+    IF (F # NIL) & (F.handle # NIL) THEN F.handle(F, M) END
+  END Handle;
+
+  PROCEDURE InitResolution*;
+  VAR val, modes, firstmode, currmode: INTEGER;
+  BEGIN
+    SYSTEM.PUT(-4, 74726356H); (* 'trcV' *)
+    SYSTEM.GET(-4, modes);
+    SYSTEM.GET(-4, firstmode);
+    SYSTEM.GET(-4, currmode);
+    IF (currmode # 0) THEN
+      SYSTEM.GET(currmode, val); currmode := val;
+    END;
+    IF (currmode >= firstmode) & (currmode < modes + firstmode) THEN
+      WHILE currmode > firstmode DO
+        SYSTEM.GET(-4, val); SYSTEM.GET(-4, val); SYSTEM.GET(-4, val); SYSTEM.GET(-4, val); DEC(currmode)
+      END;
+      SYSTEM.GET(-4, Width);
+      SYSTEM.GET(-4, Height);
+      SYSTEM.GET(-4, Span);
+      SYSTEM.GET(-4, Base);
+    ELSIF ASR(currmode, 29) MOD 8 = 5 THEN
+      Width := currmode DIV 8000H MOD 4000H;
+      Height := currmode MOD 4000H;
+      SYSTEM.PUT(-4, 74726344H); (* 'trcD' *)
+      SYSTEM.GET(-4, val);
+      SYSTEM.GET(-4, val); SYSTEM.GET(-4, val); SYSTEM.GET(-4, val); SYSTEM.GET(-4, val);
+      SYSTEM.GET(-4, Span);
+      SYSTEM.GET(-4, Base);
+      IF Span = -1 THEN Span := Width * 4 END
+    ELSIF modes > 0 THEN
+      SYSTEM.GET(-4, Width);
+      SYSTEM.GET(-4, Height);
+      Base := 0E7F00H; Span := 0
+    ELSE
+      Base := 0E7F00H; Width := 0; Height := 0; Span := 0
+    END
+  END InitResolution;
+
+  PROCEDURE SetSize*(w, h: INTEGER) : BOOLEAN;
+    VAR val, modes, firstmode, modeaddr, i, mw, mh: INTEGER; success: BOOLEAN;
+  BEGIN success := FALSE;
+    SYSTEM.PUT(-4, 74726356H); (* 'trcV' *)
+    SYSTEM.GET(-4, modes);
+    SYSTEM.GET(-4, firstmode);
+    SYSTEM.GET(-4, modeaddr);
+    IF modeaddr # 0 THEN
+      FOR i := 0 TO modes DO
+        SYSTEM.GET(-4, mw); SYSTEM.GET(-4, mh); SYSTEM.GET(-4, val); SYSTEM.GET(-4, val);
+        IF ~success & (mw = w) & (mh = h) THEN
+          SYSTEM.PUT(modeaddr, firstmode + i); success := TRUE
+        END
+      END
+    END;
+    IF ~success & (w > 0) & (h > 0) THEN
+      SYSTEM.PUT(-4, 74726344H); (* 'trcD' *)
+      SYSTEM.GET(-4, modeaddr);
+      IF modeaddr # 0 THEN
+        success := TRUE;
+        SYSTEM.GET(-4, val); (* max width *)
+        IF w > val THEN success := FALSE END;
+        SYSTEM.GET(-4, val); (* max height *)
+        IF h > val THEN success := FALSE END;
+        SYSTEM.GET(-4, val); (* width increment *)
+        IF w MOD val # 0 THEN success := FALSE END;
+        SYSTEM.GET(-4, val); (* height increment *)
+        IF h MOD val # 0 THEN success := FALSE END;
+        IF success THEN
+          SYSTEM.PUT(modeaddr, 0A0000000H + w * 8000H + h)
+        END
+      END
+    END;
+    IF success THEN InitResolution END
+  RETURN success
+  END SetSize;
+
+  PROCEDURE SetDepth*(depth: INTEGER): BOOLEAN;
+  BEGIN
+  RETURN depth = 32
+  END SetDepth;
+
+  (* raster ops *)
+
+  PROCEDURE ConvertColor(col: INTEGER) : SET;
+    VAR result: INTEGER;
+  BEGIN
+    IF (col >= 0) & (col < 256) THEN
+      result := palette[col];
+      IF col < 40H THEN result := result + col * 1000000H + 40000000H END;
+    ELSE
+      result := col MOD 1000000H;
+    END
+  RETURN SYSTEM.VAL(SET, result)
+  END ConvertColor;
+
+  PROCEDURE UpdatePixel(a: INTEGER; s: SET; mode: INTEGER);
+    VAR pix: SET;
+  BEGIN
+    IF mode = invert THEN
+      SYSTEM.GET(a, pix);
+      IF (pix * {30} # {}) & (s * {30} # {}) THEN
+        SYSTEM.PUT(a, ConvertColor(SYSTEM.VAL(INTEGER, pix / s) DIV 1000000H MOD 40H))
+      ELSIF s = {24..27,30} THEN
+        SYSTEM.PUT(a, pix / {0..23});
+      ELSE
+        SYSTEM.PUT(a, (pix / s) - {24..31})
+      END
+    ELSE
+      SYSTEM.PUT(a, s)
+    END
+  END UpdatePixel;
+
+  PROCEDURE Dot*(col, x, y, mode: INTEGER);
+    VAR a: INTEGER; s: SET;
+  BEGIN a := Base + x * 4 + y*Span;
+    s := ConvertColor(col); UpdatePixel(a, s, mode);
+  END Dot;
+
+  PROCEDURE ReplConst*(col, x, y, w, h, mode: INTEGER);
+    VAR a, a0, a1: INTEGER; s: SET; tmp: BOOLEAN;
+  BEGIN
+    IF Span = 0 THEN tmp := SetSize(Width, Height) END;
+    a := Base + y*Span + x * 4;
+    s := ConvertColor(col);
+    a0 := a;
+    IF mode = invert THEN
+      WHILE a0 <= a + (h-1)*Span DO
+        a1 := a0;
+        WHILE a1 < a0 + w * 4 DO
+          UpdatePixel(a1, s, mode);
+          INC(a1, 4)
+        END;
+        INC(a0, Span)
+      END
+    ELSE
+      WHILE a0 <= a + (h-1)*Span DO
+        a1 := a0;
+        WHILE a1 < a0 + w * 4 DO
+          SYSTEM.PUT(a1, s); INC(a1, 4)
+        END;
+        INC(a0, Span)
+      END
+    END;
+  END ReplConst;
+
+  PROCEDURE CopyPattern*(col, patadr, x, y, mode: INTEGER);  (*only for modes = paint, invert*)
+    VAR a, a0, a1, ww, pwd, xx: INTEGER;
+      w, h, pbt: BYTE;
+      s: SET;
+  BEGIN SYSTEM.GET(patadr, w); SYSTEM.GET(patadr+1, h); INC(patadr, 2);
+    a := Base + x * 4 + y*Span;
+    ww := w - 1;
+    a0 := a;
+    s := ConvertColor(col);
+    WHILE a0 <= a + (h-1)*Span DO
+      (*build pattern line; w < 32*)
+      SYSTEM.GET(patadr, pbt); INC(patadr); pwd := pbt;
+      IF w > 8 THEN SYSTEM.GET(patadr, pbt); INC(patadr); pwd := pbt*100H + pwd;
+        IF w > 16 THEN SYSTEM.GET(patadr, pbt); INC(patadr); pwd := pbt*10000H + pwd;
+          IF w > 24 THEN SYSTEM.GET(patadr, pbt); INC(patadr); pwd := pbt*1000000H + pwd END
+        END
+      END;
+      xx := x;
+      FOR a1 := a0 TO a0 + ww * 4 BY 4 DO
+        IF SYSTEM.VAL(SET, pwd) * {(xx-x) DIV 4} # {} THEN UpdatePixel(a1, s, mode) END;
+        INC(xx, 4);
+      END;
+      INC(a0, Span)
+    END
+  END CopyPattern;
+
+  PROCEDURE CopyBlock*(sx, sy, w, h, dx, dy, mode: INTEGER); (*only for mode = replace*)
+    VAR sa, da, sa0, sa1, d: INTEGER;
+      end, step: INTEGER;
+      src: SET;
+  BEGIN
+    sa := Base + sx*4 + sy*Span; da := Base + dx*4 + dy*Span;
+    d := da - sa; (*displacement in words*)
+    IF d >= 0 THEN (*copy up, scan down*) sa0 := sa + (h-1)*Span; end := sa-Span; step := -Span
+    ELSE (*copy down, scan up*) sa0 := sa; end := sa + h*Span; step := Span
+    END;
+    WHILE sa0 # end DO
+      FOR sa1 := sa0 TO sa0 + w * 4 - 4 BY 4 DO
+        SYSTEM.GET(sa1, src); SYSTEM.PUT(sa1+d, src)
+      END;
+      INC(sa0, step)
+    END
+  END CopyBlock;
+
+  PROCEDURE ReplPattern*(col, patadr, x, y, w, h, mode: INTEGER);
+  (* pattern width = 32, fixed; pattern starts at patadr+4, for mode = invert only *)
+    VAR al, ar, a0, a1: INTEGER;
+      pta0, pta1: INTEGER;  (*pattern addresses*)
+      ph: BYTE;
+      ptw, ptp: SET;
+  BEGIN al := Base + x * 4 + y*Span; SYSTEM.GET(patadr+1, ph);
+    pta0 := patadr+4; pta1 := ph*4 + pta0; ar := al + w*4;
+    a0 := al;
+    ptp := ConvertColor(col);
+    WHILE a0 <= al + (h-1)*Span DO
+      SYSTEM.GET(pta0, ptw);
+      FOR a1 := a0 TO ar - 4 BY 4 DO
+        IF ptw * {(a0 - a1) DIV 4 MOD 32} # {} THEN
+          UpdatePixel(a1, ptp, invert);
+        END;
+      END;
+      INC(pta0, 4); INC(ar, Span); INC(a0, Span);
+      IF pta0 = pta1 THEN pta0 := patadr+4 END
+    END
+  END ReplPattern;
+
+  PROCEDURE GetPalette*(col: INTEGER; VAR val: INTEGER): BOOLEAN;
+    VAR result: BOOLEAN;
+  BEGIN result := FALSE;
+    IF (col < 256) THEN
+      val := palette[col];
+      result := TRUE
+    END
+  RETURN result
+  END GetPalette;
+
+  PROCEDURE SetPalette*(col, val: INTEGER);
+  BEGIN
+    IF (col < 256) THEN palette[col] := val MOD 1000000H END
+  END SetPalette;
+
+  PROCEDURE InitPalette;
+    VAR i, j, k, pos: INTEGER;
+  BEGIN
+    palette[0] := 0FFFFFFH;  palette[1] := 0FF0000H;  palette[2] := 000FF00H;  palette[3] := 00000FFH;
+    palette[4] := 0FF00FFH;  palette[5] := 0FFFF00H;  palette[6] := 000FFFFH;  palette[7] := 0AA0000H;
+    palette[8] := 0009A00H;  palette[9] := 000009AH;  palette[10] := 00ACBF3H; palette[11] := 0008282H;
+    palette[12] := 08A8A8AH; palette[13] := 0BEBEBEH; palette[14] := 0DFDFDFH; palette[15] := 0000000H;
+    FOR i := 16 TO 39 DO palette[i] := (i-15) * 10 * 010101H END;
+    pos := 40;
+    FOR i := 0 TO 5 DO
+      FOR j := 0 TO 5 DO
+        FOR k := 0 TO 5 DO
+          palette[pos] := i * 330000H + j * 3300H + k * 33H; INC(pos)
+        END
+      END
+    END
+  END InitPalette;
+
+BEGIN Depth := 8; InitResolution; InitPalette;
+  arrow := SYSTEM.ADR($0F0F 0060 0070 0038 001C 000E 0007 8003 C101 E300 7700 3F00 1F00 3F00 7F00 FF00$);
+  star := SYSTEM.ADR($0F0F 8000 8220 8410 8808 9004 A002 C001 7F7F C001 A002 9004 8808 8410 8220 8000$);
+  hook := SYSTEM.ADR($0C0C 070F 8707 C703 E701 F700 7F00 3F00 1F00 0F00 0700 0300 01$);
+  updown := SYSTEM.ADR($080E 183C 7EFF 1818 1818 1818 FF7E3C18$);
+  block := SYSTEM.ADR($0808 FFFF C3C3 C3C3 FFFF$);
+  cross := SYSTEM.ADR($0F0F 0140 0220 0410 0808 1004 2002 4001 0000 4001 2002 1004 0808 0410 0220 0140$);
+  grey := SYSTEM.ADR($2002 0000 5555 5555 AAAA AAAA$)
+END DisplayC32.

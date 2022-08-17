@@ -66,12 +66,14 @@ echo '!exit' >> work/.cmds
 ${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <work/.cmds
 head -n 4 work/build.cmds > work/.cmds
 [ -f work/DisplayC8.Mod ] && echo 'ORP.Compile DisplayC8.Mod/s ~' >> work/.cmds
+[ -f work/DisplayC32.Mod ] && echo 'ORP.Compile DisplayC32.Mod/s ~' >> work/.cmds
 echo '!exit' >> work/.cmds
 ${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <work/.cmds
 
 echo '!autosleep 150' > work/.cmds
 tail -n +6 work/build.cmds >> work/.cmds
 [ -f work/DiskChangeIndicator.Mod ] && echo 'ORP.Compile DiskChangeIndicator.Mod/s ~' >> work/.cmds
+[ -f work/ColorGradient.Mod ] && echo 'ORP.Compile ColorGradient.Mod/s ~' >> work/.cmds
 if [ -f work/build-extra1.cmds ]; then
 	echo "ORP.Compile CommandLineSystemY.Mod/s ~" >> work/.cmds
 	echo "ORP.Compile OberonX.Mod/s ~" >> work/.cmds
@@ -168,6 +170,8 @@ echo 'System.CopyFiles Input.rsc => Input.rsc.RS Display.rsc => Display.rsc.RS D
      'Texts.rsc => Texts.rsc.RS MenuViewers.rsc => MenuViewers.rsc.RS TextFrames.rsc => TextFrames.rsc.RS' \
      'Edit.rsc => Edit.rsc.RS PCLink1.rsc => PCLink1.rsc.RS Clipboard.rsc => Clipboard.rsc.RS' \
      'ORS.rsc => ORS.rsc.RS ORB.rsc => ORB.rsc.RS ORG.rsc => ORG.rsc.RS ORP.rsc => ORP.rsc.RS ORL.rsc => ORL.rsc.RS ~' >> work/.cmds
+[ -f work/DisplayC8.Mod ] && echo 'System.CopyFiles DisplayC8.rsc => DisplayC8.rsc.RS ~' >> work/.cmds
+[ -f work/DisplayC32.Mod ] && echo 'System.CopyFiles DisplayC32.rsc => DisplayC32.rsc.RS ~' >> work/.cmds
 echo 'RescueSystemTool.LoadRescue' >> work/.cmds
 echo 'System.DeleteFiles Fonts.Embedded.Mod Modules.RS.Mod System.RS.Mod ~' >> work/.cmds
 echo '!exit' >> work/.cmds

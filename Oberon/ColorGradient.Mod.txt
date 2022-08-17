@@ -1,0 +1,151 @@
+MODULE ColorGradient;
+  IMPORT Display, Viewers, Oberon, MenuViewers, TextFrames;
+
+  CONST Menu = "System.Close  System.Copy  System.Grow";
+
+  TYPE Frame* = POINTER TO FrameDesc;
+
+    FrameDesc* = RECORD (Display.FrameDesc)
+      mode, xPos, cornerCount, nextCorner: INTEGER;
+      mouseDown, gradientDrawn: BOOLEAN;
+      corners: ARRAY 4 OF INTEGER;
+    END;
+
+  PROCEDURE GetPixelValue(VAR F: Frame; x, y: INTEGER) : INTEGER;
+  VAR c0,c1,c2, h, s, v, H, f, p, q, t, result: INTEGER;
+  BEGIN
+    IF F.mode < 4 THEN
+    IF F.mode = 1 THEN c0 := (F.xPos DIV 4) * 10000H; c1 := 100H; c2 := 1H
+    ELSIF F.mode = 2 THEN c0 := (F.xPos DIV 4) * 100H; c1 := 1H; c2 := 10000H
+    ELSIF F.mode = 3 THEN c0 := (F.xPos DIV 4) * 1H; c1 := 10000H; c2 := 100H
+    END;
+      result := c0 + ((x - F.X) * 256 DIV F.W) * c1 + (255 - (y - F.Y) * 256 DIV F.H) * c2;
+    ELSE
+      IF F.mode = 4 THEN
+        h := F.xPos * 1536 DIV 1024; s := (x - F.X) * 256 DIV F.W; v := 255 - (y - F.Y) * 256 DIV F.H;
+      ELSIF F.mode = 5 THEN
+        s := F.xPos DIV 4; v := (x - F.X) * 256 DIV F.W; h := 1536 - (y - F.Y) * 1536 DIV F.H
+      ELSIF F.mode = 6 THEN
+        v := F.xPos DIV 4; h := (x - F.X) * 1536 DIV F.W; s := 255 - (y - F.Y) * 256 DIV F.H
+      END;
+      H := h DIV 256 MOD 6; f := h MOD 256; p := v * (255 - s) DIV 256;
+      q := v * (255 - s * f DIV 256) DIV 256;
+      t := v * (255 - s * (256-f) DIV 256) DIV 256;
+      IF H = 0 THEN result := v * 10000H + t* 100H + p
+      ELSIF H = 1 THEN result := q * 10000H + v * 100H + p
+      ELSIF H = 2 THEN result := p * 10000H + v * 100H + t
+      ELSIF H = 3 THEN result := p * 10000H + q * 100H + v
+      ELSIF H = 4 THEN result := t * 10000H + p * 100H + v
+      ELSIF H = 5 THEN result := v * 10000H + p * 100H + q
+      END
+    END
+  RETURN result
+  END GetPixelValue;
+
+  PROCEDURE DrawGradient(VAR F: Frame);
+    VAR c0, c1, c2, c, x, y: INTEGER;
+  BEGIN
+    Oberon.RemoveMarks(F.X, F.Y, F.W, F.H); F.gradientDrawn := TRUE;
+    IF F.mode < 4 THEN
+      IF F.mode = 1 THEN c0 := (F.xPos DIV 4) * 10000H; c1 := 100H; c2 := 1H
+      ELSIF F.mode = 2 THEN c0 := (F.xPos DIV 4) * 100H; c1 := 1H; c2 := 10000H
+      ELSIF F.mode = 3 THEN c0 := (F.xPos DIV 4) * 1H; c1 := 10000H; c2 := 100H
+      END;
+      FOR x := 0 TO 255 DO
+        c := c0 + c1 * x;
+        FOR y := 0 TO 255 DO
+          Display.ReplConst(1000000H + c + c2 * (255-y), F.X + x * F.W DIV 256, F.Y + y * F.H DIV 256,
+            F.W DIV 256 + 1, F.H DIV 256 + 1, Display.replace)
+        END
+      END;
+    ELSE (* HSV *)
+      FOR x := F.X TO F.X+F.W-1 DO
+        FOR y := F.Y TO F.Y+F.H-1 DO
+          Display.Dot(1000000H+GetPixelValue(F, x, y), x, y, Display.replace)
+        END
+      END
+    END
+  END DrawGradient;
+
+  PROCEDURE InterpolateColor(c1, c2, at, max: INTEGER): INTEGER;
+  VAR r, g, b: INTEGER;
+  BEGIN
+    r := ((c1 DIV 10000H) * (max-at) + (c2 DIV 10000H) * at) DIV max;
+    g := ((c1 DIV 100H MOD 100H) * (max-at) + (c2 DIV 100H MOD 100H) * at) DIV max;
+    b := ((c1 MOD 100H) * (max-at) + (c2 MOD 100H) * at) DIV max;
+  RETURN r * 10000H + g * 100H + b
+  END InterpolateColor;
+
+  PROCEDURE DrawCornersAt(VAR F: Frame; p1, p2, p3, p4: INTEGER);
+    VAR c1, c2, c3, c4, ct, cb, x, y: INTEGER;
+  BEGIN
+    F.gradientDrawn := FALSE;
+    c1 := F.corners[(F.nextCorner + p1) MOD 4];
+    c2 := F.corners[(F.nextCorner + p2) MOD 4];
+    c3 := F.corners[(F.nextCorner + p3) MOD 4];
+    c4 := F.corners[(F.nextCorner + p4) MOD 4];
+    FOR x := F.X TO F.X + F.W - 1 DO
+      ct := InterpolateColor(c1, c2, x - F.X, F.W - 1);
+      cb := InterpolateColor(c3, c4, x- F.X, F.W - 1);
+      FOR y := F.Y TO F.Y + F.H - 1 DO
+        Display.Dot(InterpolateColor(cb, ct, y - F.Y, F.H - 1), x, y, Display.replace)
+      END
+    END
+  END DrawCornersAt;
+
+  PROCEDURE DrawCorners(VAR F: Frame);
+  BEGIN
+    IF F.cornerCount = 1 THEN DrawCornersAt(F, 3, 3, 3, 3)
+    ELSIF F.cornerCount = 2 THEN DrawCornersAt(F, 2, 3, 2, 3)
+    ELSIF F.cornerCount = 3 THEN DrawCornersAt(F, 1, 2, 3, 3)
+    ELSE DrawCornersAt(F, 0, 1, 2, 3)
+    END;
+  END DrawCorners;
+
+  PROCEDURE DrawContent(VAR F: Frame);
+  BEGIN
+    IF F.cornerCount = 0 THEN DrawGradient(F) ELSE DrawCorners(F) END
+  END DrawContent;
+
+  PROCEDURE Handler(F: Display.Frame; VAR M: Display.FrameMsg);
+    VAR F0: Display.Frame;
+  BEGIN
+    CASE F OF Frame:
+      CASE M OF Oberon.InputMsg:
+        IF M.id = Oberon.track THEN
+          IF M.keys = {2} THEN
+            F.xPos := (M.X - F.X) * 1024 DIV F.W;
+            F.mode := 6 - (M.Y - F.Y) * 6 DIV F.H;
+            DrawGradient(F);
+          ELSIF (M.keys = {0}) & ~F.mouseDown & F.gradientDrawn THEN
+            F.corners[F.nextCorner] := GetPixelValue(F, M.X, M.Y);
+            F.nextCorner := (F.nextCorner + 1) MOD 4;
+            IF F.cornerCount < 4 THEN INC(F.cornerCount) END;
+            DrawCorners(F)
+          ELSIF (M.keys = {1}) & ~F.mouseDown & (F.cornerCount > 0) THEN
+            DEC(F.cornerCount); F.nextCorner := (F.nextCorner + 3) MOD 4;
+            DrawContent(F)
+          END;
+          F.mouseDown := M.keys # {};
+          Oberon.DrawMouseArrow(M.X, M.Y)
+        END
+      | MenuViewers.ModifyMsg:
+        F.Y := M.Y; F.H := M.H; DrawContent(F)
+      | Oberon.ControlMsg:
+        IF M.id = Oberon.neutralize THEN Oberon.RemoveMarks(F.X, F.Y, F.W, F.H) END
+      | Oberon.CopyMsg:
+        NEW(F0); F0^ := F^; M(Oberon.CopyMsg).F := F0
+      END
+    END
+  END Handler;
+
+  PROCEDURE Draw*;
+    VAR V: Viewers.Viewer; X, Y: INTEGER; F: Frame;
+  BEGIN
+    NEW(F); F.handle := Handler; F.mode := 1; F.xPos := 0; F.cornerCount:=0; F.nextCorner := 0;
+    F.mouseDown := FALSE;
+    Oberon.AllocateUserViewer(Oberon.Par.vwr.X, X, Y);
+    V := MenuViewers.New(TextFrames.NewMenu("ColorGradient", Menu), F, TextFrames.menuH, X, Y)
+  END Draw;
+
+END ColorGradient.
