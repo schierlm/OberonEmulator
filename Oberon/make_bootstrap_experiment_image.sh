@@ -38,7 +38,7 @@ JAVA="$1"
 
 cp download/base.dsk work/dsk
 
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <<'EOF'
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line work/dsk <<'EOF'
 !cd work
 +R5Bootstrap.Mod
 +R5Clipboard.Mod
@@ -73,7 +73,7 @@ ORP.Compile R5Fonts.Mod/s R5Texts.Mod/s R5Oberon.Mod/s ~
 !exit
 EOF
 
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <<'EOF'
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line work/dsk <<'EOF'
 ORP.Compile R5MenuViewers.Mod/s R5TextFrames.Mod/s ~
 ORP.Compile R5System.Mod/s R5Edit.Mod/s ~
 ORP.Compile R5Bootstrap.Mod/s R5Clipboard.Mod/s ~
@@ -82,7 +82,7 @@ ORP.Compile R5ORS.Mod/s ~
 !exit
 EOF
 
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <<'EOF'
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line work/dsk <<'EOF'
 ORP.Compile R5ORB.Mod/s ~
 ORP.Compile R5ORG.Mod/s ~
 ORP.Compile R5ORP.Mod/s ORL.Mod/s ~
@@ -115,4 +115,4 @@ CommandLineDefragger.Defrag
 EOF
 
 Oberon2013Modifications/DefragmentFreeSpace/trim_defragmented_image.sh work/dsk
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --encode-png ../Java/BootstrapExperimentDiskImage.png --rom ../Java/JSBootLoad.rom work/dsk_trimmed
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --encode-png ../Java/BootstrapExperimentDiskImage.png work/dsk_trimmed

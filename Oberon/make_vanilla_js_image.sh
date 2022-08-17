@@ -26,7 +26,7 @@ wget -nc https://github.com/pdewacht/oberon-risc-emu/raw/master/DiskImage/Oberon
 cd ..
 cp download/Oberon-2020-08-18.dsk work/dsk
 
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/CompatibleBootLoad.rom work/dsk <<'EOF'
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line work/dsk <<'EOF'
 !mouse 660,730
 !mouse L
 !sleep 1200
@@ -44,7 +44,7 @@ ${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line 
 !exit
 EOF
 
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/CompatibleBootLoad.rom work/dsk <<'EOF'
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line work/dsk <<'EOF'
 !mouse 660,730
 !mouse L
 !sleep 1200
@@ -91,7 +91,7 @@ cat work/tmp work/dsk >download/base.dsk
 rm work/tmp
 cp download/base.dsk work/dsk
 
-${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line --rom ../Java/JSBootLoad.rom work/dsk <<'EOF'
+${JAVA} -Djava.awt.headless=true -jar ../Java/OberonEmulator.jar --command-line work/dsk <<'EOF'
 !cd work
 +DefragFiles.Mod.txt
 +Defragger.Mod.txt
