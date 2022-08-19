@@ -14,4 +14,4 @@ patch -d work <clipboard-integration.patch
 
 [ -z "$1" ] && exit 0
 
-./compile-image.sh "$1" ../Java/BigmemDiskImage '?B=?' ../Java/IgnoreThisImage
+./compile-image.sh "$1" ../Java/JavaDiskImage '?B=?' ../Java/IgnoreThisImage

@@ -84,32 +84,27 @@ Individual features available (and their inclusion in [N]ative, [C] and [J]S):
 Disk images
 ~~~~~~~~~~~
 
-This emulator contains three classes of disk images. Each of them are
-compatible with boot loaders of the same class, but not with boot loaders of
-other classes.
+This emulator contains three classes of disk images. Each of them support
+different feature set, but all of them should work in other systems or
+emulators that either support hardware enumerator or are 100% compatible to
+the original board.
 
-JSBootLoad, JSMinimalDiskImage, JSFullDiskImage:
+JSMinimalDiskImage, JSFullDiskImage, JSFullWithRescueDiskImage, JSColorDiskImage:
   These images are compatible with the JavaScript emulator and are useful as
-  a base for building custom images for it. As they use paravirtualized
-  hardware devices and a different filesystem offset, they will not work with
-  the C emulator or native hardware.
+  a base for building custom images for it.
 
-CompatibleBootLoad, CompatibleBigBootLoad, CompatibleDiskImage:
-  These images try to stay compatible with native hardware and the C emulator.
-  The "Big" boot loader will use the large 4GB address space, the other one
-  uses the 1MB address space, but both will only use 928KB of memory for
-  applications.
+CompatibleDiskImage:
+  This image try to stay compatible with native hardware and emulators, without
+  including support for features only present in this emulator.
 
-BigBootLoad<X>MB, BigDiskImage, BigHostFSDiskImage:
+JavaDiskImage, JavaWithRescueDiskImage:
   These images use all the features of this emulator, like paravirtualized
-  hardware devices, color graphics and custom address space layouts. The
-  boot loader determines the amount of usable memory (half of it for modules
-  and the stack, the other half for the heap). In case you want a different
-  memory limit or splitting, you can compile and run BootLoadBigMemoryConfig
-  inside the emulator to create a custom boot loader ROM. To use the HostFS
-  image, first boot the normal image and use PCLink's globbing feature to
-  copy all files (*) into a directory of the host. Then you can run
-  BigHostFSDiskImage with HostFS pointing to the same directory.
+  hardware devices, host filesystem, and various color graphics modes. To use
+  the HostFS feature, first boot the image and use PCLink's globbing feature
+  to copy all files (*) into a directory of the host. Then you can enable
+  HostFS pointing to the same directory. If preferred, you can trim the disk
+  image (without rescue system) to the first 64 kilobytes, as the rest is
+  not used.
 
 License
 ~~~~~~~
