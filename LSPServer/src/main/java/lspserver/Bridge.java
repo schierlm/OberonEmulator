@@ -94,7 +94,7 @@ public class Bridge {
 		dos.write(content.getBytes(StandardCharsets.ISO_8859_1));
 		dos.flush();
 		boolean result = false, functionPending = false, importAliasPending = false;
-		int prevSymbolEnd = 0, lastSymbolEnd = 0, declarationBlockStart = -1, paramDepth = 0;
+		int prevSymbolEnd = 0, lastSymbolEnd = 0, declarationBlockStart = -1, paramDepth = 0, logPosLength = 0;
 		List<List<DocumentSymbol>> outlineStack = new ArrayList<>();
 		List<Range> procRangeStack = new ArrayList<>();
 		List<Integer> functionNamePosStack = new ArrayList<>();
@@ -120,23 +120,29 @@ public class Bridge {
 			case ANSWER_Error:
 				int pos = adjustPos(readIntLE(), content.length());
 				String msg = readCStr();
-				ar.getErrors().add(new Diagnostic(new Range(file.getPos(pos == 0 ? 0 : pos - 1), file.getPos(pos + 1)), msg));
+				ar.getErrors().add(new Diagnostic(new Range(file.getPos(logPosLength > 0 || pos == 0 ? pos : pos - 1), file.getPos(pos + Math.max(logPosLength, 1))), msg));
+				logPosLength = 0;
 				break;
 			case ANSWER_Warning:
 				int pos_W = adjustPos(readIntLE(), content.length());
 				if (pos_W == content.length())
 					pos_W--;
 				String msg_W = readCStr();
-				Diagnostic diag_W = new Diagnostic(new Range(file.getPos(pos_W == 0 ? 0 : pos_W - 1), file.getPos(pos_W + 1)), msg_W);
+				Diagnostic diag_W = new Diagnostic(new Range(file.getPos(logPosLength > 0 || pos_W == 0 ? pos_W : pos_W - 1), file.getPos(pos_W + Math.max(logPosLength, 1))), msg_W);
 				diag_W.setSeverity(DiagnosticSeverity.Warning);
 				ar.getErrors().add(diag_W);
+				logPosLength = 0;
 				break;
 			case ANSWER_Information:
 				int pos_I = adjustPos(readIntLE(), content.length());
 				String msg_I = readCStr();
-				Diagnostic diag_I = new Diagnostic(new Range(file.getPos(pos_I == 0 ? 0 : pos_I - 1), file.getPos(pos_I + 1)), msg_I);
+				Diagnostic diag_I = new Diagnostic(new Range(file.getPos(logPosLength > 0 || pos_I == 0 ? pos_I : pos_I - 1), file.getPos(pos_I + Math.max(logPosLength, 1))), msg_I);
 				diag_I.setSeverity(DiagnosticSeverity.Information);
 				ar.getErrors().add(diag_I);
+				logPosLength = 0;
+				break;
+			case ANSWER_LogPosLength:
+				logPosLength = readIntLE();
 				break;
 			case ANSWER_SymbolFileChanged:
 				result = true;
@@ -612,7 +618,7 @@ public class Bridge {
 
 		/* answer packets / A2 */
 		ANSWER_Warning(60), ANSWER_Information(61), ANSWER_NameExportedAt(62), ANSWER_VarProcParam(63),
-		ANSWER_RecordEndAsProcedure(64),
+		ANSWER_RecordEndAsProcedure(64), ANSWER_LogPosLength(65),
 
 		/* autocomplete answer packets */
 		ANSWER_Completion(80),

@@ -1,6 +1,6 @@
 Index: Compiler.Mod
 ===================================================================
---- Compiler.Mod	(revision 10148)
+--- Compiler.Mod	(revision 10251)
 +++ Compiler.Mod	(working copy)
 @@ -45,6 +45,23 @@
  		testFile*: Files.FileName;
@@ -98,7 +98,7 @@ Index: Compiler.Mod
  			result := options.Parse(input,error)
 Index: FoxCSharpParser.Mod
 ===================================================================
---- FoxCSharpParser.Mod	(revision 10148)
+--- FoxCSharpParser.Mod	(revision 10251)
 +++ FoxCSharpParser.Mod	(working copy)
 @@ -660,11 +660,12 @@
              IF prefix # SyntaxTree.invalidIdentifier THEN
@@ -192,7 +192,7 @@ Index: FoxCSharpParser.Mod
              END;
 Index: FoxIntermediateBackend.Mod
 ===================================================================
---- FoxIntermediateBackend.Mod	(revision 10148)
+--- FoxIntermediateBackend.Mod	(revision 10251)
 +++ FoxIntermediateBackend.Mod	(working copy)
 @@ -886,7 +886,7 @@
  		BEGIN
@@ -221,7 +221,7 @@ Index: FoxIntermediateBackend.Mod
  			procedure.SetScope(scope);
  			procedure.SetType(SyntaxTree.NewProcedureType(Basic.invalidPosition,scope));
  			procedure.type(SyntaxTree.ProcedureType).SetDelegate(TRUE);
-@@ -14467,7 +14467,7 @@
+@@ -14483,7 +14483,7 @@
  		procedure := moduleScope.bodyProcedure;
  		IF procedure = NIL THEN (* artificially add body procedure if not existing. Really needed? *)
  			procedureScope := SyntaxTree.NewProcedureScope(moduleScope);
@@ -232,7 +232,7 @@ Index: FoxIntermediateBackend.Mod
  			procedure.SetAccess(SyntaxTree.Hidden);
 Index: FoxParser.Mod
 ===================================================================
---- FoxParser.Mod	(revision 10148)
+--- FoxParser.Mod	(revision 10251)
 +++ FoxParser.Mod	(working copy)
 @@ -409,6 +409,28 @@
  			END
@@ -380,15 +380,6 @@ Index: FoxParser.Mod
  				UNTIL ~Optional( Scanner.Semicolon );
  			END;
  			IF Trace THEN E( "StatementSequence" ) END;
-@@ -1345,7 +1378,7 @@
- 
- 		(** Body = 'begin' [Flags] StatementSequence ['finally' StatementSequence]
- 						| 'code' Code. **)
--		PROCEDURE Body( scope: SyntaxTree.ProcedureScope ): SyntaxTree.Body;
-+		PROCEDURE Body( scope: SyntaxTree.ProcedureScope): SyntaxTree.Body;
- 		VAR body: SyntaxTree.Body; code: SyntaxTree.Code; position: Position;  previousScope: SyntaxTree.Scope;
- 		BEGIN
- 			previousScope := currentScope;
 @@ -1379,10 +1412,10 @@
  		BEGIN
  			procedureScope := SyntaxTree.NewProcedureScope(parentScope);
@@ -418,15 +409,6 @@ Index: FoxParser.Mod
  			IF Optional(Scanner.LeftParenthesis) THEN FormalParameters( procedureType, parentScope) END;
  			IF Trace THEN E( "ProcedureType" )
  			END;
-@@ -1427,7 +1462,7 @@
- 		END AnyType;
- 
- 		(** ObjectType = 'object' | 'object' [Flags] ['(' QualifiedIdentifier ')'] DeclarationSequence [Body] 'end' [Identifier] . **)
--		PROCEDURE ObjectType(position: Position;  name: SyntaxTree.Identifier; parentScope: SyntaxTree.Scope ): SyntaxTree.Type;
-+		PROCEDURE ObjectType(position: Position; name: SyntaxTree.Identifier; parentScope: SyntaxTree.Scope ): SyntaxTree.Type;
- 		VAR
- 			objectType: SyntaxTree.RecordType;
- 			pointerType: SyntaxTree.PointerType;
 @@ -1447,7 +1482,7 @@
  				Basic.Warning(diagnostics, scanner.source^, position, "deprecated use of OBJECT, use ANY OBJECT instead");
  				*)
@@ -834,7 +816,7 @@ Index: FoxParser.Mod
  					ELSIF ~error & ~scanner.error THEN (* read ahead to read comments and to check for next module *)
 Index: FoxScanner.Mod
 ===================================================================
---- FoxScanner.Mod	(revision 10148)
+--- FoxScanner.Mod	(revision 10251)
 +++ FoxScanner.Mod	(working copy)
 @@ -24,6 +24,18 @@
  	IdentifierString*= ARRAY MaxIdentifierLength+1 OF CHAR;
@@ -937,7 +919,7 @@ Index: FoxScanner.Mod
  		PROCEDURE EnterSymbol(CONST name: ARRAY OF CHAR; symbol: SIGNED32);
 Index: FoxSemanticChecker.Mod
 ===================================================================
---- FoxSemanticChecker.Mod	(revision 10148)
+--- FoxSemanticChecker.Mod	(revision 10251)
 +++ FoxSemanticChecker.Mod	(working copy)
 @@ -89,6 +89,12 @@
  		backendName-: ARRAY 32 OF CHAR;
@@ -1094,7 +1076,26 @@ Index: FoxSemanticChecker.Mod
  							IF symbol # NIL THEN
  								symbolDesignator := NewSymbolDesignator(position, NIL, NIL, symbol);
  								operator := NewBinaryOperatorCall(position, NIL, Global.All, parameter0, symbolDesignator, NIL);
-@@ -6596,7 +6617,7 @@
+@@ -4116,7 +4137,7 @@
+ 				END;
+ 				resolved := ResolveStatement(block);
+ 				returnType := result.type;
+-				result := SyntaxTree.NewInlineCallDesignator(result.position, original, block);
++				result := SyntaxTree.NewInlineCallDesignator(result.position, result, original, block);
+ 				result.SetType(returnType);
+ 				currentScope := inlineScope.outerScope;
+  				currentScope.AddScope(inlineScope);
+@@ -6324,7 +6345,9 @@
+ 					variable.SetType(qualifiedType);
+ 					qualifiedType.SetResolved(SyntaxTree.invalidType); (* for cycle detection *)
+ 					variable.SetInitializer (ResolveExpression(variable.initializer));
++					IF variable.initializer # NIL THEN
+ 					qualifiedType.SetResolved(RegularType(variable.position, variable.initializer.type));
++					END
+ 				ELSE
+ 					variable.SetType(ResolveType(variable.type));
+ 				END;
+@@ -6596,7 +6619,7 @@
  						IF (record.pointerType.typeDeclaration = NIL) THEN
  							selfParameter.SetType(record.pointerType);
  						ELSE
@@ -1103,7 +1104,7 @@ Index: FoxSemanticChecker.Mod
  							qualifiedType := SyntaxTree.NewQualifiedType(procedure.position,procedure.scope,qualifiedIdentifier);
  							qualifiedType.SetResolved(record.pointerType);
  							selfParameter.SetType(qualifiedType);
-@@ -6612,7 +6633,7 @@
+@@ -6612,7 +6635,7 @@
  						IF (record.typeDeclaration = NIL) THEN
  							selfParameter.SetType(record);
  						ELSE
@@ -1112,7 +1113,7 @@ Index: FoxSemanticChecker.Mod
  							qualifiedType := SyntaxTree.NewQualifiedType(procedure.position,procedure.scope,qualifiedIdentifier);
  							qualifiedType.SetResolved(record);
  							selfParameter.SetType(qualifiedType);
-@@ -6689,7 +6710,7 @@
+@@ -6689,7 +6712,7 @@
  						IF (procedureType.selfParameterInObject = NIL) THEN
  							(* add auto-self *)
  							selfParameter := SyntaxTree.NewParameter(procedure.position,procedureType,Global.SelfParameterName,SyntaxTree.ValueParameter);
@@ -1121,7 +1122,7 @@ Index: FoxSemanticChecker.Mod
  							qualifiedType := SyntaxTree.NewQualifiedType(procedure.position,procedure.scope,qualifiedIdentifier);
  							qualifiedType.SetResolved(cell);
  							selfParameter.SetType(qualifiedType);
-@@ -7003,7 +7024,7 @@
+@@ -7003,7 +7026,7 @@
  				module := symbolFileFormat.Import(filename,importCache); (* includes module parsing *)
  
  				(* import the importing module with the sole purpose to enable operator overloading *)
@@ -1130,7 +1131,7 @@ Index: FoxSemanticChecker.Mod
  				import.SetModule(SELF.module);
  				IF module # NIL THEN
  					module.moduleScope.AddImport(import)
-@@ -7039,7 +7060,7 @@
+@@ -7039,7 +7062,7 @@
  									Error(expression.position,"passed type where no type is expected");
  								END;
  							ELSIF symbol IS SyntaxTree.Import THEN
@@ -1139,7 +1140,7 @@ Index: FoxSemanticChecker.Mod
  								import.SetModule(symbol(SyntaxTree.Import).module);
  								module.moduleScope.AddImport(import);
  								IF (parameter.type # SyntaxTree.TemplateType.Import) & (parameter.type # SyntaxTree.TemplateType.Automatic) THEN
-@@ -7058,7 +7079,7 @@
+@@ -7058,7 +7081,7 @@
  					module.SetScope(SELF.module.moduleScope);
  					checker.Module(module);
  					IF importCache # NIL THEN
@@ -1148,7 +1149,7 @@ Index: FoxSemanticChecker.Mod
  						import.SetContext(x.context);
  						import.SetModule(module);
  						importCache.AddImport(import);
-@@ -7127,7 +7148,7 @@
+@@ -7127,7 +7150,7 @@
  								ELSE
  									x.SetModule(module);
  									IF importCache # NIL THEN
@@ -1157,7 +1158,7 @@ Index: FoxSemanticChecker.Mod
  										import.SetContext(x.context);
  										import.SetModule(module);
  										importCache.AddImport(import);
-@@ -7153,7 +7174,7 @@
+@@ -7153,7 +7176,7 @@
  									IF import.context = SyntaxTree.invalidIdentifier THEN import.SetContext(x.context) END;
  									reimport := moduleScope.ImportByModuleName(import.moduleName,import.context);
  									IF reimport = NIL THEN  (* indirect import *)
@@ -1166,7 +1167,7 @@ Index: FoxSemanticChecker.Mod
  										reimport.SetContext(import.context);
  										reimport.SetModule(import.module);
  										moduleScope.AddImport(reimport);
-@@ -7897,7 +7918,7 @@
+@@ -7899,7 +7922,7 @@
  			ASSERT(currentScope IS SyntaxTree.ProcedureScope);
  			procedureScope := SyntaxTree.NewProcedureScope(currentScope);
  			ASSERT(procedureScope.outerScope IS SyntaxTree.ProcedureScope);
@@ -1177,7 +1178,7 @@ Index: FoxSemanticChecker.Mod
  			procedureType := SyntaxTree.NewProcedureType(x.position,currentScope);
 Index: FoxSyntaxTree.Mod
 ===================================================================
---- FoxSyntaxTree.Mod	(revision 10148)
+--- FoxSyntaxTree.Mod	(revision 10251)
 +++ FoxSyntaxTree.Mod	(working copy)
 @@ -500,13 +500,16 @@
  	QualifiedIdentifier* = OBJECT
@@ -1265,7 +1266,21 @@ Index: FoxSyntaxTree.Mod
  		PROCEDURE IsCellNet*(t: BOOLEAN);
  		BEGIN isCellNet := t
  		END IsCellNet;
-@@ -2813,6 +2834,7 @@
+@@ -2437,10 +2458,12 @@
+ 	VAR
+ 		block-: StatementBlock; (* contains scope *)
+ 		result-: Expression;
++		uninlined-: Designator;
+ 
+-		PROCEDURE & InitInlineCall*(position: Position; orig: Expression; b: StatementBlock);
++		PROCEDURE & InitInlineCall*(position: Position; ui: Designator; orig: Expression; b: StatementBlock);
+ 		BEGIN
+ 			InitDesignator(position);
++			uninlined := ui;
+ 			original := orig;
+ 			block := b;
+ 		END InitInlineCall;
+@@ -2813,6 +2836,7 @@
  		extern-: Expression; (* const expression: either address or String *)
  		externName-: Scanner.StringType;
  		access-: SET; (* access flags (exported, readonly etc.) *)
@@ -1273,7 +1288,7 @@ Index: FoxSyntaxTree.Mod
  		type-: Type; (* type of constant / variable / parameter / procedure return type *)
  		scope-:Scope; (* container of symbol *)
  		offsetInBits-: SIZE; (* offset in stack or heap, in bits *)
-@@ -2885,6 +2907,10 @@
+@@ -2885,6 +2909,10 @@
  			SELF.access := access;
  		END SetAccess;
  
@@ -1284,7 +1299,7 @@ Index: FoxSyntaxTree.Mod
  		PROCEDURE SetOffset*(ofs: SIZE);
  		BEGIN offsetInBits := ofs
  		END SetOffset;
-@@ -3308,10 +3334,15 @@
+@@ -3308,10 +3336,15 @@
  			methodNumber-: SIZE;
  			isBodyProcedure-, isConstructor-,isFinalizer-,isInline-,isOberonInline-, isOpening-, isClosing-,isFinal-,isTest-, isAbstract-,isOverwritten-,isPlain-: BOOLEAN;
  			resolving-: SIGNED32; (* for recursion detection during inlining *)
@@ -1301,7 +1316,7 @@ Index: FoxSyntaxTree.Mod
  			resolving := 0;
  			nextProcedure := NIL;
  			procedureScope := scope;
-@@ -3332,6 +3363,8 @@
+@@ -3332,6 +3365,8 @@
  			isOverwritten := FALSE;
  			isPlain := FALSE;
  			isTest := FALSE;
@@ -1310,7 +1325,7 @@ Index: FoxSyntaxTree.Mod
  		END InitProcedure;
  
  		(* cycle detection during inlining *)
-@@ -3404,6 +3437,14 @@
+@@ -3404,6 +3439,14 @@
  		BEGIN SELF.methodNumber := methodNumber
  		END SetMethodNumber;
  
@@ -1325,7 +1340,7 @@ Index: FoxSyntaxTree.Mod
  		PROCEDURE NeedsSection*(): BOOLEAN;
  		BEGIN
  			RETURN (access * Public # {}) OR (methodNumber >= 0);
-@@ -3446,9 +3487,9 @@
+@@ -3446,9 +3489,9 @@
  		nextOperator-: Operator;
  		isDynamic-: BOOLEAN; (* nopov *)
  
@@ -1337,7 +1352,7 @@ Index: FoxSyntaxTree.Mod
  			nextOperator := NIL;
  			isDynamic := FALSE
  		END InitOperator;
-@@ -3465,11 +3506,12 @@
+@@ -3465,11 +3508,12 @@
  			nextImport-: Import;
  			module-: Module;
  			moduleName-: Identifier;
@@ -1351,7 +1366,7 @@ Index: FoxSyntaxTree.Mod
  		BEGIN
  			InitSymbol(position,name);
  			SELF.direct := direct;
-@@ -3476,6 +3518,7 @@
+@@ -3476,6 +3520,7 @@
  			module := NIL;
  			context := invalidIdentifier;
  			SELF.moduleName := moduleName;
@@ -1359,7 +1374,7 @@ Index: FoxSyntaxTree.Mod
  			type := importType;
  			parameters := NIL;
  		END InitImport;
-@@ -5178,10 +5221,12 @@
+@@ -5178,10 +5223,12 @@
  			closingComment-: Comment;
  			modifiers-: Modifier;
  			parameters-: TemplateParameters;
@@ -1372,7 +1387,7 @@ Index: FoxSyntaxTree.Mod
  			COPY (sourceName, SELF.sourceName);
  			moduleScope := scope;
  			ASSERT(scope.ownerModule = NIL); (* cannot register twice ! *)
-@@ -5224,6 +5269,10 @@
+@@ -5224,6 +5271,10 @@
  		BEGIN SELF.parameters := parameters;
  		END SetParameters;
  
@@ -1383,7 +1398,16 @@ Index: FoxSyntaxTree.Mod
  	END Module;
  
  	ProcedureList* = OBJECT
-@@ -5388,10 +5437,10 @@
+@@ -5302,7 +5353,7 @@
+ 		| ProcedureCallDesignator DO
+ 				result := NewProcedureCallDesignator(x.position, NIL, CloneExpression(x.left), CloneExpressionList(x.parameters));
+ 		| InlineCallDesignator DO
+-				result := NewInlineCallDesignator(x.position, NIL, x.block.Clone()(StatementBlock));
++				result := NewInlineCallDesignator(x.position, NIL, NIL, x.block.Clone()(StatementBlock));
+ 		| IndexDesignator DO
+ 				result := NewIndexDesignator(x.position,NIL,CloneExpression(x.left), CloneExpressionList(x.parameters));
+ 		| SymbolDesignator DO
+@@ -5388,10 +5439,10 @@
  		NEW(comment,position,scope,source,length); RETURN comment;
  	END NewComment;
  
@@ -1396,7 +1420,7 @@ Index: FoxSyntaxTree.Mod
  	END NewImport;
  
  	PROCEDURE NewConstant*( position: Position;  name: Identifier ): Constant;
-@@ -5400,10 +5449,10 @@
+@@ -5400,10 +5451,10 @@
  		NEW( constant, position, name );  RETURN constant
  	END NewConstant;
  
@@ -1409,7 +1433,7 @@ Index: FoxSyntaxTree.Mod
  	END NewProcedure;
  
  	PROCEDURE NewAlias*( position: Position;  name: Identifier; expression: Expression): Alias;
-@@ -5424,10 +5473,10 @@
+@@ -5424,10 +5475,10 @@
  		NEW(builtin,position,name,id,subType); RETURN builtin
  	END NewCustomBuiltin;
  
@@ -1422,7 +1446,7 @@ Index: FoxSyntaxTree.Mod
  	END NewOperator;
  
  	PROCEDURE NewType*(): Type;  (* for error handling: invalid Type, is realtime type *)
-@@ -5601,10 +5650,10 @@
+@@ -5601,10 +5652,10 @@
  		NEW( variable, position, name );  RETURN variable
  	END NewVariable;
  
@@ -1435,7 +1459,7 @@ Index: FoxSyntaxTree.Mod
  	END NewQualifiedIdentifier;
  
  	PROCEDURE NewIdentifier*(CONST name: ARRAY OF CHAR): Identifier;
-@@ -5680,7 +5729,7 @@
+@@ -5680,7 +5731,7 @@
  		NEW( bracketDesignator, position, left, expressionList );  RETURN bracketDesignator
  	END NewBracketDesignator;
  
@@ -1444,7 +1468,20 @@ Index: FoxSyntaxTree.Mod
  	VAR symbolDesignator: SymbolDesignator;
  	BEGIN
  		NEW( symbolDesignator, position, original, left, symbol); RETURN symbolDesignator
-@@ -6083,7 +6132,7 @@
+@@ -5698,10 +5749,10 @@
+ 		NEW(procedureCallDesignator, position, original, left, parameters); RETURN procedureCallDesignator
+ 	END NewProcedureCallDesignator;
+ 
+-	PROCEDURE NewInlineCallDesignator*(position: Position; o: Expression; block: StatementBlock): InlineCallDesignator;
++	PROCEDURE NewInlineCallDesignator*(position: Position; uninlined: Designator; o: Expression; block: StatementBlock): InlineCallDesignator;
+ 	VAR inlineCall: InlineCallDesignator;
+ 	BEGIN
+-		NEW(inlineCall, position, o, block); RETURN inlineCall;
++		NEW(inlineCall, position, uninlined, o, block); RETURN inlineCall;
+ 	END NewInlineCallDesignator;
+ 
+ 	PROCEDURE NewBuiltinCallDesignator*(position: Position; original: Expression;  id: SIGNED32;left: Expression; parameters: ExpressionList): BuiltinCallDesignator;
+@@ -6083,7 +6134,7 @@
  	BEGIN;
  		invalidPosition.start := -1;
  		invalidIdentifier := Basic.invalidString;

@@ -13,8 +13,10 @@ MODULE LSPScannerMetadata;
         OneSpaceAfter* = 7;
         DedentOne*=8;
         DedentTwo*=9;
+		DedentOneWithComment*=13;
         IndentOne*=10;
         IndentTwo*=11;
+		IsComment*=12;
 
     TYPE
     	SyntaxElementKind* = ENUM
@@ -107,7 +109,7 @@ MODULE LSPScannerMetadata;
 		formatToken[Scanner.Period] := {NoSpaceBefore, NoSpaceAfter};
 		formatToken[Scanner.Comma] := {NoSpaceBefore, OneSpaceAfter};
 		formatToken[Scanner.Colon] := {NoSpaceBefore, OneSpaceAfter};
-		formatToken[Scanner.Comment] := {MaybeSpaceBefore, MaybeSpaceAfter};
+		formatToken[Scanner.Comment] := {MaybeSpaceBefore, MaybeSpaceAfter, IsComment};
 		formatToken[Scanner.EndOfText] := {};
 
 		formatToken[Scanner.Case] := {OneSpaceBefore, OneSpaceAfter, IndentOne};
@@ -125,9 +127,9 @@ MODULE LSPScannerMetadata;
 		formatToken[Scanner.Elsif] := {OneSpaceBefore, OneSpaceAfter, DedentOne};
 		formatToken[Scanner.Until] := {OneSpaceBefore, OneSpaceAfter, DedentOne};
 		formatToken[Scanner.Finally] := {OneSpaceBefore, OneSpaceAfter, DedentOne,IndentOne};
-		formatToken[Scanner.Type] := {OneSpaceBefore, OneSpaceAfter, DedentOne,IndentOne};
-		formatToken[Scanner.Operator] := { DedentOne,IndentOne};
-		formatToken[Scanner.Import] := { DedentOne,IndentOne};
+		formatToken[Scanner.Type] := {OneSpaceBefore, OneSpaceAfter, DedentOneWithComment,IndentOne};
+		formatToken[Scanner.Operator] := { DedentOneWithComment,IndentOne};
+		formatToken[Scanner.Import] := { DedentOneWithComment,IndentOne};
 		formatToken[Scanner.Module] := { IndentTwo};
 
         formatToken[Scanner.TimesMarker] := {NoSpaceBefore, NoSpaceAfter};
@@ -140,9 +142,9 @@ MODULE LSPScannerMetadata;
 		formatToken[Scanner.CommaParamSeparator] := {NoSpaceBefore, OneSpaceAfter};
 		formatToken[Scanner.SemicolonParamSeparator] := {MaybeSpaceBefore, OneSpaceAfter};
 		formatToken[Scanner.SemicolonStatementSeparator] := {MaybeSpaceBefore, OneSpaceAfter};
-		formatToken[Scanner.ProcedureDeclaration] := {OneSpaceBefore, OneSpaceAfter, DedentOne,IndentTwo};
-		formatToken[Scanner.VarDeclaration] := {OneSpaceBefore, OneSpaceAfter, DedentOne,IndentOne};
-		formatToken[Scanner.ConstDeclaration] := {OneSpaceBefore, OneSpaceAfter, DedentOne,IndentOne};
+		formatToken[Scanner.ProcedureDeclaration] := {OneSpaceBefore, OneSpaceAfter, DedentOneWithComment,IndentTwo};
+		formatToken[Scanner.VarDeclaration] := {OneSpaceBefore, OneSpaceAfter, DedentOneWithComment,IndentOne};
+		formatToken[Scanner.ConstDeclaration] := {OneSpaceBefore, OneSpaceAfter, DedentOneWithComment,IndentOne};
 
     END Init;
 

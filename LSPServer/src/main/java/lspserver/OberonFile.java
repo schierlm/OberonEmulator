@@ -243,6 +243,12 @@ public class OberonFile {
 		}
 	}
 
+	public void analyzeSkipped() {
+		analysisResult.getErrors().clear();
+		Diagnostic diag = new Diagnostic(new Range(getPos(0), getPos(content.length())), "Analysis skipped");
+		diag.setSeverity(DiagnosticSeverity.Information);
+		analysisResult.getErrors().add(diag);
+	}
 
 	/** Return this module's name in case its symbols changed, else {@code null}. */
 	public synchronized boolean analyzeBy(Bridge bridge) throws IOException {

@@ -17,12 +17,12 @@ MODULE LSPhServer;
       BEGIN out := o; moduleName := "<unknown>"; lastDefinitionEnd := 0; lastSymbolEnd := 0
       END Init;
 
-      PROCEDURE Send(CONST type: INTEGER; CONST source : ARRAY OF CHAR; CONST position: Streams.Position; CONST message: ARRAY OF CHAR);
+      PROCEDURE Send(CONST type: SIGNED8; CONST source : ARRAY OF CHAR; CONST position: Streams.Position; CONST message: ARRAY OF CHAR);
         VAR pos: INTEGER;
       BEGIN
         pos := SHORT(position);
         IF (pos < 0) OR (source # "Tmp.Tmp") THEN pos := 0 END;
-        out.RawSInt(SHORT(SHORT(type)));
+        out.RawSInt(type);
         out.RawLInt(pos);
         out.RawString(message);
       END Send;
@@ -135,9 +135,16 @@ MODULE LSPhServer;
       VAR
         sflags: SET;
           sdiagnostics: Diagnostics.DiagnosticsList;
+        fname: Basic.FileName;
+        importedModule: SyntaxTree.Module;
       BEGIN
         sflags := {};
             NEW(sdiagnostics);
+        Global.ModuleFileName(module.name,module.context,fname);
+        importedModule := symbolFile.Import(fname,importCache);
+        IF importedModule = NIL THEN
+                INCL(sflags, InterfaceComparison.Redefined)
+        END;
         InterfaceComparison.CompareThis(module,symbolFile,sdiagnostics,importCache,sflags);
         IF (InterfaceComparison.Redefined IN sflags) OR (InterfaceComparison.Extended IN sflags) OR (sdiagnostics.entries # NIL) THEN
               out.RawSInt(LSPhConstants.SymbolFileChanged);
@@ -268,8 +275,13 @@ MODULE LSPhServer;
         out.RawLInt(SHORT(position.start));
         out.RawLInt(SHORT(position.end));
         out.RawSInt(formatType);
+        IF LSPScannerMetadata.IsComment IN format THEN
+          out.RawSInt(LSPhConstants.TokenIsComment)
+        END;
         IF LSPScannerMetadata.DedentOne IN format THEN
           out.RawSInt(LSPhConstants.OutdentThisLine)
+        ELSIF LSPScannerMetadata.DedentOneWithComment IN format THEN
+          out.RawSInt(LSPhConstants.OutdentThisLineAndComment)
         ELSIF LSPScannerMetadata.DedentTwo IN format THEN
           out.RawSInt(LSPhConstants.OutdentThisLine);
           out.RawSInt(LSPhConstants.OutdentThisLine)
@@ -327,7 +339,7 @@ MODULE LSPhServer;
       kind: DefinitionKind;
       skind: LSPScannerMetadata.SyntaxElementKind;
       pos, exportedPos: Basic.Position;
-      exported, removableIfUnused, procedure: BOOLEAN;
+      exported, command, removableIfUnused, procedure: BOOLEAN;
       procStart, procEnd: Streams.Position; procIdentifier: Basic.Position;
     END;
 
@@ -340,12 +352,13 @@ MODULE LSPhServer;
       BEGIN NEW(e); e.kind := DefinitionKind.Head; e.next := NIL; SELF.visitor := visitor; list := e;
       END Init;
 
-      PROCEDURE VisitDefinition(kind: LSPScannerMetadata.SyntaxElementKind; pos, exportedPos: Basic.Position; exported, removableIfUnused: BOOLEAN);
+      PROCEDURE VisitDefinition(kind: LSPScannerMetadata.SyntaxElementKind; pos, exportedPos: Basic.Position; exported, command, removableIfUnused: BOOLEAN);
       VAR e, addPos: DefinitionElem;
       BEGIN addPos := list;
         WHILE (addPos.next # NIL) & (pos.end < addPos.next.pos.end) DO addPos := addPos.next END;
         NEW(e); e.next := addPos.next; e.kind := DefinitionKind.Definition;
         e.pos := pos; e.exportedPos := exportedPos; e.exported := exported;
+        e.command := command;
         e.removableIfUnused := removableIfUnused; e.skind := kind;
         addPos.next := e;
       END VisitDefinition;
@@ -390,7 +403,7 @@ MODULE LSPhServer;
         WHILE(curr # NIL) DO
           CASE curr.kind OF
             DefinitionKind.Definition:
-              visitor.VisitDefinition(curr.skind, curr.pos, curr.exportedPos, curr.exported, curr.removableIfUnused);
+              visitor.VisitDefinition(curr.skind, curr.pos, curr.exportedPos, curr.exported, curr.command, curr.removableIfUnused);
             |DefinitionKind.IncreaseScope:
               visitor.VisitIncreaseOutlineScope(curr.procedure);
             |DefinitionKind.DecreaseScope:
@@ -410,7 +423,7 @@ MODULE LSPhServer;
       BEGIN SELF.diag := diag; SELF.moduleName := moduleName; SELF.errors := errors
       END Init;
 
-      PROCEDURE VisitDefinition(kind: LSPScannerMetadata.SyntaxElementKind; pos, exportedPos: Basic.Position; exported, removableIfUnused: BOOLEAN);
+      PROCEDURE VisitDefinition(kind: LSPScannerMetadata.SyntaxElementKind; pos, exportedPos: Basic.Position; exported, command, removableIfUnused: BOOLEAN);
         VAR kindVal: SIGNED32;
       BEGIN
         kindVal := MapSyntaxElementKind(kind);
@@ -419,6 +432,9 @@ MODULE LSPhServer;
           IF exported THEN
             diag.out.RawSInt(LSPhConstants.NameExportedAt);
             diag.out.RawLInt(SHORT(exportedPos.end));
+            IF command THEN
+              diag.out.RawSInt(LSPhConstants.CommandExported);
+            END
           END;
           IF ~removableIfUnused THEN
             diag.out.RawSInt(LSPhConstants.VarProcParam);
@@ -553,7 +569,7 @@ MODULE LSPhServer;
     RETURN success & ~crash;
   END Modules;
 
-  PROCEDURE CompileDiag(out, err: Streams.Writer; optionString: ARRAY OF CHAR; diagnostics: Compiler.SourceDiagnostics);
+  PROCEDURE CompileDiag(err: Streams.Writer; optionString: ARRAY OF CHAR; diagnostics: Compiler.SourceDiagnostics);
     VAR
       error: BOOLEAN;
       options: Compiler.CompilerOptions;
@@ -564,7 +580,7 @@ MODULE LSPhServer;
       reader: Streams.Reader;
       importCache: SyntaxTree.ModuleScope;
   BEGIN
-    error := FALSE;
+    error := FALSE; importCache := NIL;
     NEW(log, 1024);
     (* optionString := '-p=Win64 --objectFile="" --symbolFile=Textual '; *)
     Streams.OpenStringReader(optSR, optionString);
@@ -575,9 +591,9 @@ MODULE LSPhServer;
         diagnostics.Error(filename, Streams.Invalid, "failed to open"); error := TRUE;
       ELSE
         error := ~Modules(filename, reader, 0, diagnostics, log, options, importCache);
+        IF error THEN diagnostics.Error(filename, reader.Pos(), "Compilation FAILED") END;
       END;
       err.Update;
-      IF error THEN diagnostics.Error(filename, reader.Pos(), "Compilation FAILED") END;
     ELSE
       diagnostics.Error(filename, Streams.Invalid, "Parsing options FAILED")
     END;
@@ -587,21 +603,21 @@ MODULE LSPhServer;
   VAR diagnostics: ModuleInfoDiagnostics;
   BEGIN
     NEW(diagnostics, out);
-    CompileDiag(out, err, optionString, diagnostics);
+    CompileDiag(err, optionString, diagnostics);
   END Compile;
 
   PROCEDURE Complete(out, err: Streams.Writer; endPos: SIGNED32; optionString: ARRAY OF CHAR);
   VAR diagnostics: AutoCompleteDiagnostics;
   BEGIN
     NEW(diagnostics, out, endPos);
-    CompileDiag(out, err, optionString, diagnostics);
+    CompileDiag(err, optionString, diagnostics);
   END Complete;
 
   PROCEDURE Reformat(out, err: Streams.Writer; optionString: ARRAY OF CHAR);
   VAR diagnostics: ReformatDiagnostics;
   BEGIN
     NEW(diagnostics, out);
-    CompileDiag(out, err, optionString, diagnostics);
+    CompileDiag(err, optionString, diagnostics);
   END Reformat;
 
   PROCEDURE HandleStream(in: Streams.Reader; out, err: Streams.Writer; optionString: ARRAY OF CHAR);

@@ -1,0 +1,1127 @@
+Index: ActiveCellsRuntime.mod
+===================================================================
+--- ActiveCellsRuntime.mod	(revision 10251)
++++ ActiveCellsRuntime.mod	(working copy)
+@@ -419,7 +419,7 @@
+ 		
+ 		i := Strings.IndexOfByte2(".",cellNet);
+ 		if i = -1 then
+-			diagnostics.Error("",Streams.Invalid, "CELLNET type name is malformed");
++			diagnostics.Error("",Streams.Invalid, Streams.Invalid, "CELLNET type name is malformed");
+ 			return;
+ 		end;
+ 
+@@ -435,7 +435,7 @@
+ 		if m = nil then
+ 			Strings.Concat('failed to load module "',moduleName,str);
+ 			Strings.Concat(str,'"',str);
+-			diagnostics.Error("",Streams.Invalid,str);
++			diagnostics.Error("",Streams.Invalid,Streams.Invalid,str);
+ 			return;
+ 		end;
+ 		typeInfo := Modules.ThisType(m,typeName);
+@@ -444,7 +444,7 @@
+ 			Strings.Concat(str,'" in module "',str);
+ 			Strings.Concat(str,moduleName,str);
+ 			Strings.Concat(str,'"',str);
+-			diagnostics.Error("",Streams.Invalid,str);
++			diagnostics.Error("",Streams.Invalid,Streams.Invalid,str);
+ 			return;
+ 		end;
+ 
+Index: Compiler.Mod
+===================================================================
+--- Compiler.Mod	(revision 10251)
++++ Compiler.Mod	(working copy)
+@@ -53,7 +53,7 @@
+ 		replacement := NIL;
+ 		reader := Basic.GetFileReader(filename);
+ 		IF reader = NIL THEN
+-			diagnostics.Error (filename, Streams.Invalid, "failed to open");
++			diagnostics.Error (filename, Streams.Invalid, Streams.Invalid, "failed to open");
+ 		ELSE
+ 
+ 			scanner := Scanner.NewScanner(filename, reader, 0, diagnostics);
+@@ -112,7 +112,7 @@
+ 			Strings.Append (message, msg);
+ 			IF error THEN
+ 				IF diagnostics # NIL THEN
+-					diagnostics.Error (source, Streams.Invalid, message);
++					diagnostics.Error (source, Streams.Invalid, Streams.Invalid, message);
+ 				END;
+ 			ELSE
+ 				IF (log # NIL) & ~(Silent IN options.flags) & ~(FindPC IN options.flags) THEN
+@@ -276,7 +276,7 @@
+ 		PROCEDURE Error(CONST error: ARRAY OF CHAR);
+ 		BEGIN
+ 			IF diagnostics # NIL THEN
+-				diagnostics.Error("",Streams.Invalid,error);
++				diagnostics.Error("",Streams.Invalid,Streams.Invalid,error);
+ 			END;
+ 		END Error;
+ 
+@@ -489,7 +489,7 @@
+ 				reader := Basic.GetFileReader(filename);
+ 
+ 				IF reader = NIL THEN
+-					diagnostics.Error (filename, Streams.Invalid, "failed to open"); error := TRUE;
++					diagnostics.Error (filename, Streams.Invalid, Streams.Invalid, "failed to open"); error := TRUE;
+ 				ELSE
+ 					error := ~Modules(filename, reader, 0, diagnostics,context.out, options,  importCache);
+ 				END;
+@@ -505,7 +505,7 @@
+ 				WHILE replacement # NIL DO
+ 					IF ~replacement.used THEN
+ 						name := replacement.name;
+-						diagnostics.Warning(name,  Streams.Invalid, " unused replacement.");
++						diagnostics.Warning(name,  Streams.Invalid, Streams.Invalid, " unused replacement.");
+ 					END;
+ 					replacement := replacement.next;
+ 				END;
+@@ -530,7 +530,7 @@
+ 		IF GetOptions(context.arg,context.error,diagnostics,options) THEN
+ 
+ 			IF reader = NIL THEN
+-				diagnostics.Error (filename, Streams.Invalid, "failed to open"); error := TRUE;
++				diagnostics.Error (filename, Streams.Invalid, Streams.Invalid, "failed to open"); error := TRUE;
+ 			ELSE
+ 				error := ~Modules(filename, reader, 0, diagnostics, context.out, options, importCache);
+ 			END;
+Index: CompilerInterface.Mod
+===================================================================
+--- CompilerInterface.Mod	(revision 10251)
++++ CompilerInterface.Mod	(working copy)
+@@ -41,12 +41,12 @@
+ 			IF (compileText # NIL) THEN
+ 				compileText(t, source, pos, pc, opt, log, diagnostics, error);
+ 			ELSIF (diagnostics # NIL) THEN
+-				diagnostics.Error(source, Streams.Invalid, "Text compile procedure not set");
++				diagnostics.Error(source, Streams.Invalid,Streams.Invalid, "Text compile procedure not set");
+ 			END;
+ 		FINALLY
+ 			IF trap THEN (* trap will be set in case a trap occurs in the block above *)
+ 				error := TRUE;
+-				diagnostics.Error(source, Streams.Invalid, "COMPILER TRAPPED");
++				diagnostics.Error(source, Streams.Invalid,Streams.Invalid, "COMPILER TRAPPED");
+ 				log.String("COMPILER TRAPPED!!!"); log.Update;
+ 			END;
+ 		END CompileText;
+Index: Diagnostics.Mod
+===================================================================
+--- Diagnostics.Mod	(revision 10251)
++++ Diagnostics.Mod	(working copy)
+@@ -15,13 +15,13 @@
+ 
+ 	Diagnostics* = OBJECT
+ 
+-		PROCEDURE Error*(CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++		PROCEDURE Error*(CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+ 		END Error;
+ 
+-		PROCEDURE Warning*(CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++		PROCEDURE Warning*(CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+ 		END Warning;
+ 
+-		PROCEDURE Information*(CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++		PROCEDURE Information*(CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+ 		END Information;
+ 
+ 	END Diagnostics;
+@@ -31,7 +31,7 @@
+ 	Entry* = POINTER TO RECORD
+ 		type*: INTEGER;
+ 		source*: ARRAY 128 OF CHAR;
+-		position*: Streams.Position;
++		position*, endPosition*: Streams.Position;
+ 		message*: ARRAY 256 OF CHAR;
+ 		next*: Entry;
+ 	END;
+@@ -53,19 +53,19 @@
+ 
+ 		nofMessages- : SIZE;
+ 
+-		PROCEDURE Error*(CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++		PROCEDURE Error*(CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+ 		BEGIN {EXCLUSIVE}
+-			InsertSorted(TypeError, source, position, message, nofErrors)
++			InsertSorted(TypeError, source, position, endPosition, message, nofErrors)
+ 		END Error;
+ 
+-		PROCEDURE Warning*(CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++		PROCEDURE Warning*(CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+ 		BEGIN {EXCLUSIVE}
+-			InsertSorted(TypeWarning, source, position, message, nofWarnings);
++			InsertSorted(TypeWarning, source, position, endPosition, message, nofWarnings);
+ 		END Warning;
+ 
+-		PROCEDURE Information*(CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++		PROCEDURE Information*(CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+ 		BEGIN {EXCLUSIVE}
+-			InsertSorted(TypeInformation, source, position, message, nofInformations);
++			InsertSorted(TypeInformation, source, position, endPosition, message, nofInformations);
+ 		END Information;
+ 
+ 		PROCEDURE ToStream*(w : Streams.Writer; mask : SET);
+@@ -75,7 +75,7 @@
+ 			entry := entries;
+ 			WHILE (entry # NIL) DO
+ 				IF (entry.type IN mask) THEN
+-					Print (w, entry.source, entry.position, entry.type, entry.message);
++					Print (w, entry.source, entry.position, entry.endPosition, entry.type, entry.message);
+ 				END;
+ 				entry := entry.next;
+ 			END;
+@@ -115,7 +115,7 @@
+ 			RETURN result;
+ 		END GetEntries;
+ 
+-		PROCEDURE InsertSorted(type: INTEGER; CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR; VAR counter: SIZE);
++		PROCEDURE InsertSorted(type: INTEGER; CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR; VAR counter: SIZE);
+ 		VAR prev, entry : Entry;
+ 		BEGIN
+ 			entry := entries; prev := NIL;
+@@ -122,12 +122,12 @@
+ 			WHILE (entry # NIL) & (entry.position <= position) DO prev := entry; entry := entry.next END;
+ 			IF (entry = NIL) OR (entry.type # type) OR (entry.position # position) OR (entry.message # message) THEN
+ 				INC(nofMessages); INC (counter);
+-				entry := NewEntry (type, source, position, message, entry);
++				entry := NewEntry (type, source, position, endPosition, message, entry);
+ 				IF prev = NIL THEN entries := entry ELSE prev.next := entry END
+ 			END
+ 		END InsertSorted;
+ 
+-		PROCEDURE NewEntry*(type: INTEGER; CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR; next: Entry) : Entry;
++		PROCEDURE NewEntry*(type: INTEGER; CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR; next: Entry) : Entry;
+ 		VAR entry : Entry;
+ 		BEGIN
+ 			NEW(entry);
+@@ -134,6 +134,7 @@
+ 			entry.type := type;
+ 			COPY (source, entry.source);
+ 			entry.position := position;
++			entry.endPosition := endPosition;
+ 			COPY (message, entry.message);
+ 			entry.next := next;
+ 			RETURN entry;
+@@ -153,21 +154,21 @@
+ 			writer := w;
+ 		END Init;
+ 
+-		PROCEDURE Error* (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
+-		BEGIN Print (writer, source, position, TypeError, message);
++		PROCEDURE Error* (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
++		BEGIN Print (writer, source, position, endPosition, TypeError, message);
+ 		END Error;
+ 
+-		PROCEDURE Warning* (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
+-		BEGIN Print (writer, source, position, TypeWarning, message);
++		PROCEDURE Warning* (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
++		BEGIN Print (writer, source, position, endPosition, TypeWarning, message);
+ 		END Warning;
+ 
+-		PROCEDURE Information* (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
+-		BEGIN Print (writer, source, position, TypeInformation, message);
++		PROCEDURE Information* (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
++		BEGIN Print (writer, source, position, endPosition, TypeInformation, message);
+ 		END Information;
+ 
+ 	END StreamDiagnostics;
+ 
+-PROCEDURE Print (w: Streams.Writer; CONST source : ARRAY OF CHAR; position: Streams.Position; type: INTEGER; CONST message: ARRAY OF CHAR);
++PROCEDURE Print (w: Streams.Writer; CONST source : ARRAY OF CHAR; position, endPosition: Streams.Position; type: INTEGER; CONST message: ARRAY OF CHAR);
+ BEGIN
+ 	w.Char(9X);
+ 	IF (source # "") THEN w.String (source); END;
+Index: FoxA2Interface.Mod
+===================================================================
+--- FoxA2Interface.Mod	(revision 10251)
++++ FoxA2Interface.Mod	(working copy)
+@@ -87,21 +87,21 @@
+ 			writer := w;
+ 		END Init;
+ 
+-		PROCEDURE Error* (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
+-		BEGIN Print (writer, source, position, Diagnostics.TypeError, message);
++		PROCEDURE Error* (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
++		BEGIN Print (writer, source, position, endPosition, Diagnostics.TypeError, message);
+ 		END Error;
+ 
+-		PROCEDURE Warning* (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
+-		BEGIN Print (writer, source, position, Diagnostics.TypeWarning, message);
++		PROCEDURE Warning* (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
++		BEGIN Print (writer, source, position, endPosition, Diagnostics.TypeWarning, message);
+ 		END Warning;
+ 
+-		PROCEDURE Information* (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
+-		BEGIN Print (writer, source, position, Diagnostics.TypeInformation, message);
++		PROCEDURE Information* (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
++		BEGIN Print (writer, source, position, endPosition, Diagnostics.TypeInformation, message);
+ 		END Information;
+ 
+ 	END StreamDiagnostics;
+ 
+-	PROCEDURE Print (w: Streams.Writer; CONST source : ARRAY OF CHAR; position: Streams.Position; type: INTEGER; CONST message: ARRAY OF CHAR);
++	PROCEDURE Print (w: Streams.Writer; CONST source : ARRAY OF CHAR; position, endPosition: Streams.Position; type: INTEGER; CONST message: ARRAY OF CHAR);
+ 	VAR attributes: Texts.Attributes;
+ 	BEGIN
+ 		IF w IS TextUtilities.TextWriter THEN
+Index: FoxActiveCells.Mod
+===================================================================
+--- FoxActiveCells.Mod	(revision 10251)
++++ FoxActiveCells.Mod	(working copy)
+@@ -1437,7 +1437,7 @@
+ 				IF log # NIL THEN log.String(msg); log.Ln; END;
+ 				RETURN TRUE
+ 			ELSE
+-				diagnostics.Error(fileName,Streams.Invalid, "could not generate file");
++				diagnostics.Error(fileName,Streams.Invalid, Streams.Invalid, "could not generate file");
+ 				IF TraceError THEN HALT(100) ELSE RETURN FALSE END
+ 			END;
+ 		END Emit;
+Index: FoxBasic.Mod
+===================================================================
+--- FoxBasic.Mod	(revision 10251)
++++ FoxBasic.Mod	(working copy)
+@@ -809,10 +809,10 @@
+ 			SELF.diagnostics := diagnostics
+ 		END InitDiagnostics;
+ 
+-		PROCEDURE Error*(CONST source: ARRAY OF CHAR; position: Streams.Position; CONST message : ARRAY OF CHAR);
++		PROCEDURE Error*(CONST source: ARRAY OF CHAR; position, endPosition: Streams.Position; CONST message : ARRAY OF CHAR);
+ 		BEGIN
+ 			IF diagnostics # NIL THEN
+-				diagnostics.Error(source,position,message);
++				diagnostics.Error(source,position,endPosition,message);
+ 			END;
+ 			D.Ln;
+ 			D.String(" ---------------------- TRACE for COMPILER ERROR  < ");
+@@ -823,17 +823,17 @@
+ 			D.TraceBack
+ 		END Error;
+ 
+-		PROCEDURE Warning*(CONST source : ARRAY OF CHAR; position: Streams.Position; CONST message : ARRAY OF CHAR);
++		PROCEDURE Warning*(CONST source : ARRAY OF CHAR; position, endPosition: Streams.Position; CONST message : ARRAY OF CHAR);
+ 		BEGIN
+ 			IF diagnostics # NIL THEN
+-				diagnostics.Warning(source,position,message);
++				diagnostics.Warning(source,position,endPosition,message);
+ 			END;
+ 		END Warning;
+ 
+-		PROCEDURE Information*(CONST source : ARRAY OF CHAR; position: Streams.Position; CONST message : ARRAY OF CHAR);
++		PROCEDURE Information*(CONST source : ARRAY OF CHAR; position, endPosition: Streams.Position; CONST message : ARRAY OF CHAR);
+ 		BEGIN
+ 			IF diagnostics # NIL THEN
+-				diagnostics.Information(source,position,message);
++				diagnostics.Information(source,position,endPosition,message);
+ 			END;
+ 		END Information;
+ 
+@@ -959,7 +959,7 @@
+ 	BEGIN
+ 		IF diagnostics # NIL THEN
+ 			MakeDetailedMessage(pos, code, msg, GetReader(), message);
+-			diagnostics.Error(source, pos.start, message);
++			diagnostics.Error(source, pos.start, pos.end, message);
+ 		END;
+ 	END ErrorC;
+ 
+@@ -974,7 +974,7 @@
+ 	BEGIN
+ 		IF diagnostics # NIL THEN
+ 			MakeMessage(pos, InvalidCode, msg,message);
+-			diagnostics.Warning(source, pos.start, message);
++			diagnostics.Warning(source, pos.start, pos.end, message);
+ 		END;
+ 	END Warning;
+ 
+@@ -983,7 +983,7 @@
+ 	BEGIN
+ 		IF diagnostics # NIL THEN
+ 			MakeMessage(pos, InvalidCode, msg,message);
+-			diagnostics.Information(source, pos.start, message);
++			diagnostics.Information(source, pos.start, pos.end, message);
+ 		END;
+ 	END Information;
+ 
+Index: GenericLinker.Mod
+===================================================================
+--- GenericLinker.Mod	(revision 10251)
++++ GenericLinker.Mod	(working copy)
+@@ -188,11 +188,11 @@
+ 
+ 
+ 	PROCEDURE Error* (CONST source, message: ARRAY OF CHAR);
+-	BEGIN diagnostics.Error (source, Streams.Invalid, message); error := TRUE;
++	BEGIN diagnostics.Error (source, Streams.Invalid, Streams.Invalid, message); error := TRUE;
+ 	END Error;
+ 
+ 	PROCEDURE Warning* (CONST source, message: ARRAY OF CHAR);
+-	BEGIN diagnostics.Warning (source, Streams.Invalid, message);
++	BEGIN diagnostics.Warning (source, Streams.Invalid, Streams.Invalid, message);
+ 	END Warning;
+ 
+ 	PROCEDURE ErrorP*(CONST pooledName: ObjectFile.SegmentedName; CONST message: ARRAY OF CHAR);
+Index: IPBandwidth.Mod
+===================================================================
+--- IPBandwidth.Mod	(revision 10251)
++++ IPBandwidth.Mod	(working copy)
+@@ -28,7 +28,7 @@
+ 		END;
+ 		DNS.HostByName (hostname, address, result);
+ 		IF result # DNS.Ok THEN
+-			diagnostics.Error (hostname, port, "failed to resolve");
++			diagnostics.Error (hostname, port, port, "failed to resolve");
+ 			context.result := Commands.CommandError; RETURN;
+ 		END;
+ 		IF ~context.arg.GetInteger (port, FALSE) THEN
+@@ -37,7 +37,7 @@
+ 
+ 		Connect;
+ 		IF result # Streams.Ok THEN
+-			diagnostics.Error (hostname, port, "failed to connect to server");
++			diagnostics.Error (hostname, port, port, "failed to connect to server");
+ 			context.result := Commands.CommandError; RETURN;
+ 		END;
+ 
+@@ -47,7 +47,7 @@
+ 			INC (sent, SendBytes ());
+ 			IF result # Streams.Ok THEN
+ 				Close;
+-				diagnostics.Error (hostname, port, "failed to send");
++				diagnostics.Error (hostname, port, port, "failed to send");
+ 				context.result := Commands.CommandError; RETURN;
+ 			END;
+ 		END;
+@@ -69,7 +69,7 @@
+ 
+ 		Listen;
+ 		IF result # Streams.Ok THEN
+-			diagnostics.Error (hostname, port, "failed to connect to client");
++			diagnostics.Error (hostname, port, port, "failed to connect to client");
+ 			context.result := Commands.CommandError; RETURN;
+ 		END;
+ 
+@@ -79,7 +79,7 @@
+ 			INC (received, ReceiveBytes ());
+ 			IF result # Streams.Ok THEN
+ 				Close;
+-				diagnostics.Error (hostname, port, "failed to receive");
++				diagnostics.Error (hostname, port, port, "failed to receive");
+ 				context.result := Commands.CommandError; RETURN;
+ 			END;
+ 			IF ticks = 0 THEN
+Index: ModuleParser.Mod
+===================================================================
+--- ModuleParser.Mod	(revision 10251)
++++ ModuleParser.Mod	(working copy)
+@@ -1906,7 +1906,7 @@
+ 		scanner := FoxScanner.NewScanner(filename, reader, 0, diagnostics);
+ 		Parse(scanner, module, "");
+ 	ELSIF (diagnostics # NIL) THEN
+-		diagnostics.Error("ModuleParser", Streams.Invalid, "File not found");
++		diagnostics.Error("ModuleParser", Streams.Invalid, Streams.Invalid, "File not found");
+ 	END;
+ 	RETURN module
+ END ParseFile;
+Index: PCAAMD64.Mod
+===================================================================
+--- PCAAMD64.Mod	(revision 10251)
++++ PCAAMD64.Mod	(working copy)
+@@ -1930,7 +1930,7 @@
+ 	TextUtilities.LoadTextAuto (text, fileName, format, res);
+ 
+ 	IF res # 0 THEN
+-		diagnostics.Error (fileName, Streams.Invalid, "failed to open file"); RETURN;
++		diagnostics.Error (fileName, Streams.Invalid, Streams.Invalid, "failed to open file"); RETURN;
+ 	END;
+ 
+ 	NEW (assembly, diagnostics, NIL);
+@@ -1991,7 +1991,7 @@
+ 		writer.Update;
+ 		Files.Register(file);
+ 	ELSE
+-		diagnostics.Error(filename, Streams.Invalid, "Could not create output file");
++		diagnostics.Error(filename, Streams.Invalid, Streams.Invalid, "Could not create output file");
+ 		error := TRUE;
+ 	END;
+ END WriteBinary;
+Index: PCM.Mod
+===================================================================
+--- PCM.Mod	(revision 10251)
++++ PCM.Mod	(working copy)
+@@ -364,11 +364,11 @@
+ 				err := InvalidCode; pos := InvalidPosition; str := "too many errors"
+ 			END;
+ 			IF diagnostics # NIL THEN
+-				diagnostics.Error (source, pos, str);
++				diagnostics.Error (source, pos, pos, str);
+ 			END;
+ 		ELSE
+ 			IF diagnostics # NIL THEN
+-				diagnostics.Information (source, pos, str);
++				diagnostics.Information (source, pos, pos, str);
+ 			END;
+ 		END;
+ 	END Error;
+@@ -393,7 +393,7 @@
+ 			GetMessage (err, msg, str);
+ 		END;
+ 		IF diagnostics # NIL THEN
+-			diagnostics.Warning (source, pos, str);
++			diagnostics.Warning (source, pos, pos, str);
+ 		END;
+ 	END Warning;
+ 
+Index: PETXMLTree.Mod
+===================================================================
+--- PETXMLTree.Mod	(revision 10251)
++++ PETXMLTree.Mod	(working copy)
+@@ -154,7 +154,7 @@
+ 
+ 		PROCEDURE ReportError(pos, line, row : Streams.Position; CONST msg : ARRAY OF CHAR);
+ 		BEGIN
+-			diagnostics.Error("PET", pos, msg);
++			diagnostics.Error("PET", pos, pos, msg);
+ 			hasErrors := TRUE;
+ 		END ReportError;
+ 
+Index: Release.Mod
+===================================================================
+--- Release.Mod	(revision 10251)
++++ Release.Mod	(working copy)
+@@ -486,7 +486,7 @@
+ 					COPY(build.name, temp);
+ 					Strings.Append(temp, ": Import # not found in file #");
+ 					MakeMessage(message, temp, module.imports[i], name);
+-					diagnostics.Error(builds.source, pos, message);
++					diagnostics.Error(builds.source, pos, pos, message);
+ 				END;
+ 			END;
+ 		END CheckImports;
+@@ -508,7 +508,7 @@
+ 					SplitName(name, pre, mid, suf);
+ 					IF (module.name # mid)  THEN
+ 						MakeMessage(message, "Module name not equal to filename in #", name, "");
+-						diagnostics.Warning(builds.source, pos, message);
++						diagnostics.Warning(builds.source, pos, pos, message);
+ 					END;
+ 					CreateContext(module.name, module.context);
+ 				END;
+@@ -969,7 +969,7 @@
+ 					END;
+ 				END;
+ 			ELSE
+-				diagnostics.Error("", Streams.Invalid, "No packages");
++				diagnostics.Error("", Streams.Invalid, Streams.Invalid, "No packages");
+ 			END;
+ 		END GenerateZipFiles;
+ 
+@@ -1067,7 +1067,7 @@
+ 					END;
+ 					IF (file.file = NIL) THEN
+ 						MakeMessage(message, "File # does not exists (Package #)", file.name, file.package.name);
+-						diagnostics.Warning(builds.source, file.pos, message);
++						diagnostics.Warning(builds.source, file.pos, file.pos, message);
+ 					ELSIF file.IsSourceCode() THEN
+ 						file.ParseModule(diagnostics);
+ 					END;
+@@ -1352,7 +1352,7 @@
+ 				END;
+ 			ELSE
+ 				MakeMessage(message, "File # not found", file.name, "");
+-				diagnostics.Error("", file.pos, message);
++				diagnostics.Error("", file.pos, file.pos, message);
+ 				error := TRUE;
+ 			END;
+ 		END CompileFile;
+@@ -1536,7 +1536,7 @@
+ 					INC(nofPrefixes);
+ 				ELSE
+ 					error := TRUE;
+-					diagnostics.Warning("", Streams.Invalid, "Maximum number of prefixes exceeded");
++					diagnostics.Warning("", Streams.Invalid, Streams.Invalid, "Maximum number of prefixes exceeded");
+ 					FOR j := 0 TO LEN(prefixes)-1 DO
+ 						TRACE(prefixes[j]);
+ 					END;
+@@ -1570,9 +1570,9 @@
+ 				IF (file.file = NIL) THEN
+ 					MakeMessage(message, "File # does not exists (Package #)", file.name, file.package.name);
+ 					IF file.IsSourceCode() THEN
+-						diagnostics.Error(source, file.pos, message);
++						diagnostics.Error(source, file.pos, file.pos, message);
+ 					ELSE
+-						diagnostics.Warning(source, file.pos, message);
++						diagnostics.Warning(source, file.pos, file.pos, message);
+ 					END;
+ 				ELSIF file.IsSourceCode() THEN
+ 					file.ParseModule(diagnostics);
+@@ -1723,7 +1723,7 @@
+ 				INC(nofBuilds);
+ 			ELSE
+ 				error := TRUE;
+-				diagnostics.Error(source, Streams.Invalid, "Maximum number of builds exceeded");
++				diagnostics.Error(source, Streams.Invalid, Streams.Invalid, "Maximum number of builds exceeded");
+ 			END;
+ 			RETURN ~error;
+ 		END AddBuild;
+@@ -1807,7 +1807,7 @@
+ 								MakeMessage(message, "Excluded package '#' in build '#' does not exist",
+ 									builds[build].excludedPackages[package]^,
+ 									builds[build].name);
+-								diagnostics.Error(source, Streams.Invalid, message);
++								diagnostics.Error(source, Streams.Invalid, Streams.Invalid, message);
+ 							END;
+ 						END;
+ 					END;
+@@ -1869,7 +1869,7 @@
+ 		BEGIN
+ 			error := TRUE;
+ 			MakeMessage(message, msg, par1, par2);
+-			diagnostics.Error(source, pos, message);
++			diagnostics.Error(source, pos, pos, message);
+ 		END Error;
+ 
+ 		PROCEDURE Check(CONST token : Token) : BOOLEAN;
+@@ -2011,7 +2011,7 @@
+ 		BEGIN
+ 			error := TRUE;
+ 			MakeMessage(message, msg, par1, par2);
+-			diagnostics.Error(scanner.source, pos, message);
++			diagnostics.Error(scanner.source, pos, pos, message);
+ 		END Error;
+ 
+ 		PROCEDURE Warning(pos : Streams.Position; CONST msg, par1, par2 : ARRAY OF CHAR);
+@@ -2018,7 +2018,7 @@
+ 		VAR message : ARRAY 128 OF CHAR;
+ 		BEGIN
+ 			MakeMessage(message, msg, par1, par2);
+-			diagnostics.Warning(scanner.source, pos, message);
++			diagnostics.Warning(scanner.source, pos, pos, message);
+ 		END Warning;
+ 
+ 		PROCEDURE IsFilename(CONST token : Token) : BOOLEAN;
+@@ -2368,7 +2368,7 @@
+ 							END;
+ 							builds.AddFile(token, currentRelease, currentPackage, scanner.pos);
+ 						ELSE
+-							diagnostics.Warning(scanner.source, scanner.pos, "Expected filename (not file extension?)");
++							diagnostics.Warning(scanner.source, scanner.pos, scanner.pos, "Expected filename (not file extension?)");
+ 						END;
+ 					ELSE
+ 						Error(scanner.pos, "Expected identifier, found #", token, "");
+@@ -2402,7 +2402,7 @@
+ 					value.index := builds.GetPrefixIndex(token);
+ 					IF (value.index < 0) THEN
+ 						MakeMessage(message, "Unknown build prefix #", token, "");
+-						diagnostics.Warning(scanner.source, scanner.pos, message);
++						diagnostics.Warning(scanner.source, scanner.pos, scanner.pos, message);
+ 					END;
+ 					IF ~scanner.Get(token) THEN RETURN FALSE END;
+ 				END;
+@@ -2561,13 +2561,13 @@
+ 				IF (context = "") THEN
+ 					error := TRUE;
+ 					MakeMessage(message, "Context identifier missing in file #", filename, "");
+-					diagnostics.Error(source, errorPosition, message);
++					diagnostics.Error(source, errorPosition, errorPosition, message);
+ 				END;
+ 				SkipComments(in);
+ 			ELSE
+ 				error := TRUE;
+ 				MakeMessage(message, "Expected 'IN' keyword in file #", filename, "");
+-				diagnostics.Error(source, errorPosition, message);
++				diagnostics.Error(source, errorPosition, errorPosition, message);
+ 			END;
+ 		END;
+ 	END GetContext;
+@@ -2592,17 +2592,17 @@
+ 				IF ~error & (ch # ";") THEN
+ 					error := TRUE;
+ 					MakeMessage(message, "Expected semicolon after module identifier in file #", filename, "");
+-					diagnostics.Error(source, errorPosition, message);
++					diagnostics.Error(source, errorPosition, errorPosition, message);
+ 				END;
+ 			ELSE
+ 				error := TRUE;
+ 				MakeMessage(message, "Module identifier missing in file #", filename, "");
+-				diagnostics.Error(source, errorPosition, message);
++				diagnostics.Error(source, errorPosition, errorPosition, message);
+ 			END;
+ 		ELSE
+ 			error := TRUE;
+ 			MakeMessage(message, "MODULE keyword missing in file #, first token is #", filename, token);
+-			diagnostics.Error(source, errorPosition, message);
++			diagnostics.Error(source, errorPosition, errorPosition, message);
+ 		END;
+ 	END GetModuleNameAndContext;
+ 
+@@ -2618,7 +2618,7 @@
+ 		ELSE
+ 			error := TRUE;
+ 			MakeMessage(message, "Identifier expected in import section of file #", filename, "");
+-			diagnostics.Error(source, errorPosition, message);
++			diagnostics.Error(source, errorPosition, errorPosition, message);
+ 		END;
+ 	END GetImport;
+ 
+@@ -2642,7 +2642,7 @@
+ 					ELSE
+ 						error := TRUE;
+ 						MakeMessage(message, "Maximum number of supported imports exceeded in module #", filename, "");
+-						diagnostics.Error(source, Streams.Invalid, message);
++						diagnostics.Error(source, Streams.Invalid, Streams.Invalid, message);
+ 						EXIT;
+ 					END;
+ 
+@@ -2656,7 +2656,7 @@
+ 					ELSE
+ 						error := TRUE;
+ 						MakeMessage(message, "Parsing import section of module # failed", filename, "");
+-						diagnostics.Error(source, errorPosition, message);
++						diagnostics.Error(source, errorPosition, errorPosition, message);
+ 						EXIT;
+ 					END;
+ 				ELSE
+@@ -2772,7 +2772,7 @@
+ 			reader := fileReader;
+ 		ELSE
+ 			MakeMessage(message, "Could not open file #", file.name, "");
+-			diagnostics.Error(file.name, file.pos, message);
++			diagnostics.Error(file.name, file.pos, file.pos, message);
+ 		END;
+ 	END;
+ 	IF (reader = NIL) THEN
+@@ -2783,7 +2783,7 @@
+ 			reader := textReader;
+ 		ELSE
+ 			MakeMessage(message, "Could not open file # (Package = )", file.name, "");
+-			diagnostics.Error(file.name, file.pos, message);
++			diagnostics.Error(file.name, file.pos, file.pos, message);
+ 		END;
+ 	END;
+ 	RETURN reader;
+@@ -2860,7 +2860,7 @@
+ 	ELSE
+ 		builds := NIL;
+ 		MakeMessage(message, "Could not open file #", filename, "");
+-		diagnostics.Error("", Streams.Invalid, message);
++		diagnostics.Error("", Streams.Invalid, Streams.Invalid, message);
+ 		RETURN FALSE;
+ 	END;
+ END ParseBuildFile;
+Index: SyntaxHighlighter.Mod
+===================================================================
+--- SyntaxHighlighter.Mod	(revision 10251)
++++ SyntaxHighlighter.Mod	(working copy)
+@@ -1464,7 +1464,7 @@
+ 				Copy(string^, fontname);
+ 			END;
+ 		ELSE
+-			diagnostics.Warning(source, element.GetPos(), "Style font name missing");
++			diagnostics.Warning(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Style font name missing");
+ 		END;
+ 
+ 		fontsize := 0;
+@@ -1476,7 +1476,7 @@
+ 				Strings.StrToInt(string^, fontsize);
+ 			END;
+ 		ELSE
+-			diagnostics.Warning(source, element.GetPos(), "Style attribute font size missing");
++			diagnostics.Warning(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Style attribute font size missing");
+ 		END;
+ 
+ 		string := element.GetAttributeValue(XmlAttributeFontStyle);
+@@ -1497,10 +1497,10 @@
+ 				IF (res = Strings.Ok) THEN
+ 					INCL(defined, Color);
+ 				ELSE
+-					diagnostics.Warning(source, element.GetPos(), "Style attribute color: Invalid value");
++					diagnostics.Warning(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Style attribute color: Invalid value");
+ 				END;
+ 			END;
+-		ELSE diagnostics.Warning(source, element.GetPos(), "Style attribute color missing");
++		ELSE diagnostics.Warning(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Style attribute color missing");
+ 		END;
+ 
+ 		bgcolor := 0;
+@@ -1512,7 +1512,7 @@
+ 				IF (res = Strings.Ok) THEN
+ 					INCL(defined, BgColor);
+ 				ELSE
+-					diagnostics.Warning(source, element.GetPos(), "Style attribute background color: Invalid value");
++					diagnostics.Warning(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Style attribute background color: Invalid value");
+ 				END;
+ 			END;
+ 		ELSE
+@@ -1538,7 +1538,7 @@
+ 		styles.Add(style);
+ 	ELSE
+ 		error := TRUE;
+-		diagnostics.Error(source, element.GetPos(), "Style name missing");
++		diagnostics.Error(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Style name missing");
+ 	END;
+ END ParseStyle;
+ 
+@@ -1559,7 +1559,7 @@
+ 			IF (string # NIL) & (string^ = XmlStyle) THEN
+ 				ParseStyle(ptr(XML.Element), styles, source, diagnostics, error);
+ 			ELSE
+-				diagnostics.Warning(source, ptr(XML.Element).GetPos(), "Expected style element");
++				diagnostics.Warning(source, ptr(XML.Element).GetPos(), ptr(XML.Element).GetPos() + Strings.Length(ptr(XML.Element).GetName()^), "Expected style element");
+ 			END;
+ 		END;
+ 	END;
+@@ -1600,24 +1600,24 @@
+ 						END;
+ 						IF (res # Ok) THEN
+ 							error := TRUE;
+-							diagnostics.Error(source, element.GetPos(), "Token too long");
++							diagnostics.Error(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Token too long");
+ 						END;
+ 						reader.SkipWhitespace;
+ 						reader.Token(token);
+ 					END;
+ 				ELSE
+-					diagnostics.Warning(source, element.GetPos(), "Empty group (string)");
++					diagnostics.Warning(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Empty group (string)");
+ 				END;
+ 			ELSE
+-				diagnostics.Warning(source, element.GetPos(), "Empty group");
++				diagnostics.Warning(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Empty group");
+ 			END;
+ 		ELSE
+ 			error := TRUE;
+-			diagnostics.Error(source, element.GetPos(), "Could not find style for group...");
++			diagnostics.Error(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Could not find style for group...");
+ 		END;
+ 	ELSE
+ 		error := TRUE;
+-		diagnostics.Error(source, element.GetPos(), "Group name missing");
++		diagnostics.Error(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Group name missing");
+ 	END;
+ END ParseGroup;
+ 
+@@ -1638,7 +1638,7 @@
+ 			IF (string # NIL) & (string^ = XmlGroup) THEN
+ 				ParseGroup(ptr(XML.Element), highlighter, styles, TypeTokens, source, diagnostics, error);
+ 			ELSE
+-				diagnostics.Warning(source, ptr(XML.Element).GetPos(), "Expected group element");
++				diagnostics.Warning(source, ptr(XML.Element).GetPos(), ptr(XML.Element).GetPos() + Strings.Length(ptr(XML.Element).GetName()^), "Expected group element");
+ 			END;
+ 		END;
+ 	END;
+@@ -1662,7 +1662,7 @@
+ 			IF (string # NIL) & (string^ = XmlGroup) THEN
+ 				ParseGroup(ptr(XML.Element), highlighter, styles, TypeWords, source, diagnostics, error);
+ 			ELSE
+-				diagnostics.Warning(source, ptr(XML.Element).GetPos(), "Expected group element");
++				diagnostics.Warning(source, ptr(XML.Element).GetPos(), ptr(XML.Element).GetPos() + Strings.Length(ptr(XML.Element).GetName()^), "Expected group element");
+ 			END;
+ 		END;
+ 	END;
+@@ -1678,7 +1678,7 @@
+ 	IF (string # NIL) THEN
+ 		highlighter.numberStyle := styles.Find(string^);
+ 		IF (highlighter.numberStyle = NIL) THEN
+-			diagnostics.Warning(source, ptr(XML.Element).GetPos(), "Number style not found");
++			diagnostics.Warning(source, ptr(XML.Element).GetPos(), ptr(XML.Element).GetPos() + Strings.Length(ptr(XML.Element).GetName()^), "Number style not found");
+ 		END;
+ 	END;
+ END ParseWords;
+@@ -1706,7 +1706,7 @@
+ 			styleOpen := style;
+ 		ELSE
+ 			error := TRUE;
+-			diagnostics.Error(source, element.GetPos(), "OpenStyle not found");
++			diagnostics.Error(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "OpenStyle not found");
+ 		END;
+ 	END;
+ 
+@@ -1717,7 +1717,7 @@
+ 			styleClose := style;
+ 		ELSE
+ 			error := TRUE;
+-			diagnostics.Error(source, element.GetPos(), "CloseStyle not found");
++			diagnostics.Error(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "CloseStyle not found");
+ 		END;
+ 	END;
+ 
+@@ -1728,7 +1728,7 @@
+ 			styleContent := style;
+ 		ELSE
+ 			error := TRUE;
+-			diagnostics.Error(source, element.GetPos(), "ContentStyle not found");
++			diagnostics.Error(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "ContentStyle not found");
+ 		END;
+ 	END;
+ 
+@@ -1737,17 +1737,17 @@
+ 		Copy(string^, open);
+ 		IF (open = "") THEN
+ 			error := TRUE;
+-			diagnostics.Error(source, element.GetPos(), "Region attribute open is empty");
++			diagnostics.Error(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Region attribute open is empty");
+ 		END;
+ 	ELSE
+ 		error := TRUE;
+-		diagnostics.Error(source, element.GetPos(), "Region attribute open missing");
++		diagnostics.Error(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Region attribute open missing");
+ 	END;
+ 
+ 	string := element.GetAttributeValue(XmlAttributeClose);
+ 	IF (string # NIL) THEN
+ 		Copy(string^, close);
+-	ELSE diagnostics.Warning(source, element.GetPos(), "Region attribute close missing");
++	ELSE diagnostics.Warning(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Region attribute close missing");
+ 	END;
+ 
+ 	nesting := FALSE;
+@@ -1755,7 +1755,7 @@
+ 	IF (string # NIL) THEN
+ 		Strings.TrimWS(string^);
+ 		Strings.StrToBool(string^, nesting);
+-	ELSE diagnostics.Warning(source, element.GetPos(), "Region attribute nesting missing");
++	ELSE diagnostics.Warning(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Region attribute nesting missing");
+ 	END;
+ 
+ 	multiline := FALSE;
+@@ -1763,7 +1763,7 @@
+ 	IF (string # NIL) THEN
+ 		Strings.TrimWS(string^);
+ 		Strings.StrToBool(string^, multiline);
+-	ELSE diagnostics.Warning(source, element.GetPos(), "Region attribute multiline missing");
++	ELSE diagnostics.Warning(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Region attribute multiline missing");
+ 	END;
+ 
+ 	IF ~error THEN
+@@ -1788,7 +1788,7 @@
+ 			IF (string # NIL) & (string^ = XmlRegion) THEN
+ 				ParseRegion(ptr(XML.Element), highlighter, styles, source, diagnostics, error);
+ 			ELSE
+-				diagnostics.Warning(source, ptr(XML.Element).GetPos(), "Expected region element");
++				diagnostics.Warning(source, ptr(XML.Element).GetPos(), ptr(XML.Element).GetPos() + Strings.Length(ptr(XML.Element).GetName()^), "Expected region element");
+ 			END;
+ 		END;
+ 	END;
+@@ -1815,7 +1815,7 @@
+ 				highlighter.defaultStyle := styles.Find(string^);
+ 				IF (highlighter.defaultStyle = NIL) THEN
+ 					error := TRUE;
+-					diagnostics.Error(source, element.GetPos(), "Default style not found");
++					diagnostics.Error(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Default style not found");
+ 				END;
+ 			END;
+ 		END;
+@@ -1836,7 +1836,7 @@
+ 		END;
+ 	ELSE
+ 		error := TRUE;
+-		diagnostics.Error(source, element.GetPos(), "Highlighter name missing");
++		diagnostics.Error(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Highlighter name missing");
+ 	END;
+ END ParseHighlighter;
+ 
+@@ -1857,7 +1857,7 @@
+ 			IF (string # NIL) & (string^ = XmlHighlighter) THEN
+ 				ParseHighlighter(ptr(XML.Element), highlighters, styles, source, diagnostics, error);
+ 			ELSE
+-				diagnostics.Warning(source, ptr(XML.Element).GetPos(), "Expected highlighter element");
++				diagnostics.Warning(source, ptr(XML.Element).GetPos(), ptr(XML.Element).GetPos() + Strings.Length(ptr(XML.Element).GetName()^), "Expected highlighter element");
+ 			END;
+ 		END;
+ 	END;
+@@ -1883,7 +1883,7 @@
+ 			ParseStyles(element, styles, source, diagnostics, error);
+ 		ELSE
+ 			error := TRUE;
+-			diagnostics.Error(source, element.GetPos(), "Styles section missing");
++			diagnostics.Error(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Styles section missing");
+ 		END;
+ 
+ 		NEW(highlighters);
+@@ -1892,11 +1892,11 @@
+ 			ParseHighlighters(element, highlighters, styles, source, diagnostics, error);
+ 		ELSE
+ 			error := TRUE;
+-			diagnostics.Error(source, element.GetPos(), "Highlighters section missing");
++			diagnostics.Error(source, element.GetPos(), element.GetPos() + Strings.Length(element.GetName()^), "Highlighters section missing");
+ 		END;
+ 	ELSE
+ 		error := TRUE;
+-		diagnostics.Error(source, root.GetPos(), "XML root element name mismatch");
++		diagnostics.Error(source, root.GetPos(), root.GetPos() + Strings.Length(root.GetName()^), "XML root element name mismatch");
+ 	END;
+ END ParseDocument;
+ 
+@@ -1936,7 +1936,7 @@
+ PROCEDURE TrapHandler(pos, line, row: Streams.Position; CONST msg: ARRAY OF CHAR);
+ BEGIN
+ 	error := TRUE;
+-	diagnostics.Error(source, pos, msg);
++	diagnostics.Error(source, pos, pos, msg);
+ END TrapHandler;
+ 
+ PROCEDURE LoadDocument(CONST filename : ARRAY OF CHAR; CONST d: Diagnostics.Diagnostics; VAR e : BOOLEAN) : XML.Document;
+@@ -1960,7 +1960,7 @@
+ 		END;
+ 	ELSE
+ 		e := TRUE;
+-		d.Error(filename, Streams.Invalid, "File not found");
++		d.Error(filename, Streams.Invalid, Streams.Invalid, "File not found");
+ 	END;
+ 	diagnostics := NIL; source := "";
+ 	ASSERT(error OR (document # NIL));
+Index: TestSuite.Mod
+===================================================================
+--- TestSuite.Mod	(revision 10251)
++++ TestSuite.Mod	(working copy)
+@@ -59,10 +59,10 @@
+ 		ClearList (tests);
+ 		WHILE SkipComment (r) DO
+ 			IF ~ReadType (r, type) OR ~SkipWhitespace (r) OR ~ReadText (r, name) THEN
+-				diagnostics.Error (name, r.Pos(), "parse error"); RETURN FALSE;
++				diagnostics.Error (name, r.Pos(), r.Pos(), "parse error"); RETURN FALSE;
+ 			END;
+ 			IF FindResult (tests, name) # NIL THEN
+-				diagnostics.Error (name, Streams.Invalid, "duplicated test"); RETURN FALSE;
++				diagnostics.Error (name, Streams.Invalid, Streams.Invalid, "duplicated test"); RETURN FALSE;
+ 			END;
+ 			code.Clear; writer.Reset;
+ 			WHILE SkipLn (r) & Tabulator (r) & ReadText (r, line) DO writer.Char (09X); writer.String (line); writer.Char (0AX); END;
+Index: TextConverter.Mod
+===================================================================
+--- TextConverter.Mod	(revision 10251)
++++ TextConverter.Mod	(working copy)
+@@ -13,12 +13,12 @@
+ 		IF res = 0 THEN
+ 			converter (text, filename, res);
+ 			IF res = 0 THEN
+-				diagnostics.Information (filename, Streams.Invalid, "successfully converted");
++				diagnostics.Information (filename, Streams.Invalid, Streams.Invalid, "successfully converted");
+ 			ELSE
+-				diagnostics.Information (filename, Streams.Invalid, "failed to store");
++				diagnostics.Information (filename, Streams.Invalid, Streams.Invalid, "failed to store");
+ 			END
+ 		ELSE
+-			diagnostics.Error (filename, Streams.Invalid, "failed to load");
++			diagnostics.Error (filename, Streams.Invalid, Streams.Invalid, "failed to load");
+ 		END;
+ 	END;
+ END Convert;
+Index: WhitespaceRemover.Mod
+===================================================================
+--- WhitespaceRemover.Mod	(revision 10251)
++++ WhitespaceRemover.Mod	(working copy)
+@@ -53,7 +53,7 @@
+ 	WHILE ~reader.eot DO
+ 		IF (char = LineFeed) THEN
+ 			IF lastCharWasWhitespace THEN
+-				diagnostics.Warning("", lastWhitespacePosition, "Whitespace at end of line");
++				diagnostics.Warning("", lastWhitespacePosition, reader.GetPosition() - 1, "Whitespace at end of line");
+ 				lastCharWasWhitespace := FALSE;
+ 			END;
+ 		ELSIF TextUtilities.IsWhiteSpace(char, text.isUTF) THEN
+Index: WMDiagnostics.Mod
+===================================================================
+--- WMDiagnostics.Mod	(revision 10251)
++++ WMDiagnostics.Mod	(working copy)
+@@ -36,7 +36,7 @@
+ 	Entry* = RECORD
+ 		type- : INTEGER;
+ 		source- : Files.FileName;
+-		position-: Streams.Position;
++		position-, endPosition-: Streams.Position;
+ 		message- : ARRAY 256 OF CHAR;
+ 	END;
+ 
+@@ -145,39 +145,40 @@
+ 			END;
+ 		END CheckEntriesSize;
+ 
+-		PROCEDURE Error*(CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++		PROCEDURE Error*(CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+ 		BEGIN
+-			Add(TypeError, source, position, message, nofErrors)
++			Add(TypeError, source, position, endPosition, message, nofErrors)
+ 		END Error;
+ 
+-		PROCEDURE Warning*(CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++		PROCEDURE Warning*(CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+ 		BEGIN
+-			Add(TypeWarning, source, position, message, nofWarnings);
++			Add(TypeWarning, source, position, endPosition, message, nofWarnings);
+ 		END Warning;
+ 
+-		PROCEDURE Information*(CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++		PROCEDURE Information*(CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+ 		BEGIN
+-			Add(TypeInformation, source, position, message, nofInformations);
++			Add(TypeInformation, source, position, endPosition, message, nofInformations);
+ 		END Information;
+ 
+-		PROCEDURE Exists(type: INTEGER; position : Streams.Position; CONST message: ARRAY OF CHAR) : BOOLEAN;
++		PROCEDURE Exists(type: INTEGER; position, endPosition : Streams.Position; CONST message: ARRAY OF CHAR) : BOOLEAN;
+ 		VAR i : SIZE;
+ 		BEGIN
+ 			i := 0;
+-			WHILE (i < nofEntries) & ((entries[i].type # type) OR (entries[i].position # position) OR (entries[i].message # message)) DO
++			WHILE (i < nofEntries) & ((entries[i].type # type) OR (entries[i].position # position) OR (entries[i].endPosition # endPosition) OR (entries[i].message # message)) DO
+ 				INC(i);
+ 			END;
+ 			RETURN (nofEntries > 0) & (i < nofEntries);
+ 		END Exists;
+ 
+-		PROCEDURE Add(type: INTEGER; CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR; VAR counter: SIZE);
++		PROCEDURE Add(type: INTEGER; CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR; VAR counter: SIZE);
+ 		BEGIN
+ 			AcquireWrite;
+-			IF ~Exists(type, position, message) THEN
++			IF ~Exists(type, position, endPosition, message) THEN
+ 				CheckEntriesSize;
+ 				entries[nofEntries].type := type;
+ 				COPY(source, entries[nofEntries].source);
+ 				entries[nofEntries].position := position;
++				entries[nofEntries].endPosition := endPosition;
+ 				COPY(message, entries[nofEntries].message);
+ 				INC(nofEntries); INC(counter);
+ 				changed := TRUE;
+@@ -222,6 +223,7 @@
+ 					IF SELF.entries[i].type = type THEN
+ 						entries[dest].type := SELF.entries[i].type;
+ 						entries[dest].position := SELF.entries[i].position;
++						entries[dest].endPosition := SELF.entries[i].endPosition;
+ 						entries[dest].source := SELF.entries[i].source;
+ 						entries[dest].message := SELF.entries[i].message;
+ 						INC(dest);
+@@ -431,12 +433,16 @@
+ 						picture := "";
+ 					END;
+ 
+-					IF (entries[i].position # Streams.Invalid) & (textViews # NIL) THEN
+-						NEW(entries[i].pos, LEN(textViews));
++					IF (entries[i].position # Streams.Invalid) & (entries[i].endPosition # Streams.Invalid) & (textViews # NIL) THEN
++						NEW(entries[i].pos, LEN(textViews) * 2);
+ 						FOR j := 0 TO LEN(textViews) - 1 DO
+-							entries[i].pos[j] := textViews[j].CreatePositionMarker();
+-							IF (picture # "") THEN entries[i].pos[j].Load(picture); END;
+-							entries[i].pos[j].SetPosition(entries[i].position(SIZE));
++							(* TODO: nicer visualization possible? *)
++							entries[i].pos[j*2] := textViews[j].CreatePositionMarker();
++							IF (picture # "") THEN entries[i].pos[j*2].Load(picture); END;
++							entries[i].pos[j*2].SetPosition(entries[i].position(SIZE));
++							entries[i].pos[j*2+1] := textViews[j].CreatePositionMarker();
++							IF (picture # "") THEN entries[i].pos[j*2+1].Load(picture); END;
++							entries[i].pos[j*2+1].SetPosition(entries[i].endPosition(SIZE));
+ 						END;
+ 					END;
+ 
+@@ -639,6 +645,8 @@
+ BEGIN
+ 	IF (e1.position < e2.position) THEN result := Less;
+ 	ELSIF (e1.position > e2.position) THEN result := Greater;
++	ELSIF (e1.endPosition < e2.endPosition) THEN result := Less;
++	ELSIF (e1.endPosition > e2.endPosition) THEN result := Greater;
+ 	ELSE
+ 		result := Equal;
+ 	END;

@@ -286,6 +286,8 @@ public class CachingServer extends Server {
 	}
 
 	private void enqueuePendingUri(String uri) {
+		if (isSkipped(uri))
+			return;
 		synchronized (pendingUris) {
 			pendingUris.add(uri);
 			pendingUris.notifyAll();
@@ -384,7 +386,7 @@ public class CachingServer extends Server {
 
 	protected void fileClosed(OberonFile file) {
 		if (file != null) {
-			if (!file.getUri().startsWith("file:")) {
+			if (!file.getUri().startsWith("file:") || isSkipped(file.getNormalizedUri())) {
 				super.fileClosed(file);
 				return;
 			}
@@ -572,6 +574,7 @@ public class CachingServer extends Server {
 		private final WorkspaceFolder wf;
 		private final List<String> uris = new ArrayList<>();
 		private File buildOrderFile = null;
+		private File buildSkipFile = null;
 
 		public WorkspaceFolderScanner(WorkspaceFolder wf) {
 			this.wf = wf;
@@ -599,6 +602,17 @@ public class CachingServer extends Server {
 					ex.printStackTrace();
 				}
 			}
+			if (buildSkipFile != null) {
+				try {
+					List<String> fileList = Files.readLines(buildSkipFile, StandardCharsets.UTF_8);
+					for(String filename : fileList) {
+						skippedFilenames.add(filename);
+					}
+				} catch (IOException ex) {
+					// continue without skipping more files
+					ex.printStackTrace();
+				}
+			}
 			for (String uri : uris) {
 				enqueuePendingUri(uri);
 			}
@@ -622,6 +636,8 @@ public class CachingServer extends Server {
 						uris.add(file.toURI().toString());
 					} else if (file.getName().equalsIgnoreCase("OberonBuildOrder.Tool")) {
 						buildOrderFile = file;
+					} else if (file.getName().equalsIgnoreCase("OberonBuildSkip.Tool")) {
+						buildSkipFile = file;
 					}
 				}
 			}

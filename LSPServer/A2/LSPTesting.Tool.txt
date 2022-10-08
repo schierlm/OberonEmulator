@@ -1,0 +1,297 @@
+    Compiler.Compile -p=Win64 --objectFileExtension=.GofWw --define=WIN,AMD64,QUIETOUTPUT
+           --symbolFileExtension=.SymWw
+                FoxScanner.Mod FoxSyntaxTree.Mod FoxParser.Mod
+                   FoxSemanticChecker.Mod FoxGlobal.Mod Compiler.Mod
+                   LSPScannerMetadata.Mod LSPSyntaxTreeWalker.Mod
+                   LSPhConstants.Mod LSPhServer.Mod ~
+
+        Compiler.Compile AMD64.FoxArrayBaseOptimized.Mod ~
+        LSPhServer.TestComplete
+        FsTools.CloseFiles Tmp.Tmp ~
+        System.Watch
+        Untitled.Boom
+        Compiler.Compile \f Untitled.Mod
+
+        System.FreeDownTo LSPSyntaxTreeWalker ~
+
+        PET.Open Im3.Mod ~
+
+--------------------
+
+MODULE LSPhServer;
+
+  (* -- TEST CODE -- *)
+
+  TYPE
+      TestDiagnostics* = OBJECT (ModuleInfoDiagnostics);
+
+      VAR diag: Diagnostics.Diagnostics;
+        moduleName: SyntaxTree.IdentifierString;
+        lastDefinitionEnd, lastSymbolEnd: Streams.Position;
+
+      PROCEDURE Send(CONST type: SIGNED8; CONST source : ARRAY OF CHAR; CONST position, endPosition: Streams.Position; CONST message: ARRAY OF CHAR);
+      BEGIN
+      END Send;
+
+      PROCEDURE &InitTest(d: Diagnostics.Diagnostics);
+      BEGIN diag := d; moduleName := "<unknown>"; lastDefinitionEnd := 0; lastSymbolEnd := 0
+      END InitTest;
+
+      PROCEDURE Error (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+      BEGIN diag.Error(source, position, endPosition, message)
+      END Error;
+
+      PROCEDURE Warning (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+      BEGIN diag.Warning(source, position, endPosition, message)
+      END Warning;
+
+      PROCEDURE Information (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+      BEGIN diag.Information(source, position, endPosition, message)
+      END Information;
+
+      PROCEDURE SyntaxElement(kindVal: SIGNED32; start, end, defEnd: Streams.Position; CONST defMod: ARRAY OF CHAR);
+      BEGIN
+        Log("SyntaxElement");
+        IF defEnd # -1 THEN Log(defMod) END;
+      END SyntaxElement;
+
+      PROCEDURE SymbolScanned(CONST source: ARRAY OF CHAR; symbol: Scanner.Symbol; pos: Basic.Position);
+        VAR kind: LSPScannerMetadata.SyntaxElementKind;
+      BEGIN
+        kind := LSPScannerMetadata.GetSyntaxKind(symbol); lastSymbolEnd := pos.end;
+        IF source # "Tmp.Tmp" THEN
+           lastSymbolEnd := -1
+        ELSIF kind # LSPScannerMetadata.SyntaxElementKind.None THEN
+           SyntaxElement(MapSyntaxElementKind(kind), pos.start, pos.end, -1, "")
+        END
+      END SymbolScanned;
+
+      PROCEDURE UpdateSubSymbol(symbol, subSymbol: Scanner.Symbol);
+        VAR command: SIGNED8;
+      BEGIN
+        CASE subSymbol OF
+          Scanner.LeftParenthesisProcParamStart: command := LSPhConstants.ProcParamStart;
+          |Scanner.LeftParenthesisCallParamStart: command := LSPhConstants.CallParamStart;
+          |Scanner.RightParenthesisParamEnd:command := LSPhConstants.ParamEnd;
+          |Scanner.CommaParamSeparator, Scanner.SemicolonParamSeparator: command := LSPhConstants.ParamNext;
+          ELSE command := -1;
+        END;
+        IF (lastSymbolEnd # -1) & (command # -1) THEN
+        END;
+      END UpdateSubSymbol;
+
+      PROCEDURE FoundDefinition(kind: SIGNED32; pos: Basic.Position);
+      BEGIN
+        IF (pos.end <= lastDefinitionEnd) THEN
+          diag.Error("Tmp.Tmp", pos.start, pos.end, "LSP: Invalid definition order");
+        END;
+        lastDefinitionEnd := pos.end;
+        SyntaxElement(kind, pos.start, pos.end, pos.end, moduleName)
+      END FoundDefinition;
+
+      PROCEDURE ModuleParsed(module: SyntaxTree.Module; VAR errors: BOOLEAN; VAR findScopeAtPosition: Streams.Position);
+          VAR
+            import: SyntaxTree.Import;
+            ic: SyntaxTree.Identifier;
+            s, s2: SyntaxTree.IdentifierString;
+        BEGIN
+          Global.GetModuleName(module, moduleName);
+          FoundDefinition(LSPhConstants.SynModule, module.position);
+          Log("ModuleName");
+          Log(moduleName);
+          import := module.moduleScope.firstImport;
+          WHILE import # NIL DO
+            ic := import.context;
+            IF ic = SyntaxTree.invalidIdentifier THEN ic := module.context END;
+            Global.GetModuleSectionName(import.moduleName, ic, s);
+            IF import.modulePosition.end = import.position.end THEN
+              SyntaxElement(LSPhConstants.SynModule, import.position.start, import.position.end, 1, s);
+            ELSE
+              Basic.GetString(import.name, s2);
+              SyntaxElement(LSPhConstants.SynModule, import.position.start, import.position.end, 1, s2);
+              SyntaxElement(LSPhConstants.SynModule, import.modulePosition.start, import.modulePosition.end, 1, s);
+            END;
+            Log("Import");
+            Log(s);
+            import := import.nextImport;
+          END;
+          IF module.endRepeatPosition.end # Basic.invalidPosition.end THEN
+            SyntaxElement(LSPhConstants.SynModule, module.endRepeatPosition.start, module.endRepeatPosition.end, 1, moduleName);
+          END;
+      END ModuleParsed;
+
+      PROCEDURE ModuleChecked(module: SyntaxTree.Module; VAR errors: BOOLEAN; foundScope: SyntaxTree.Scope; foundScopeIsTraverse: BOOLEAN; foundScopeName: SyntaxTree.Identifier);
+        VAR crash: BOOLEAN;
+          v: ModuleInfoLSPIdentifierVisitor; bv: BufferingLSPIdentifierVisitor;
+      BEGIN crash := TRUE;
+        NEW(v, SELF, moduleName, errors);
+        NEW(bv, v);
+        LSPSyntaxTreeWalker.VisitIdentifiers(bv, module);
+        bv.Flush();
+        crash := FALSE;
+      FINALLY
+        IF crash THEN Log(moduleName); Log("LSPSyntaxTreeWalker threw an exception") END;
+      END ModuleChecked;
+
+      PROCEDURE CheckSymbolFileChanged(module: SyntaxTree.Module; symbolFile: Formats.SymbolFileFormat; importCache: SyntaxTree.ModuleScope);
+      VAR
+        sflags: SET;
+        sdiagnostics: Diagnostics.DiagnosticsList;
+        fname: Basic.FileName;
+        importedModule: SyntaxTree.Module;
+      BEGIN
+        sflags := {};
+        NEW(sdiagnostics);
+        Global.ModuleFileName(module.name,module.context,fname);
+        importedModule := symbolFile.Import(fname,importCache);
+        IF importedModule = NIL THEN
+                INCL(sflags, InterfaceComparison.Redefined)
+        END;
+        InterfaceComparison.CompareThis(module,symbolFile,sdiagnostics,importCache,sflags);
+        IF (InterfaceComparison.Redefined IN sflags) OR (InterfaceComparison.Extended IN sflags) OR (sdiagnostics.entries # NIL) THEN
+              Log("SymbolFileChanged");
+        END;
+      END CheckSymbolFileChanged;
+
+       PROCEDURE GenerateSymbolFile(symbolFile: Formats.SymbolFileFormat; module: SyntaxTree.Module; importCache: SyntaxTree.ModuleScope): BOOLEAN;
+       VAR moduleFileName: Basic.FileName; smv: TestLSPSymbolMappingVisitor;  symbols: SyntaxTree.Module; newImportCache: SyntaxTree.ModuleScope; result, crash : BOOLEAN;
+      BEGIN result := FALSE; crash := TRUE;
+        CheckSymbolFileChanged(module, symbolFile, importCache);
+        IF symbolFile.Export(module, importCache) THEN
+          Global.ModuleFileName(module.name,module.context,moduleFileName);
+          newImportCache := SyntaxTree.NewModuleScope();
+          symbols := symbolFile.Import(moduleFileName, newImportCache);
+          NEW(smv, SELF);
+          LSPSyntaxTreeWalker.VisitSymbolMapping(smv, symbols, module);
+          result := TRUE;
+        END;
+        crash := FALSE;
+      FINALLY
+        IF crash THEN Log(moduleName); Log("GenerateSymbolFile threw an exception") END;
+        RETURN result & ~crash;
+      END GenerateSymbolFile;
+
+    END TestDiagnostics;
+
+    TestLSPSymbolMappingVisitor = OBJECT (LSPSyntaxTreeWalker.LSPSymbolMappingVisitor)
+
+        VAR diag: ModuleInfoDiagnostics;
+
+        PROCEDURE &Init(diag: ModuleInfoDiagnostics);
+        BEGIN SELF.diag := diag
+        END Init;
+
+        PROCEDURE VisitSymbolMatch(pos: Basic.Position; symbolIndex: SIGNED32);
+        BEGIN
+          Log("SymbolMatch");
+          Log(diag.moduleName);
+        END VisitSymbolMatch;
+
+    END TestLSPSymbolMappingVisitor;
+
+    TestCompleteDiagnostics* = OBJECT (AutoCompleteDiagnostics);
+
+      VAR endPos: SIGNED32; foundDesignator: SyntaxTree.Designator;
+
+      PROCEDURE &InitTest();
+      BEGIN SELF.endPos := 44 (* TODO *); foundDesignator := NIL;
+      END InitTest;
+
+      PROCEDURE Send(CONST syntaxType: INTEGER; CONST suggestion: ARRAY OF CHAR);
+      BEGIN
+        Log("Completion");
+        Log(suggestion);
+      END Send;
+
+      PROCEDURE Error (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+      END Error;
+
+      PROCEDURE Warning (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+      END Warning;
+
+      PROCEDURE Information (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+      END Information;
+
+      PROCEDURE SymbolScanned(CONST source: ARRAY OF CHAR; symbol: Scanner.Symbol; pos: Basic.Position);
+      END SymbolScanned;
+
+      PROCEDURE UpdateSubSymbol(symbol, subSymbol: Scanner.Symbol);
+      END UpdateSubSymbol;
+
+      PROCEDURE ModuleParsed(module: SyntaxTree.Module; VAR errors: BOOLEAN; VAR findScopeAtPosition: Streams.Position);
+      BEGIN errors := FALSE; findScopeAtPosition := endPos;
+      END ModuleParsed;
+
+      PROCEDURE ModuleChecked(module: SyntaxTree.Module; VAR errors: BOOLEAN; foundScope: SyntaxTree.Scope; foundScopeIsTraverse: BOOLEAN; foundScopeName: SyntaxTree.Identifier);
+        VAR nameString: SyntaxTree.IdentifierString; i: SIZE;
+      BEGIN errors := TRUE;
+        IF (foundScope # NIL) THEN
+          Basic.GetString(foundScopeName, nameString);
+          i := Strings.Length(nameString);
+          IF (endPos = endPos) & (nameString[i-1] = 'X') THEN
+            nameString[i-1] := 0X;
+            ScanScope(foundScope, foundScopeIsTraverse, nameString)
+          END;
+        END;
+      END ModuleChecked;
+
+      PROCEDURE ScanScope(scope: SyntaxTree.Scope; traverseScope: BOOLEAN; typedName: SyntaxTree.IdentifierString);
+        VAR s: SyntaxTree.Symbol; nameString: SyntaxTree.IdentifierString; ownerRecord, base: SyntaxTree.RecordType;
+      BEGIN
+        IF traverseScope & (scope.outerScope # NIL) THEN ScanScope(scope.outerScope, traverseScope, typedName) END;
+        IF (scope IS SyntaxTree.RecordScope) THEN
+              ownerRecord := scope(SyntaxTree.RecordScope).ownerRecord;
+              base := SemanticChecker.RecordBase(ownerRecord);
+              IF (base # NIL) THEN ScanScope(base.recordScope, traverseScope, typedName) END
+        END;
+        s := scope.firstSymbol;
+        WHILE s # NIL DO
+          IF (~(s IS SyntaxTree.Operator)) & (s.name # SyntaxTree.invalidIdentifier) THEN
+            Basic.GetString(s.name, nameString);
+            IF (nameString[0] # 0X) & (Strings.StartsWith(typedName, 0, nameString)) THEN
+              Send(MapSyntaxElementKind(LSPSyntaxTreeWalker.MapKind(s)), nameString)
+            END
+          END;
+          s := s.nextSymbol;
+        END;
+      END ScanScope;
+
+      PROCEDURE GenerateSymbolFile(symbolFile: Formats.SymbolFileFormat; module: SyntaxTree.Module; importCache: SyntaxTree.ModuleScope): BOOLEAN;
+      BEGIN
+      RETURN TRUE;
+      END GenerateSymbolFile;
+
+    END TestCompleteDiagnostics;
+
+  PROCEDURE TestCompile*(context: Commands.Context);
+    VAR
+      running: BOOLEAN;
+      diag: Diagnostics.StreamDiagnostics;
+      sdiag: TestDiagnostics;
+      optionString: ARRAY 1024 OF CHAR;
+  BEGIN optionString := "-p=Win64 --objectFile='' --symbolFile=Textual -w";
+    errlog := context.error;
+    running := TRUE;
+    NEW(diag, context.out);
+    NEW(sdiag, diag);
+    Log("Compiling...");
+    CompileDiag(context.out, context.error, optionString, sdiag);
+    Log("End compiling");
+  END TestCompile;
+
+  PROCEDURE TestComplete*(context: Commands.Context);
+    VAR
+      running: BOOLEAN;
+      sdiag: TestCompleteDiagnostics;
+      optionString: ARRAY 1024 OF CHAR;
+  BEGIN optionString := "-p=Win64 --objectFile='' --symbolFile=Textual -w";
+    errlog := context.error;
+    running := TRUE;
+    NEW(sdiag);
+    Log("Completing...");
+    CompileDiag(context.out, context.error, optionString, sdiag);
+    Log("End Completing");
+  END TestComplete;
+
+BEGIN
+END LSPhServer.

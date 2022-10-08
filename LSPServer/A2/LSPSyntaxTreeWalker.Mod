@@ -8,7 +8,7 @@ TYPE
 	
     LSPIdentifierVisitor* = OBJECT
     
-        PROCEDURE VisitDefinition*(kind: LSPScannerMetadata.SyntaxElementKind; pos, exportedPos: Basic.Position; exported, removableIfUnused: BOOLEAN);
+        PROCEDURE VisitDefinition*(kind: LSPScannerMetadata.SyntaxElementKind; pos, exportedPos: Basic.Position; exported, command, removableIfUnused: BOOLEAN);
         BEGIN
         END VisitDefinition;
 
@@ -394,8 +394,8 @@ TYPE
 
 		PROCEDURE VisitInlineCallDesignator*(x: SyntaxTree.InlineCallDesignator);
 		BEGIN
-			Scope(x.block.scope);
-			VisitStatementBlock(x.block);
+			(* do not visit block or scope here as it is duplicate of original procedure *)
+			Expression(x.uninlined);
 		END VisitInlineCallDesignator;
 
 		PROCEDURE GetConstructor(record: SyntaxTree.RecordType): SyntaxTree.Procedure;
@@ -501,10 +501,11 @@ TYPE
 		END VisitProcedureValue;
 
 		PROCEDURE VisitDefinition(kind: LSPScannerMetadata.SyntaxElementKind; x: SyntaxTree.Symbol; removableIfUnused: BOOLEAN);
-			VAR exported: BOOLEAN;
+			VAR exported, command: BOOLEAN;
 		BEGIN
 			exported := (x.access * {SyntaxTree.ProtectedRead, SyntaxTree.ProtectedWrite, SyntaxTree.PublicRead, SyntaxTree.PublicWrite} # {});
-			visitor.VisitDefinition(kind, x.position, x.exportPos, exported, removableIfUnused);
+			command := exported & (x IS SyntaxTree.Procedure) & (x(SyntaxTree.Procedure).type(SyntaxTree.ProcedureType).numberParameters = 0);
+			visitor.VisitDefinition(kind, x.position, x.exportPos, exported, command, removableIfUnused);
 		END VisitDefinition;
 
 		PROCEDURE VisitReference(symbol: SyntaxTree.Symbol; position: Basic.Position; assignable, overriding: BOOLEAN);
@@ -693,7 +694,7 @@ TYPE
 			ELSE
 				kind := LSPScannerMetadata.SyntaxElementKind.ModuleAliasDef;
 			END;
-			visitor.VisitDefinition(kind, x.position, Basic.invalidPosition, FALSE, TRUE);
+			visitor.VisitDefinition(kind, x.position, Basic.invalidPosition, FALSE, FALSE, TRUE);
 			visitor.VisitImportedReference(LSPScannerMetadata.SyntaxElementKind.ModuleImport, x.modulePosition, -1, x.moduleName, x.context, TRUE, FALSE);
 			IF x.parameters # NIL THEN
 				FOR i := 0 TO x.parameters.Length()-1 DO

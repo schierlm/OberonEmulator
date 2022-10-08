@@ -1,0 +1,103 @@
+--- LSPhServer.Mod
++++ LSPhServer.Mod
+@@ -17,26 +17,31 @@
+       BEGIN out := o; moduleName := "<unknown>"; lastDefinitionEnd := 0; lastSymbolEnd := 0
+       END Init;
+ 
+-      PROCEDURE Send(CONST type: SIGNED8; CONST source : ARRAY OF CHAR; CONST position: Streams.Position; CONST message: ARRAY OF CHAR);
+-        VAR pos: INTEGER;
++      PROCEDURE Send(CONST type: SIGNED8; CONST source : ARRAY OF CHAR; CONST position, endPosition: Streams.Position; CONST message: ARRAY OF CHAR);
++        VAR pos, endPos: INTEGER;
+       BEGIN
+         pos := SHORT(position);
++        endPos := SHORT(endPosition);
+         IF (pos < 0) OR (source # "Tmp.Tmp") THEN pos := 0 END;
++        IF (endPos > pos) THEN
++          out.RawSInt(LSPhConstants.LogPosLength);
++          out.RawLInt(endPos-pos);
++        END;
+         out.RawSInt(type);
+         out.RawLInt(pos);
+         out.RawString(message);
+       END Send;
+ 
+-      PROCEDURE Error (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
+-      BEGIN Send(LSPhConstants.Error, source, position, message);
++      PROCEDURE Error (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
++      BEGIN Send(LSPhConstants.Error, source, position, endPosition, message);
+       END Error;
+ 
+-      PROCEDURE Warning (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
+-      BEGIN Send(LSPhConstants.Warning, source,  position, message);
++      PROCEDURE Warning (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
++      BEGIN Send(LSPhConstants.Warning, source,  position, endPosition, message);
+       END Warning;
+ 
+-      PROCEDURE Information (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
+-      BEGIN Send(LSPhConstants.Information, source, position, message);
++      PROCEDURE Information (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
++      BEGIN Send(LSPhConstants.Information, source, position, endPosition, message);
+       END Information;
+ 
+       PROCEDURE SyntaxElement(kindVal: SIGNED32; start, end, defEnd: Streams.Position; CONST defMod: ARRAY OF CHAR);
+@@ -79,7 +84,7 @@
+       PROCEDURE FoundDefinition(kind: SIGNED32; pos: Basic.Position);
+       BEGIN
+         IF (pos.end <= lastDefinitionEnd) THEN
+-          Send(LSPhConstants.Error, "Tmp.Tmp", pos.end, "LSP: Invalid definition order");
++          Send(LSPhConstants.Error, "Tmp.Tmp", pos.start, pos.end, "LSP: Invalid definition order");
+         END;
+         lastDefinitionEnd := pos.end;
+         SyntaxElement(kind, pos.start, pos.end, pos.end, moduleName)
+@@ -179,13 +184,13 @@
+         out.RawString(suggestion);
+       END Send;
+ 
+-      PROCEDURE Error (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++      PROCEDURE Error (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+       END Error;
+ 
+-      PROCEDURE Warning (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++      PROCEDURE Warning (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+       END Warning;
+ 
+-      PROCEDURE Information (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++      PROCEDURE Information (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+       END Information;
+ 
+       PROCEDURE SymbolScanned(CONST source: ARRAY OF CHAR; symbol: Scanner.Symbol; pos: Basic.Position);
+@@ -282,13 +287,13 @@
+         END;
+       END FormatToken;
+ 
+-      PROCEDURE Error (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++      PROCEDURE Error (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+       END Error;
+ 
+-      PROCEDURE Warning (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++      PROCEDURE Warning (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+       END Warning;
+ 
+-      PROCEDURE Information (CONST source : ARRAY OF CHAR; position : Streams.Position; CONST message : ARRAY OF CHAR);
++      PROCEDURE Information (CONST source : ARRAY OF CHAR; position, endPosition : Streams.Position; CONST message : ARRAY OF CHAR);
+       END Information;
+ 
+       PROCEDURE SymbolScanned(CONST source: ARRAY OF CHAR; symbol: Scanner.Symbol; pos: Basic.Position);
+@@ -572,14 +577,14 @@
+     IF Compiler.GetOptions(optSR, err, diagnostics, options) THEN
+       reader := Basic.GetFileReader(filename);
+       IF reader = NIL THEN
+-        diagnostics.Error(filename, Streams.Invalid, "failed to open"); error := TRUE;
++        diagnostics.Error(filename, Streams.Invalid, Streams.Invalid, "failed to open"); error := TRUE;
+       ELSE
+         error := ~Modules(filename, reader, 0, diagnostics, log, options, importCache);
+-        IF error THEN diagnostics.Error(filename, reader.Pos(), "Compilation FAILED") END;
++        IF error THEN diagnostics.Error(filename, reader.Pos(), reader.Pos(), "Compilation FAILED") END;
+       END;
+       err.Update;
+     ELSE
+-      diagnostics.Error(filename, Streams.Invalid, "Parsing options FAILED")
++      diagnostics.Error(filename, Streams.Invalid, Streams.Invalid, "Parsing options FAILED")
+     END;
+   END CompileDiag;
+ 

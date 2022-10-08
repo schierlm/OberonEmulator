@@ -1,0 +1,13 @@
+Index: Release.Mod
+===================================================================
+--- Release.Mod	(revision 10251)
++++ Release.Mod	(working copy)
+@@ -1499,7 +1499,7 @@
+ 		source : Files.FileName;
+ 
+ 		(*	All files of all builds in the build description file *)
+-		files : File;
++		files- : File;
+ 
+ 		(* number of files / sources  in <files> list *)
+ 		nofFiles- : SIZE;

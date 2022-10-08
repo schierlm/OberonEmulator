@@ -117,6 +117,7 @@ public class Server implements LanguageServer, LanguageClientAware {
 	protected final Bridge bridge;
 	protected final Map<String, OberonFile> openFiles = new ConcurrentHashMap<>();
 	protected final ExecutorService backgroundExecutor = Executors.newCachedThreadPool();
+	protected final Set<String> skippedFilenames = new HashSet<>();
 	private final boolean debug;
 
 	public Server(Bridge bridge, boolean debug) {
@@ -190,6 +191,10 @@ public class Server implements LanguageServer, LanguageClientAware {
 			PublishDiagnosticsParams diags = new PublishDiagnosticsParams(file.getUri(), new ArrayList<>());
 			client.publishDiagnostics(diags);
 		}
+	}
+
+	protected final boolean isSkipped(String uri) {
+		return skippedFilenames.contains(uri.replaceFirst("^.*/", ""));
 	}
 
 	protected final IdentifierReference lookupSymbolRef(IdentifierReference definition) {
@@ -443,6 +448,8 @@ public class Server implements LanguageServer, LanguageClientAware {
 			@Override
 			public void didChange(DidChangeTextDocumentParams params) {
 				OberonFile of = openFiles.get(params.getTextDocument().getUri());
+				if (of == null || isSkipped(of.getNormalizedUri()))
+					return;
 				if (params.getContentChanges().size() != 1)
 					throw new IllegalArgumentException("Incremental changes not supported)");
 				of.setContent(params.getContentChanges().get(0).getText());
@@ -460,6 +467,8 @@ public class Server implements LanguageServer, LanguageClientAware {
 			@Override
 			public CompletableFuture<SemanticTokens> semanticTokensFull(SemanticTokensParams params) {
 				OberonFile of = fileForURI(params.getTextDocument().getUri());
+				if (of == null)
+					return CompletableFuture.completedFuture(new SemanticTokens(Collections.emptyList()));
 				return of.waitWhenDirty(backgroundExecutor, f -> new SemanticTokens(IntStream.of(f.getSemanticTokens()).mapToObj(i -> i).collect(Collectors.toList())));
 			}
 
@@ -467,7 +476,7 @@ public class Server implements LanguageServer, LanguageClientAware {
 			public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams position) {
 				OberonFile of = fileForURI(position.getTextDocument().getUri());
 				int pos = of.getRawPos(position.getPosition());
-				if (pos == -1)
+				if (of == null || pos == -1 || isSkipped(of.getNormalizedUri()))
 					return CompletableFuture.completedFuture(Either.forLeft(new ArrayList<>()));
 				String prefix = of.getContent().substring(0, pos);
 				CompletableFuture<Either<List<CompletionItem>, CompletionList>> result = new CompletableFuture<>();
@@ -997,7 +1006,7 @@ public class Server implements LanguageServer, LanguageClientAware {
 			@Override
 			public CompletableFuture<List<? extends TextEdit>> formatting(DocumentFormattingParams params) {
 				OberonFile of = fileForURI(params.getTextDocument().getUri());
-				if (of == null)
+				if (of == null || isSkipped(of.getNormalizedUri()))
 					return CompletableFuture.completedFuture(new ArrayList<>());
 				String content = of.getContent();
 				Range fullRange = new Range(of.getPos(0), of.getPos(of.getContent().length()));
@@ -1209,6 +1218,10 @@ public class Server implements LanguageServer, LanguageClientAware {
 
 	private void fileChanged(OberonFile oberonFile) {
 		int version = oberonFile.getContentVersion();
+		if (isSkipped(oberonFile.getNormalizedUri())) {
+			oberonFile.analyzeSkipped();
+			return;
+		}
 		backgroundExecutor.submit(() -> {
 			try {
 				Thread.sleep(150);

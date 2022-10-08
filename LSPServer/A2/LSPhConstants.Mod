@@ -15,17 +15,18 @@ MODULE LSPhConstants;
     ForwardPointer* = 26; ForwardPointerFixup* = 27; DefinitionRepeat* = 28;
     DefinitionUsed* = 29; DeclarationBlockStart* = 30; DeclarationBlockEnd* = 31;
     DefinitionListStart* = 32; DefinitionListValue* = 33; DefinitionListEnd*= 34;
-    SymbolFileIndex*= 35;
+    SymbolFileIndex* = 35; CommandExported* = 36;
     
     (* answer packets / A2 *)
     Warning* = 60; Information* = 61; NameExportedAt* = 62; VarProcParam* = 63;
-    RecordEndAsProcedure* = 64;
+    RecordEndAsProcedure* = 64; LogPosLength* = 65;
 
     (* autocomplete answer packets *)
     Completion* = 80; 
 
     (* reformat answer packets *)
     FormatToken* = 90; FormatTokenUpdate* = 91; IndentNextLine* = 92; OutdentThisLine*= 93;
+    OutdentThisLineAndComment* = 94; TokenIsComment* = 95;
 
     (* syntax elements  *)
     SynOperator* = 1; SynType* = 2; SynKeyword* = 3; SynString* = 4; SynComment* = 5; SynConstant* = 6;
