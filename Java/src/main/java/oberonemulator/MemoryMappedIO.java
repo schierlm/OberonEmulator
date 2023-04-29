@@ -45,6 +45,8 @@ public class MemoryMappedIO {
 
 	private final WizNet wiznet;
 
+	private final HostTransfer hostTransfer;
+
 	private int mouse;
 
 	private Memory mem;
@@ -60,6 +62,7 @@ public class MemoryMappedIO {
 		net = netAddr == null ? null : new Network(netAddr);
 		hostfs = hostFsDirectory == null ? null : new HostFS(hostFsDirectory);
 		wiznet = new WizNet();
+		hostTransfer = new HostTransfer();
 		if (ss != null || sock != null) {
 			Feature.SERIAL.use();
 			new RS232Thread(0, sock, ss);
@@ -293,7 +296,7 @@ public class MemoryMappedIO {
 			break;
 		}
 		case 32: {
-			// host filesystem / wiznet
+			// host filesystem / host transfer / wiznet
 			int highBits = mem.getRAM()[value / 4] >> 16;
 			if (highBits == 0) {
 				Feature.HOST_FILESYSTEM.use();
@@ -302,6 +305,9 @@ public class MemoryMappedIO {
 			} else if (highBits == 1) {
 				Feature.PARAVIRTUAL_WIZNET.use();
 				wiznet.handleCommand(value / 4, mem.getRAM());
+			} else if (highBits == 2) {
+				Feature.PARAVIRTUAL_HOST_TRANSFER.use();
+				hostTransfer.handleCommand(value / 4, mem.getRAM());
 			}
 			break;
 		}
@@ -451,6 +457,9 @@ public class MemoryMappedIO {
 				hwEnumBuf[hwEnumLen++] = (('R' << 24) | ('s' << 16) | ('e' << 8) | 't');
 				if (mem.getCodeRAM() != mem.getRAM() || jitCPU != null) {
 					hwEnumBuf[hwEnumLen++] = (('I' << 24) | ('C' << 16) | ('I' << 8) | 'v');
+				}
+				if (Feature.PARAVIRTUAL_HOST_TRANSFER.isAllowed()) {
+					hwEnumBuf[hwEnumLen++] = (('v' << 24) | ('H' << 16) | ('T' << 8) | 'x');
 				}
 				break;
 			case ('m' << 24) | ('V' << 16) | ('i' << 8) | 'd':
@@ -642,6 +651,11 @@ public class MemoryMappedIO {
 					hwEnumBuf[hwEnumLen++] = -32; // MMIO address
 				}
 				break;
+			case ('v' << 24) | ('H' << 16) | ('T' << 8) | 'x':
+				if (Feature.PARAVIRTUAL_HOST_TRANSFER.isAllowed()) {
+					hwEnumBuf[hwEnumLen++] = -32; // MMIO address
+				}
+				break;
 			case ('D' << 24) | ('b' << 16) | ('g' << 8) | 'C':
 				hwEnumBuf[hwEnumLen++] = -12; // MMIO debug console address
 				break;
@@ -725,6 +739,7 @@ public class MemoryMappedIO {
 
 	public void reset() {
 		wiznet.reset();
+		hostTransfer.reset();
 		timeInit = null;
 		mem.getImageMemory().setDepth(1);
 		mem.getImageMemory().resize(origWidth, origHeight, Math.max(mem.getImageMemory().getMinimumSpan(), origWidth / 8));

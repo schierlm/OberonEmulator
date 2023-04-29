@@ -320,6 +320,17 @@ Used in emulators to provide access to the paravirtualized network
 Values of the `vNet` descriptor:
 - MMIO address
 
+### `vHTx': Paravirtual Host Transfer
+
+Used in emulators to enable the guest to actively copy files from/to the host's native
+filesystem. Unlike Host FS this filesystem does not follow Oberon filename semantics and
+only allows copy operations. Optionally, the interface may also allow to run commands on
+the host and return their output. The output text should include a textual representation
+of the process' exit status (if supported by the host).
+
+Values of the `vHTx` descriptor:
+- MMIO address
+
 ### `DbgC`: Debug console (for emulators)
 
 Provided by emulators to output null-terminated debug messages

@@ -375,7 +375,7 @@ public class WizNet {
 				break;
 			}
 			default:
-				throw new RuntimeException("Unsupported HostFS operation");
+				throw new RuntimeException("Unsupported WizNet operation");
 			}
 		} catch (RuntimeException ex) {
 			throw new RuntimeException(ex);
