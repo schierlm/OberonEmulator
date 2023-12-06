@@ -153,6 +153,16 @@ function WebDriver(imageName, width, height, dualSerial, configFile, mem, dismem
 	$proto.setDimensions = function(width, height, resizeControlBar) {
 		this.width = width || 1024;
 		this.height = height || 768;
+		if (this.width > 1024) {
+			var ramhint = +document.querySelector(".ramhint").value;
+			var disphint = +document.querySelector(".disphint").value;
+			if (disphint < 512) {
+				document.querySelector(".disphint").value = "512";
+				if (ramhint < 2) {
+					document.querySelector(".ramhint").value = "2";
+				}
+			}
+		}
 		if (resizeControlBar) {
 			this.ui.resize(this.width, this.height);
 		}
