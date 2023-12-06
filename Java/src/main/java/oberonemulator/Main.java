@@ -182,6 +182,7 @@ public class Main {
 					case "-L":
 					case "--limit-features":
 						Feature.allowedFeatures = Feature.parse(args[++i]);
+						break;
 					case "-k":
 					case "--keyboard-emulation":
 						switch (args[++i]) {
