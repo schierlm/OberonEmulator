@@ -127,7 +127,7 @@
          Texts.WriteLn(W);
          Texts.Append(Oberon.Log, W.buf);
        END
-@@ -133,6 +140,23 @@
+@@ -133,6 +140,22 @@
      WHILE TRUE DO
        t := Kernel.Time();
        IF SYSTEM.BIT(msAdr, 28) THEN
@@ -141,7 +141,6 @@
 +          FOR idx := 0 TO KeyCount - 1 DO
 +            IF keys[idx].jscode = Input.rawJS.code THEN
 +              keys[idx].pressed := ~release;
-+              base := 0;
 +              DrawKey(Oberon.Par.frame.next, idx);
 +              WHILE Kernel.Time() < t + delay DO END
 +            END
@@ -151,7 +150,7 @@
          SYSTEM.GET(kbdAdr, c);
          IF c = 0F0H THEN
            release := TRUE
-@@ -150,11 +174,12 @@
+@@ -150,11 +173,12 @@
              WHILE Kernel.Time() < t + delay DO END
            END
          END
@@ -165,7 +164,7 @@
    BEGIN
      keys[ctr].x := x;
      keys[ctr].y := y;
-@@ -162,6 +187,7 @@
+@@ -162,6 +186,7 @@
      keys[ctr].h := 4;
      keys[ctr].pressed := FALSE;
      keys[ctr].label := label;
@@ -173,7 +172,7 @@
      keylookup[ext * 256 + code] := ctr;
      INC(ctr); INC(x, 4)
    END AddKey;
-@@ -177,178 +203,177 @@
+@@ -177,178 +202,177 @@
     SYSTEM.GET(-4, kbdAdr);
     SYSTEM.GET(-4, mode);
     IF kbdAdr = 0 THEN msAdr := -40; kbdAdr := -36 END;
