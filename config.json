@@ -1,1 +1,1 @@
-{"rom": "boot.rom", "images": ["MinimalDiskImage", "FullDiskImage", "VanillaDiskImage", "ExtendedOberonDiskImage", "IntegratedOberonDiskImage", "BootFromSerialLine", "ColorDiskImage", "FullWithRescueDiskImage", "DebuggableDiskImage"]}
+{"rom": "boot.rom", "images": ["MinimalDiskImage", "FullDiskImage", "VanillaDiskImage", "ExtendedOberonDiskImage", "IntegratedOberonDiskImage", "BootFromSerialLine", "ColorDiskImage", "FullWithRescueDiskImage", "DebuggableDiskImage", "UnicodeLFSDiskImage"]}

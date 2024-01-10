@@ -70,6 +70,7 @@ You can copy and paste from there like normal.</p>
 		<option>ColorDiskImage</option>
 		<option>FullWithRescueDiskImage</option>
 		<option>DebuggableDiskImage</option>
+		<option>UnicodeLFSDiskImage</option>
 	</select>
 	| RAM:
 	<select name="mem">
@@ -97,16 +98,17 @@ You can copy and paste from there like normal.</p>
 	<br><label><input id="jitemu" type="radio" name="flavor" value="jit">JavaScript JIT emulator (requires Cache Coherence support in images)</label>
 	<h3>Short description of available disk images [with last update dates]:</h3>
 	<dl>
-	<dt>MinimalDiskImage [2022-08-14]</dt><dd>A small (~100KB) disk image containing only the necessary files to start Oberon. No compiler, no tools. So
+	<dt>MinimalDiskImage [2024-01-10]</dt><dd>A small (~100KB) disk image containing only the necessary files to start Oberon. No compiler, no tools. So
 	  all you can use it for is editing Text files.</dd>
-	<dt>FullDiskImage [2022-08-14]</dt><dd>Full content of the original Project Oberon 2013, with some patches to make it more convenient in the emulator.</dd>
+	<dt>FullDiskImage [2024-01-10]</dt><dd>Full content of the original Project Oberon 2013, with some patches to make it more convenient in the emulator.</dd>
 	<dt>VanillaDiskImage [2022-03-18]</dt><dd>Full content of the Origina Project Oberon 2013, with only minimal patches to make it work in the JS emulator.</dd>
-	<dt>ExtendedOberonDiskImage [2022-03-18, v1.10]</dt><dd>Image based on Andreas Pirklbauer's <a href="https://github.com/andreaspirklbauer/Oberon-extended">Extended Oberon</a></dd>
+	<dt>ExtendedOberonDiskImage [2024-01-10, v1.9]</dt><dd>Image based on Andreas Pirklbauer's <a href="https://github.com/andreaspirklbauer/Oberon-extended">Extended Oberon</a></dd>
 	<dt>IntegratedOberonDiskImage [2020-11-29]</dt><dd>Image based on Charles Perkin's <a href="https://github.com/io-core/io">Integrated Oberon</a></dd>
 	<dt>BootFromSerialLine [2021-01-19]</dt><dd>Small image that only boots from a serial line (used with a serial line to another Oberon system)</dd>
-	<dt>ColorDiskImage [2022-08-14]</dt><dd>Image patched to support 16 colors.</dd>
-	<dt>FullWithRescueDiskImage [2022-08-14]</dt><dd>Same as the image without <b>WithRescue</b>, but it includes a <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/RescueSystem">rescue system</a> to fix and recompile in case you break the boot.</dd>
-	<dt>DebuggableDiskImage [2022-08-14]</dt><dd>Image that includes a <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/KernelDebugger">Kernel debugger</a></dd>
+	<dt>ColorDiskImage [2024-01-10]</dt><dd>Image patched to support 16 colors.</dd>
+	<dt>FullWithRescueDiskImage [2024-01-10]</dt><dd>Same as the image without <b>WithRescue</b>, but it includes a <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/RescueSystem">rescue system</a> to fix and recompile in case you break the boot.</dd>
+	<dt>DebuggableDiskImage [2024-01-10]</dt><dd>Image that includes a <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/KernelDebugger">Kernel debugger</a></dd>
+	<dt>UnicodeLFSDiskImage [2024-01-10]</dt><dd>Image that includes full <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/UTF8Charset">UTF-8</a> support in a <a href="https://github.com/schierlm/Oberon2013Modifications/tree/master/LargeFilesystem">large filesystem</a> with megabytes of fonts.</dd>
 	</dl>
 	<p>Images built in <b>March 2022</b> or later also work in other boards/emulators that support the Hardware Enumerator (or are 100% compatible to the original board).</p>
 </form>
