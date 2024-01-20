@@ -1754,8 +1754,8 @@ function PNGImageReader(name) {
 	$proto._unpack = function(imageData, width, height) {
 		var contents = [];
 		// skip boot ROM
-		for (var i = 1; i < height; i++) {
-			var sectorWords = new Int32Array(width / 4);
+		for (var i = 1; i < width * height / 1024; i++) {
+			var sectorWords = new Int32Array(1024 / 4);
 			for (var j = 0; j < width / 4; j++) {
 				var b = i * 4096 + j * 16 + 2;
 				sectorWords[j] =
