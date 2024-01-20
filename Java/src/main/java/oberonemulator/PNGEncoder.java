@@ -15,8 +15,9 @@ import javax.imageio.ImageIO;
 
 public class PNGEncoder {
 
-	public static void encode(String pngFile, String diskImage, InputStream rom, boolean noPadding) throws IOException {
+	public static void encode(String pngFile, String diskImage, InputStream rom, boolean noPadding, int widthInSectors) throws IOException {
 		int size = (int) new File(diskImage).length();
+		if (noPadding) size += 1024;
 		if (size % 1024 != 0)
 			throw new IOException("Disk image size must be a multiple of the sector size (1KB)");
 		byte[] range = new byte[256];
@@ -24,10 +25,15 @@ public class PNGEncoder {
 			range[i] = (byte) i;
 		}
 		IndexColorModel cm = new IndexColorModel(8, 256, new byte[256], new byte[256], range);
-		BufferedImage bufimg = new BufferedImage(1024, size / 1024, BufferedImage.TYPE_BYTE_INDEXED, cm);
+		BufferedImage bufimg = new BufferedImage(1024 * widthInSectors, (size / 1024 + widthInSectors - 1) / widthInSectors, BufferedImage.TYPE_BYTE_INDEXED, cm);
 		DataInputStream in = new DataInputStream(rom);
 		readSector(0, in, bufimg);
 		verifyZeroSector(in);
+		if (size / 1024 % widthInSectors != 0) {
+			for (int i = (size / 1024 % widthInSectors) * 1024; i < bufimg.getWidth(); i++) {
+				bufimg.setRGB(i, bufimg.getHeight() - 1, 0xFF000000);
+			}
+		}
 		if (in.read() != -1)
 			throw new IOException("ROM image too large (must be 2KB)");
 		in.close();
@@ -44,10 +50,12 @@ public class PNGEncoder {
 	}
 
 	private static void readSector(int secnum, DataInputStream in, BufferedImage bufimg) throws IOException {
+		int secPerRow = bufimg.getWidth() / 1024;
+		int row = secnum / secPerRow, col = (secnum % secPerRow) * 1024;
 		byte[] sector = new byte[1024];
 		in.readFully(sector);
 		for (int i = 0; i < 1024; i++) {
-			bufimg.setRGB(i, secnum, 0xFF000000 + (sector[i] & 0xFF) * 0x010101);
+			bufimg.setRGB(i + col, row, 0xFF000000 + (sector[i] & 0xFF) * 0x010101);
 		}
 	}
 
@@ -60,7 +68,7 @@ public class PNGEncoder {
 
 	public static void decode(String pngFile, String diskImage, OutputStream romStream, boolean noPadding) throws IOException {
 		BufferedImage bufimg = ImageIO.read(new File(pngFile));
-		if (bufimg.getWidth() != 1024 || bufimg.getHeight() < 2)
+		if (bufimg.getWidth() < 1024 || bufimg.getWidth() % 1024 != 0 || bufimg.getHeight() < 2)
 			throw new IOException("Invalid image size: " + bufimg.getWidth() + "x" + bufimg.getHeight());
 		if (romStream != null) {
 			writeSector(0, bufimg, romStream);
@@ -70,16 +78,18 @@ public class PNGEncoder {
 		OutputStream out = new FileOutputStream(diskImage);
 		if (!noPadding)
 			out.write(new byte[1024]);
-		for (int i = 1; i < bufimg.getHeight(); i++) {
+		for (int i = 1; i < bufimg.getHeight() * bufimg.getWidth() / 1024; i++) {
 			writeSector(i, bufimg, out);
 		}
 		out.close();
 	}
 
 	private static void writeSector(int secnum, BufferedImage bufimg, OutputStream out) throws IOException {
+		int secPerRow = bufimg.getWidth() / 1024;
+		int row = secnum / secPerRow, col = (secnum % secPerRow) * 1024;
 		byte[] sector = new byte[1024];
 		for (int i = 0; i < 1024; i++) {
-			int rgb = bufimg.getRGB(i, secnum);
+			int rgb = bufimg.getRGB(col + i, row);
 			sector[i] = (byte) rgb;
 			if (rgb != (sector[i] & 0xFF) + 0xFF000000)
 				throw new IllegalStateException(Integer.toHexString(rgb));

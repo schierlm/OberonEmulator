@@ -307,7 +307,7 @@ public class Main {
 			rom = Main.class.getResourceAsStream("/boot.rom");
 		}
 		if (pngTarget != null && !decodePNG) {
-			PNGEncoder.encode(pngTarget, diskImage, rom, noPadding);
+			PNGEncoder.encode(pngTarget, diskImage, rom, noPadding, memoryLayout == null ? 1 : memoryLayout[0]);
 			return;
 		} else if (pngTarget != null && decodePNG) {
 			OutputStream romStream = romImage == null ? null : new FileOutputStream(romImage);
@@ -419,6 +419,7 @@ public class Main {
 		System.out.println("       java -jar OberonEmulator.jar -D|--decode-png <pngfile> [args] <diskimage>");
 		System.out.println("           Supported args: -r|--rom <romfile>");
 		System.out.println("                           -0|--no-padding");
+		System.out.println("                           -m|--memory <sectors_per_row> (encoding only)");
 		System.out.println();
 		System.out.println("       java -jar OberonEmulator.jar [args] <diskimage>");
 		System.out.println("           Supported args: -r|--rom <romfile>");
