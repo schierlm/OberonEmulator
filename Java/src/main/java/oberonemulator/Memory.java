@@ -41,6 +41,9 @@ public class Memory {
 	public int readWord(int wordAddress, boolean mapROM) {
 		if (mapROM && wordAddress >= romStart >>> 2 && wordAddress < (romStart >>> 2) + rom.length) {
 			return rom[wordAddress - (romStart >>> 2)];
+		} else if (mapROM && wordAddress == (romStart >>> 2) - 1) {
+			System.exit(0); // System.Quit
+			return 0;
 		} else if (wordAddress >= (largeAddressSpace ? (int) (LargeIOStart / 4) : (IOStart / 4))) {
 			return mmio.readWord(wordAddress);
 		} else if (wordAddress >= getPaletteStart() >>> 2) {

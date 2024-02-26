@@ -2,7 +2,7 @@
 
 ### Versioning
 
-This document describes version 1.0.3 of the hardware enumerator. New (major) versions
+This document describes version 1.0.4 of the hardware enumerator. New (major) versions
 may introduce incompatible changes; therefore, when software is unaware of the
 implemented version, the best way to handle is to assume no hardware enumerator
 to be present. Minor versions are backwards compatible. Patch versions only add new
@@ -373,7 +373,8 @@ Values of the `ICIv` descriptor:
 
 Defines how to reset the system. There are two ways of reset: A soft reset
 (that leaves the RAM intact but resets execution back to the Oberon loop)
-and a hard reset (That resets the RAM).
+and a hard reset (That resets the RAM). Emulators may also provide an
+option to quit the Oberon environment.
 
 Reset is performed by continuing execution at a specific address in ROM.
 If the system only provides an address to perform a soft reset, the hard
@@ -383,6 +384,7 @@ jumping to the soft reset target.
 Values of the `Rset` descriptor:
 - Jump target for soft reset
 - Jump target for hard reset, or 0 if there is no dedicated one
+- Jump target for quit (for emulators)
 
 ### `Boot`: Reserved for bootloader
 

@@ -674,6 +674,8 @@ public class MemoryMappedIO {
 				break;
 			case ('R' << 24) | ('s' << 16) | ('e' << 8) | 't':
 				hwEnumBuf[hwEnumLen++] = mem.getROMStart();
+				hwEnumBuf[hwEnumLen++] = 0;
+				hwEnumBuf[hwEnumLen++] = mem.getROMStart() - 4;
 				break;
 			case ('I' << 24) | ('C' << 16) | ('I' << 8) | 'v':
 				if (mem.getCodeRAM() != mem.getRAM() || jitCPU != null) {
