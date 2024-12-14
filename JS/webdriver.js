@@ -1728,7 +1728,21 @@ function PNGImageReader(name) {
 (function(){
 	var $proto = PNGImageReader.prototype;
 
+	$proto.tryGZIP = true;
+
 	$proto.prepareContentsThenNotify = function(listener) {
+		if (this.tryGZIP && 'DecompressionStream' in window) {
+			var that = this;
+			fetch(this.name + ".dsk.gz").then(function(response) {
+				return new Response(response.body.pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+			}).then(function(abuf) {
+				listener.useSystemImage(that.name, DiskFileReader.getContents(abuf));
+			}, function(err) {
+				that.tryGZIP = false;
+				that.prepareContentsThenNotify(listener);
+			});
+			return;
+		}
 		this.listener = listener;
 		this.container = new Image();
 		this.container.addEventListener("load", this);
