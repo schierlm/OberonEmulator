@@ -174,14 +174,14 @@
 		"vscode-languageclient": "^9.0.1"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.98.0",
-		"@typescript-eslint/eslint-plugin": "^8.28.0",
-		"@typescript-eslint/parser": "^8.28.0",
-		"@vscode/vsce": "^3.3.1",
-		"eslint": "^9.23.0",
-		"ts-loader": "^9.5.2",
-		"typescript": "^5.8.2",
-		"webpack": "^5.98.0",
+		"@types/vscode": "^1.109.0",
+		"@typescript-eslint/eslint-plugin": "^8.55.0",
+		"@typescript-eslint/parser": "^8.55.0",
+		"@vscode/vsce": "^3.7.1",
+		"eslint": "^9.39.2",
+		"ts-loader": "^9.5.4",
+		"typescript": "^5.9.3",
+		"webpack": "^5.105.2",
 		"webpack-cli": "^6.0.1"
 	}
 }
